@@ -207,7 +207,7 @@ const cronPresets = [
 ]
 
 const buildCron = () => {
-  const [hh, mm] = scheduleForm.time.split(':')
+  const [hh] = scheduleForm.time.split(':')
   if (scheduleForm.freq === 'daily') return `0 ${hh} * * *`
   if (scheduleForm.freq === 'weekly') return `0 ${hh} * * ${scheduleForm.weekday}`
   if (scheduleForm.freq === 'monthly') return `0 ${hh} ${scheduleForm.monthDay} * *`
