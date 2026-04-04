@@ -61,6 +61,103 @@
           <p>还没有步骤，点击上方"添加步骤"开始</p>
         </div>
       </div>
+
+      <!-- 定时触发配置 -->
+      <div v-if="isEdit" class="schedule-section">
+        <div class="schedule-header">
+          <h3>⏰ 定时触发</h3>
+          <div class="schedule-toggle">
+            <span class="toggle-label">{{ scheduleTask.enabled ? '已启用' : '已停用' }}</span>
+            <button
+              class="toggle-btn"
+              :class="{ active: scheduleTask.enabled }"
+              @click="toggleSchedule"
+            >
+              <span class="toggle-dot"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="schedule-body" v-if="scheduleTask.loaded">
+          <!-- 当前定时状态 -->
+          <div v-if="scheduleTask.current" class="schedule-info">
+            <div class="schedule-info-row">
+              <span class="info-label">Cron 表达式：</span>
+              <code class="cron-expr">{{ scheduleTask.current.cronExpression }}</code>
+              <span class="schedule-desc">（{{ cronDesc(scheduleTask.current.cronExpression) }}）</span>
+            </div>
+            <div class="schedule-info-row">
+              <span class="info-label">下次触发：</span>
+              <span class="next-fire">{{ formatDateTime(scheduleTask.current.nextFireTime) }}</span>
+              <span class="status-badge" :class="scheduleTask.current.enabled ? 'active' : 'inactive'">
+                {{ scheduleTask.current.enabled ? '运行中' : '已停用' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 未配置时显示设置表单 -->
+          <div v-if="!scheduleTask.current" class="schedule-form">
+            <div class="cron-presets">
+              <label class="preset-label">快速选择：</label>
+              <button v-for="preset in cronPresets" :key="preset.label"
+                class="preset-btn"
+                :class="{ selected: selectedPreset === preset.label }"
+                @click="applyPreset(preset)">
+                {{ preset.label }}
+              </button>
+            </div>
+
+            <div class="cron-builder">
+              <div class="cron-row">
+                <div class="cron-field">
+                  <label>频率</label>
+                  <select v-model="scheduleForm.freq" class="cron-select" @change="onFreqChange">
+                    <option value="daily">每天</option>
+                    <option value="weekly">每周</option>
+                    <option value="monthly">每月</option>
+                  </select>
+                </div>
+                <div class="cron-field" v-if="scheduleForm.freq === 'weekly'">
+                  <label>星期</label>
+                  <select v-model="scheduleForm.weekday" class="cron-select">
+                    <option value="1">周一</option>
+                    <option value="2">周二</option>
+                    <option value="3">周三</option>
+                    <option value="4">周四</option>
+                    <option value="5">周五</option>
+                    <option value="6">周六</option>
+                    <option value="7">周日</option>
+                  </select>
+                </div>
+                <div class="cron-field" v-if="scheduleForm.freq === 'monthly'">
+                  <label>日期</label>
+                  <select v-model="scheduleForm.monthDay" class="cron-select">
+                    <option v-for="d in 28" :key="d" :value="d">{{ d }}日</option>
+                  </select>
+                </div>
+                <div class="cron-field">
+                  <label>时间</label>
+                  <input v-model="scheduleForm.time" type="time" class="cron-time" />
+                </div>
+              </div>
+
+              <div class="cron-preview">
+                <span class="preview-label">Cron：</span>
+                <code>{{ buildCron() }}</code>
+              </div>
+            </div>
+
+            <div class="schedule-actions">
+              <button class="btn-save-schedule" @click="saveSchedule">💾 保存定时</button>
+            </div>
+          </div>
+
+          <!-- 已配置时的操作 -->
+          <div v-else class="schedule-actions-row">
+            <button class="btn-reset-schedule" @click="resetSchedule">🗑 删除定时</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -86,6 +183,127 @@ const form = reactive({
   status: 'draft',
 })
 
+// 定时任务状态
+const scheduleTask = reactive({
+  current: null as any,
+  enabled: false,
+  loaded: false,
+})
+
+const scheduleForm = reactive({
+  freq: 'daily',
+  weekday: '1',
+  monthDay: '1',
+  time: '08:00',
+})
+
+const selectedPreset = ref('')
+
+const cronPresets = [
+  { label: '每天早上8点', cron: '0 8 * * *' },
+  { label: '每天晚上8点', cron: '0 20 * * *' },
+  { label: '每周一早上9点', cron: '0 9 * * 1' },
+  { label: '每月1号早上9点', cron: '0 9 1 * *' },
+]
+
+const buildCron = () => {
+  const [hh, mm] = scheduleForm.time.split(':')
+  if (scheduleForm.freq === 'daily') return `0 ${hh} * * *`
+  if (scheduleForm.freq === 'weekly') return `0 ${hh} * * ${scheduleForm.weekday}`
+  if (scheduleForm.freq === 'monthly') return `0 ${hh} ${scheduleForm.monthDay} * *`
+  return ''
+}
+
+const applyPreset = (preset: any) => {
+  selectedPreset.value = preset.label
+  const parts = preset.cron.split(' ')
+  const [mm, hh, , , dow] = parts
+  scheduleForm.time = `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`
+  if (dow !== '*') {
+    scheduleForm.freq = 'weekly'
+    scheduleForm.weekday = dow
+  } else {
+    scheduleForm.freq = 'daily'
+  }
+}
+
+const onFreqChange = () => {
+  selectedPreset.value = ''
+}
+
+const cronDesc = (cron: string) => {
+  if (!cron) return ''
+  const parts = cron.trim().split(/\s+/)
+  const [mm, hh, dom, , dow] = parts
+  if (dom === '*' && dow === '*') return `每天 ${hh}:${mm.padStart(2, '0')}`
+  if (dom === '*' && dow !== '*') {
+    const weekNames: Record<string, string> = { '1': '周一', '2': '周二', '3': '周三', '4': '周四', '5': '周五', '6': '周六', '7': '周日' }
+    return `每周${weekNames[dow] || dow} ${hh}:${mm.padStart(2, '0')}`
+  }
+  if (dom !== '*') return `每月${dom}日 ${hh}:${mm.padStart(2, '0')}`
+  return cron
+}
+
+const formatDateTime = (dt: string) => {
+  if (!dt) return '-'
+  return dt.replace('T', ' ').substring(0, 16)
+}
+
+const loadSchedule = async () => {
+  if (!isEdit) return
+  try {
+    const res: any = await sopStore.getScheduleTask(Number(route.params.id))
+    scheduleTask.loaded = true
+    if (res.code === 200 && res.data) {
+      scheduleTask.current = res.data
+      scheduleTask.enabled = res.data.enabled === 1
+    }
+  } catch (e) {
+    scheduleTask.loaded = true
+  }
+}
+
+const saveSchedule = async () => {
+  if (!isEdit) return
+  const cron = buildCron()
+  if (!cron) {
+    ElMessage.warning('请选择定时时间')
+    return
+  }
+  try {
+    await sopStore.saveScheduleTask(Number(route.params.id), cron)
+    ElMessage.success('定时任务保存成功')
+    await loadSchedule()
+  } catch (e: any) {
+    ElMessage.error(e.message || '保存失败')
+  }
+}
+
+const resetSchedule = async () => {
+  if (!isEdit) return
+  try {
+    await sopStore.deleteScheduleTask(Number(route.params.id))
+    ElMessage.success('定时任务已删除')
+    scheduleTask.current = null
+    scheduleTask.enabled = false
+  } catch (e: any) {
+    ElMessage.error(e.message || '删除失败')
+  }
+}
+
+const toggleSchedule = async () => {
+  if (!scheduleTask.current) return
+  const newEnabled = scheduleTask.current.enabled === 1 ? 0 : 1
+  try {
+    await sopStore.toggleScheduleTask(scheduleTask.current.id, newEnabled)
+    scheduleTask.current.enabled = newEnabled
+    scheduleTask.enabled = newEnabled === 1
+    ElMessage.success(newEnabled ? '定时任务已启用' : '定时任务已停用')
+  } catch (e: any) {
+    ElMessage.error(e.message || '操作失败')
+  }
+}
+
 const addStep = () => {
   form.content.push({ title: '', description: '', duration: 30 })
 }
@@ -99,7 +317,7 @@ const handleSave = async (status: string) => {
     ElMessage.warning('请输入标题')
     return
   }
-  const tags = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean)
+  const tags = tagsInput.value.split(',').map((t: string) => t.trim()).filter(Boolean)
   const data = {
     ...form,
     tags,
@@ -130,6 +348,7 @@ onMounted(async () => {
       form.content = sop.content ? JSON.parse(sop.content) : []
       tagsInput.value = sop.tags ? JSON.parse(sop.tags).join(',') : ''
     }
+    await loadSchedule()
   }
 })
 </script>
@@ -190,7 +409,7 @@ onMounted(async () => {
 }
 .desc-input { height: 80px; padding: 10px 12px; resize: vertical; }
 .form-group { margin-bottom: 20px; }
-.steps-section { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.steps-section { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }
 .steps-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .steps-header h3 { margin: 0; font-size: 15px; font-weight: 600; color: #212121; }
 .btn-add-step {
@@ -230,4 +449,86 @@ onMounted(async () => {
   font-size: 16px; cursor: pointer; padding: 4px;
 }
 .empty-steps { text-align: center; padding: 24px; color: #999; }
+
+/* 定时触发样式 */
+.schedule-section {
+  background: #fff; border-radius: 12px; padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.schedule-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+.schedule-header h3 { margin: 0; font-size: 15px; font-weight: 600; color: #212121; }
+.schedule-toggle { display: flex; align-items: center; gap: 8px; }
+.toggle-label { font-size: 13px; color: #666; }
+.toggle-btn {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: #E8E8E8; border: none; cursor: pointer; position: relative;
+  transition: background 0.2s;
+}
+.toggle-btn.active { background: #52C41A; }
+.toggle-dot {
+  width: 18px; height: 18px; background: #fff; border-radius: 50%;
+  position: absolute; top: 3px; left: 3px;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-btn.active .toggle-dot { left: 23px; }
+
+.schedule-info { margin-bottom: 16px; }
+.schedule-info-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.info-label { font-size: 13px; color: #666; }
+.cron-expr { background: #F5F7FA; padding: 2px 8px; border-radius: 4px; font-size: 13px; color: #5B7FFF; }
+.schedule-desc { font-size: 13px; color: #999; }
+.next-fire { font-size: 13px; color: #333; }
+.status-badge {
+  font-size: 12px; padding: 1px 8px; border-radius: 10px;
+}
+.status-badge.active { background: #E6F7E6; color: #52C41A; }
+.status-badge.inactive { background: #F5F5F5; color: #999; }
+
+.schedule-form { }
+.cron-presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.preset-label { font-size: 13px; color: #666; }
+.preset-btn {
+  height: 28px; padding: 0 12px; border-radius: 14px;
+  background: #F5F7FA; color: #333; border: 1px solid #E8E8E8;
+  font-size: 12px; cursor: pointer; transition: all 0.2s;
+}
+.preset-btn:hover { border-color: #5B7FFF; color: #5B7FFF; }
+.preset-btn.selected { background: #E8ECFF; border-color: #5B7FFF; color: #5B7FFF; }
+
+.cron-builder { background: #F9FAFB; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.cron-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cron-field { display: flex; flex-direction: column; gap: 4px; }
+.cron-field label { font-size: 12px; color: #999; }
+.cron-select {
+  height: 34px; padding: 0 10px; border: 1px solid #E8E8E8;
+  border-radius: 6px; font-size: 13px; background: #fff; outline: none;
+}
+.cron-time {
+  height: 34px; padding: 0 10px; border: 1px solid #E8E8E8;
+  border-radius: 6px; font-size: 13px; background: #fff; outline: none;
+}
+.cron-preview { display: flex; align-items: center; gap: 8px; }
+.preview-label { font-size: 13px; color: #666; }
+.cron-preview code { background: #E8ECFF; color: #5B7FFF; padding: 2px 10px; border-radius: 4px; font-size: 13px; }
+
+.schedule-actions, .schedule-actions-row { display: flex; gap: 8px; }
+.btn-save-schedule {
+  height: 34px; padding: 0 16px;
+  background: #5B7FFF; color: white;
+  border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn-save-schedule:hover { background: #7994FF; }
+.btn-reset-schedule {
+  height: 34px; padding: 0 16px;
+  background: #fff; color: #FF4D4F;
+  border: 1px solid #FF4D4F; border-radius: 8px;
+  font-size: 13px; cursor: pointer;
+}
+.btn-reset-schedule:hover { background: #FFF1F0; }
 </style>

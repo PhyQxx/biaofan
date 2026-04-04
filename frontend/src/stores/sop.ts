@@ -36,5 +36,29 @@ export const useSopStore = defineStore('sop', () => {
     return request.post(`/sop/${id}/publish`)
   }
 
-  return { sops, total, fetchMySops, getSopById, createSop, updateSop, deleteSop, publishSop }
+  // 定时任务 API
+  async function getScheduleTask(sopId: number) {
+    return request.get(`/schedule/tasks/${sopId}`)
+  }
+
+  async function saveScheduleTask(sopId: number, cronExpression: string) {
+    return request.post('/schedule/tasks', { sopId, cronExpression })
+  }
+
+  async function deleteScheduleTask(sopId: number) {
+    return request.delete(`/schedule/tasks/${sopId}`)
+  }
+
+  async function toggleScheduleTask(id: number, enabled: number) {
+    return request.put(`/schedule/tasks/${id}/enable`, { enabled })
+  }
+
+  async function getMyScheduleTasks() {
+    return request.get('/schedule/tasks')
+  }
+
+  return {
+    sops, total, fetchMySops, getSopById, createSop, updateSop, deleteSop, publishSop,
+    getScheduleTask, saveScheduleTask, deleteScheduleTask, toggleScheduleTask, getMyScheduleTasks
+  }
 })
