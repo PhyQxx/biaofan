@@ -73,17 +73,20 @@ public class SopServiceImpl implements SopService {
     @Override
     @Transactional
     public void publish(Long id, Long userId) {
+        publish(id, userId, "发布版本");
+    }
+
+    @Override
+    @Transactional
+    public void publish(Long id, Long userId, String changeSummary) {
         Sop sop = getById(id, userId);
         sop.setStatus("published");
         sop.setPublishedAt(LocalDateTime.now());
+        // Increment version on each publish
+        sop.setVersion(sop.getVersion() == null ? 1 : sop.getVersion() + 1);
         sopMapper.updateById(sop);
 
-        // Create version snapshot on publish
-        if (sop.getVersion() == null || sop.getVersion() < 1) {
-            sop.setVersion(1);
-            sopMapper.updateById(sop);
-        }
-        createVersionSnapshot(sop, userId, "发布版本");
+        createVersionSnapshot(sop, userId, changeSummary != null && !changeSummary.isBlank() ? changeSummary : "发布版本");
     }
 
     private void createVersionSnapshot(Sop sop, Long userId, String summary) {

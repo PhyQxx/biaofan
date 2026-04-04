@@ -162,7 +162,7 @@ const completeStep = async () => {
   for (let i = 0; i < checkItems.value.length; i++) {
     const item = checkItems.value[i]
     if (item.isRequired) {
-      const val = checkData.value[i]
+      const val = checkData.value[String(i)]
       if (val === undefined || val === null || val === '' || val === false) {
         ElMessage.warning(`请完成检查项：${item.label}`)
         return
@@ -183,7 +183,7 @@ const completeStep = async () => {
       checkData: dataMap,
     })
 
-    if (res.code === 200) {
+    if (res?.code === 200) {
       const completed = res.data?.completed
       if (completed || currentStep.value >= totalSteps.value) {
         execution.value.status = 'completed'
@@ -209,15 +209,15 @@ onMounted(async () => {
     const [execRes, sopRes] = await Promise.all([
       request.get(`/execution/${executionId}`),
       request.get(`/execution/${executionId}/sop`),
-    ])
+    ]) as any[]
 
-    if (execRes.code === 200) {
+    if (execRes?.code === 200) {
       execution.value = execRes.data
       execution.value.sopTitle = ''
       currentStep.value = execution.value.currentStep || 1
     }
 
-    if (sopRes.code === 200) {
+    if (sopRes?.code === 200) {
       sop.value = sopRes.data
       execution.value.sopTitle = sop.value.title
       try {

@@ -24,7 +24,7 @@
       <div class="version-list" v-if="versions.length">
         <div v-for="v in versions" :key="v.id" class="version-card" :class="{ current: v.isCurrent }">
           <div class="version-badge" :class="{ current: v.isCurrent }">
-            {{ v.isCurrent ? '当前' : 'v' + v.version }}
+            {{ v.isCurrent ? '当前' : `v${v.version}` }}
           </div>
           <div class="version-body">
             <div class="version-header">
@@ -74,7 +74,7 @@
           </div>
           <div v-if="versionSteps.length" class="detail-steps">
             <div v-for="(step, idx) in versionSteps" :key="idx" class="detail-step">
-              <div class="detail-step-num">{{ idx + 1 }}</div>
+              <div class="detail-step-num">{{ getStepNumber(idx) }}</div>
               <div class="detail-step-content">
                 <div class="detail-step-title">{{ step.title }}</div>
                 <div class="detail-step-desc" v-if="step.description">{{ step.description }}</div>
@@ -112,6 +112,8 @@ const versionSteps = ref<any[]>([])
 const changeSummary = ref('')
 const publishing = ref(false)
 
+const getStepNumber = (idx: number) => idx + 1
+
 const statusLabel = computed(() => {
   const s = sop.value?.status
   return s === 'published' ? '已发布' : s === 'draft' ? '草稿' : s
@@ -123,7 +125,7 @@ const formatDate = (d: string) => {
 }
 
 const loadVersions = async () => {
-  const res: any = await request.get(`/sop-version/sop/${sopId}`)
+  const res: any = await request.get(`/sop/${sopId}/versions`)
   if (res.code === 200) {
     versions.value = res.data || []
   }
@@ -147,7 +149,7 @@ const viewVersion = async (v: any) => {
 const doPublish = async () => {
   publishing.value = true
   try {
-    const res: any = await request.post(`/sop-version/sop/${sopId}/publish`, {
+    const res: any = await request.post(`/sop/${sopId}/publish`, {
       changeSummary: changeSummary.value,
     })
     if (res.code === 200) {
@@ -173,7 +175,7 @@ const confirmRollback = async (v: any) => {
       '确认回滚',
       { confirmButtonText: '确认回滚', cancelButtonText: '取消', type: 'warning' }
     )
-    const res: any = await request.post(`/sop-version/${v.id}/rollback`)
+    const res: any = await request.post(`/sop/${sopId}/rollback/${v.version}`)
     if (res.code === 200) {
       ElMessage.success('回滚成功')
       await loadVersions()

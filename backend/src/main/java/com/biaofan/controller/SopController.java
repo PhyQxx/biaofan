@@ -75,9 +75,14 @@ public class SopController {
     @PostMapping("/{id}/publish")
     public Result<Void> publish(
             @PathVariable Long id,
-            @AuthenticationPrincipal Long userId) {
+            @AuthenticationPrincipal Long userId,
+            @RequestBody(required = false) SopRequest req) {
         try {
-            sopService.publish(id, userId);
+            if (req != null && req.getChangeSummary() != null) {
+                sopService.publish(id, userId, req.getChangeSummary());
+            } else {
+                sopService.publish(id, userId);
+            }
             return Result.ok();
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());

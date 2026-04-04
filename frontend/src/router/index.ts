@@ -11,7 +11,6 @@ const router = createRouter({
     { path: '/stats', name: 'Statistics', component: () => import('@/views/stats/StatisticsView.vue'), meta: { requiresAuth: true } },
     { path: '/sop/new', name: 'SopNew', component: () => import('@/views/sop/SopEditorView.vue'), meta: { requiresAuth: true } },
     { path: '/sop/:id/edit', name: 'SopEdit', component: () => import('@/views/sop/SopEditorView.vue'), meta: { requiresAuth: true } },
-    { path: '/sop/:id/versions', name: 'SopVersions', component: () => import('@/views/sop/SopVersionsView.vue'), meta: { requiresAuth: true } },
     { path: '/sop/:id/versions', name: 'SopVersions', component: () => import('@/views/sop/VersionHistoryView.vue'), meta: { requiresAuth: true } },
     { path: '/notification', name: 'Notification', component: () => import('@/views/notification/NotificationView.vue'), meta: { requiresAuth: true } },
   ],

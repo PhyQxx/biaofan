@@ -128,7 +128,7 @@ const formatDate = (d: string) => {
 
 const loadUnread = async () => {
   try {
-    const res: any = await request.get('/notification/unread-count')
+    const res: any = await request.get('/notifications/unread-count')
     if (res.code === 200) unreadNotif.value = res.data?.count || 0
   } catch {}
 }

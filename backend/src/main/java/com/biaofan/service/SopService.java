@@ -11,4 +11,5 @@ public interface SopService {
     void update(Long id, Long userId, SopRequest req);
     void delete(Long id, Long userId);
     void publish(Long id, Long userId);
+    void publish(Long id, Long userId, String changeSummary);
 }

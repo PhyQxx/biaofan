@@ -11,6 +11,7 @@ public class SopRequest {
     private String category;
     private List<String> tags;
     private String status; // draft / published
+    private String changeSummary; // for publish with summary
 
     @Data
     public static class StepItem {

@@ -89,7 +89,7 @@ const formatDate = (d: string) => {
 }
 
 const loadNotifications = async () => {
-  const res: any = await request.get('/notification/my')
+  const res: any = await request.get('/notifications')
   if (res.code === 200) {
     notifications.value = res.data || []
   }
@@ -97,7 +97,7 @@ const loadNotifications = async () => {
 
 const handleClick = async (n: any) => {
   if (!n.isRead) {
-    await request.put(`/notification/${n.id}/read`)
+    await request.put(`/notifications/${n.id}/read`)
     n.isRead = 1
   }
   // Navigate based on source type
@@ -109,7 +109,7 @@ const handleClick = async (n: any) => {
 }
 
 const markAllRead = async () => {
-  await request.put('/notification/read-all')
+  await request.put('/notifications/read-all')
   for (const n of notifications.value) n.isRead = 1
   ElMessage.success('已全部标记为已读')
 }
