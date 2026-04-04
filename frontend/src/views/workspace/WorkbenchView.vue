@@ -10,6 +10,10 @@
       </div>
       <div class="topbar-right">
         <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
+        <div class="notif-bell" @click="router.push('/notification')">
+          🔔
+          <span class="notif-badge" v-if="unreadNotif > 0">{{ unreadNotif > 9 ? '9+' : unreadNotif }}</span>
+        </div>
         <div class="avatar" @click="handleLogout">{{ user?.username?.charAt(0) || 'U' }}</div>
       </div>
     </div>
@@ -26,6 +30,10 @@
         </div>
         <div class="sidebar-item" @click="router.push('/stats')">
           <span>📈</span><span>统计</span>
+        </div>
+        <div class="sidebar-item" @click="router.push('/notification')">
+          <span>🔔</span><span>通知</span>
+          <span class="sidebar-badge" v-if="unreadNotif > 0">{{ unreadNotif }}</span>
         </div>
         <div class="sidebar-divider"></div>
         <div class="sidebar-item" @click="handleLogout">
@@ -48,6 +56,14 @@
             <div class="stat-num">{{ total }}</div>
             <div class="stat-label">我的 SOP</div>
           </div>
+          <div class="stat-card">
+            <div class="stat-num blue">{{ pendingExec }}</div>
+            <div class="stat-label">待执行</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num green">{{ completedRate }}%</div>
+            <div class="stat-label">完成率</div>
+          </div>
         </div>
 
         <!-- SOP List -->
@@ -57,13 +73,17 @@
         </div>
 
         <div class="sop-grid" v-if="sops.length">
-          <div v-for="sop in sops" :key="sop.id" class="sop-card" @click="router.push(`/sop/${sop.id}/edit`)">
+          <div v-for="sop in sops" :key="sop.id" class="sop-card">
             <div class="sop-category">{{ sop.category }}</div>
-            <h4 class="sop-title">{{ sop.title }}</h4>
+            <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
             <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
             <div class="sop-footer">
               <span class="sop-date">{{ formatDate(sop.updatedAt) }}</span>
               <span class="sop-status" :class="sop.status">{{ sop.status === 'published' ? '已发布' : '草稿' }}</span>
+            </div>
+            <div class="sop-actions">
+              <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
+              <button class="btn-xs btn-primary-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
             </div>
           </div>
         </div>
@@ -76,10 +96,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSopStore } from '@/stores/sop'
+import request from '@/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -88,6 +109,9 @@ const sopStore = useSopStore()
 const user = authStore.userInfo
 const sops = ref<any[]>([])
 const total = ref(0)
+const pendingExec = ref(0)
+const completedRate = ref(0)
+const unreadNotif = ref(0)
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -97,8 +121,16 @@ const greeting = computed(() => {
 })
 
 const formatDate = (d: string) => {
+  if (!d) return '-'
   const date = new Date(d)
   return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
+}
+
+const loadUnread = async () => {
+  try {
+    const res: any = await request.get('/notification/unread-count')
+    if (res.code === 200) unreadNotif.value = res.data?.count || 0
+  } catch {}
 }
 
 const handleLogout = () => {
@@ -108,11 +140,24 @@ const handleLogout = () => {
 
 onMounted(async () => {
   await authStore.fetchMe()
+  await loadUnread()
+
   const res: any = await sopStore.fetchMySops(1, 6)
   if (res.code === 200) {
     sops.value = res.data.records || []
     total.value = res.data.total || 0
   }
+
+  // Load execution stats
+  try {
+    const execRes: any = await request.get('/execution/my')
+    if (execRes.code === 200) {
+      const execs = execRes.data || []
+      pendingExec.value = execs.filter((e: any) => e.status === 'in_progress' || e.status === 'pending').length
+      const completed = execs.filter((e: any) => e.status === 'completed').length
+      completedRate.value = execs.length ? Math.round((completed / execs.length) * 100) : 0
+    }
+  } catch {}
 })
 </script>
 
@@ -135,6 +180,14 @@ onMounted(async () => {
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .btn-new:hover { background: #7994FF; }
+.notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 4px 8px; border-radius: 8px; }
+.notif-bell:hover { background: #F5F7FA; }
+.notif-badge {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 16px; height: 16px; background: #FF4D4F;
+  color: white; border-radius: 8px; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px;
+}
 .avatar {
   width: 36px; height: 36px; background: #5B7FFF; color: white;
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -147,10 +200,16 @@ onMounted(async () => {
 }
 .sidebar-item {
   padding: 9px 16px; font-size: 14px; color: #666;
-  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  cursor: pointer; display: flex; align-items: center; gap: 8px; position: relative;
 }
 .sidebar-item:hover { background: #F5F7FA; color: #333; }
 .sidebar-item.active { background: #E8ECFF; color: #5B7FFF; font-weight: 500; }
+.sidebar-badge {
+  position: absolute; right: 16px;
+  min-width: 18px; height: 18px; background: #FF4D4F;
+  color: white; border-radius: 9px; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
 .sidebar-divider { height: 1px; background: #E8E8E8; margin: 8px 16px; }
 .main-content { flex: 1; padding: 24px; overflow-y: auto; }
 .welcome-card {
@@ -167,10 +226,12 @@ onMounted(async () => {
 }
 .stats-row { display: flex; gap: 14px; margin-bottom: 24px; }
 .stat-card {
-  background: #fff; border-radius: 12px; padding: 20px 24px;
+  flex: 1; background: #fff; border-radius: 12px; padding: 20px 24px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-.stat-num { font-size: 28px; font-weight: 700; color: #5B7FFF; }
+.stat-num { font-size: 28px; font-weight: 700; color: #333; }
+.stat-num.blue { color: #5B7FFF; }
+.stat-num.green { color: #52C41A; }
 .stat-label { font-size: 13px; color: #999; margin-top: 4px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: #212121; }
@@ -197,4 +258,9 @@ onMounted(async () => {
 .sop-status.published { background: #E8F3FF; color: #5B7FFF; }
 .sop-status.draft { background: #F5F5F5; color: #999; }
 .empty-state { text-align: center; padding: 40px; color: #999; }
+.sop-actions { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #F0F0F0; }
+.btn-xs { height: 26px; padding: 0 10px; background: #fff; color: #666; border: 1px solid #E8E8E8; border-radius: 6px; font-size: 11px; cursor: pointer; }
+.btn-xs:hover { background: #F5F7FA; }
+.btn-primary-xs { background: #E8ECFF; color: #5B7FFF; border-color: #D0D8FF; }
+.btn-primary-xs:hover { background: #D0D8FF; }
 </style>

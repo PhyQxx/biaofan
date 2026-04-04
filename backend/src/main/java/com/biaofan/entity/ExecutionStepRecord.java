@@ -14,7 +14,8 @@ public class ExecutionStepRecord {
     private Long executionId;
     private Integer stepIndex;
     private String stepTitle;
-    private String checkItems; // JSON
+    private String checkData;  // JSON - check item values
+    private String attachments; // JSON - uploaded files
     private LocalDateTime completedAt;
     private String notes;
 }

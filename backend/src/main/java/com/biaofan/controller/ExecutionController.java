@@ -1,6 +1,7 @@
 package com.biaofan.controller;
 
 import com.biaofan.dto.Result;
+import com.biaofan.entity.ExecutionStepRecord;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopExecution;
 import com.biaofan.service.SopExecutionService;
@@ -31,15 +32,21 @@ public class ExecutionController {
     }
 
     @PostMapping("/{executionId}/step/{stepIndex}")
-    public Result<Void> completeStep(
+    public Result<Map<String, Object>> completeStep(
             @PathVariable Long executionId,
             @PathVariable int stepIndex,
-            @RequestBody(required = false) Map<String, String> body,
+            @RequestBody(required = false) Map<String, Object> body,
             @AuthenticationPrincipal Long userId) {
         try {
-            String notes = body != null ? body.get("notes") : "";
-            executionService.completeStep(userId, executionId, stepIndex, notes);
-            return Result.ok();
+            String notes = body != null && body.get("notes") != null ? (String) body.get("notes") : "";
+            @SuppressWarnings("unchecked")
+            Map<String, Object> checkData = body != null && body.get("checkData") != null
+                ? (Map<String, Object>) body.get("checkData") : null;
+            String attachments = body != null && body.get("attachments") != null
+                ? body.get("attachments").toString() : null;
+
+            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData, attachments);
+            return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(executionId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
         }
@@ -84,6 +91,18 @@ public class ExecutionController {
             SopExecution e = executionService.getExecution(executionId);
             Sop sop = executionService.getSopWithSteps(e.getSopId());
             return Result.ok(sop);
+        } catch (RuntimeException ex) {
+            return Result.fail(404, ex.getMessage());
+        }
+    }
+
+    @GetMapping("/{executionId}/records")
+    public Result<List<ExecutionStepRecord>> getRecords(
+            @PathVariable Long executionId,
+            @AuthenticationPrincipal Long userId) {
+        try {
+            executionService.getExecution(executionId); // verify access
+            return Result.ok(executionService.getStepRecords(executionId));
         } catch (RuntimeException ex) {
             return Result.fail(404, ex.getMessage());
         }

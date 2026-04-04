@@ -16,6 +16,7 @@
         <div class="sidebar-item" @click="router.push('/execution')"><span>▶️</span><span>执行台</span></div>
         <div class="sidebar-item active"><span>📈</span><span>统计</span></div>
         <div class="sidebar-divider"></div>
+        <div class="sidebar-item" @click="router.push('/notification')"><span>🔔</span><span>通知</span></div>
         <div class="sidebar-item" @click="handleLogout"><span>🚪</span><span>退出登录</span></div>
       </div>
 

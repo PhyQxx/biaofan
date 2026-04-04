@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.Sop;
+import com.biaofan.entity.SopVersion;
 import com.biaofan.dto.SopRequest;
 import com.biaofan.mapper.SopMapper;
+import com.biaofan.mapper.SopVersionMapper;
 import com.biaofan.service.SopService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,13 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class SopServiceImpl implements SopService {
 
     private final SopMapper sopMapper;
+    private final SopVersionMapper versionMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -49,6 +51,9 @@ public class SopServiceImpl implements SopService {
         sop.setVersion(1);
         sop.setStatus("draft");
         sopMapper.insert(sop);
+
+        // Auto-create initial version v1
+        createVersionSnapshot(sop, userId, "初始版本");
     }
 
     @Override
@@ -56,9 +61,6 @@ public class SopServiceImpl implements SopService {
     public void update(Long id, Long userId, SopRequest req) {
         Sop sop = getById(id, userId);
         fillSop(sop, req);
-        if ("published".equals(sop.getStatus())) {
-            sop.setVersion(sop.getVersion() + 1);
-        }
         sopMapper.updateById(sop);
     }
 
@@ -69,11 +71,39 @@ public class SopServiceImpl implements SopService {
     }
 
     @Override
+    @Transactional
     public void publish(Long id, Long userId) {
         Sop sop = getById(id, userId);
         sop.setStatus("published");
         sop.setPublishedAt(LocalDateTime.now());
         sopMapper.updateById(sop);
+
+        // Create version snapshot on publish
+        if (sop.getVersion() == null || sop.getVersion() < 1) {
+            sop.setVersion(1);
+            sopMapper.updateById(sop);
+        }
+        createVersionSnapshot(sop, userId, "发布版本");
+    }
+
+    private void createVersionSnapshot(Sop sop, Long userId, String summary) {
+        // Mark all existing versions as non-current
+        versionMapper.selectList(
+            new LambdaQueryWrapper<SopVersion>()
+                .eq(SopVersion::getSopId, sop.getId())
+                .eq(SopVersion::getIsCurrent, 1)
+        ).forEach(v -> { v.setIsCurrent(0); versionMapper.updateById(v); });
+
+        // Create new version snapshot
+        SopVersion nv = new SopVersion();
+        nv.setSopId(sop.getId());
+        nv.setVersion(sop.getVersion());
+        nv.setChangeSummary(summary);
+        nv.setContent(sop.getContent());
+        nv.setIsCurrent(1);
+        nv.setCreatorId(userId);
+        nv.setCreatedAt(LocalDateTime.now());
+        versionMapper.insert(nv);
     }
 
     private void fillSop(Sop sop, SopRequest req) {

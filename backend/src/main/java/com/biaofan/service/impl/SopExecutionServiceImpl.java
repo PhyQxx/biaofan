@@ -28,7 +28,6 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         if (sop == null) throw new RuntimeException("SOP不存在");
         if (!"published".equals(sop.getStatus())) throw new RuntimeException("SOP未发布");
 
-        // 如果有进行中的执行，直接返回
         SopExecution ongoing = executionMapper.selectOne(
             new LambdaQueryWrapper<SopExecution>()
                 .eq(SopExecution::getExecutorId, userId)
@@ -44,13 +43,16 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         e.setStatus("in_progress");
         e.setCurrentStep(1);
         e.setStartedAt(LocalDateTime.now());
+        e.setCreatedAt(LocalDateTime.now());
+        e.setUpdatedAt(LocalDateTime.now());
         executionMapper.insert(e);
         return e;
     }
 
     @Override
     @Transactional
-    public void completeStep(Long userId, Long executionId, int stepIndex, String notes) {
+    public boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
+                                 Map<String, Object> checkData, String attachments) {
         SopExecution e = getExecution(executionId);
         if (!e.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
         if (!"in_progress".equals(e.getStatus())) throw new RuntimeException("执行状态不允许操作");
@@ -62,22 +64,32 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         ExecutionStepRecord record = new ExecutionStepRecord();
         record.setExecutionId(executionId);
         record.setStepIndex(stepIndex);
+
         if (steps.size() >= stepIndex) {
             Map<?, ?> step = (Map<?, ?>) steps.get(stepIndex - 1);
             record.setStepTitle((String) step.get("title"));
         }
         record.setCompletedAt(LocalDateTime.now());
         record.setNotes(notes);
+        if (checkData != null) {
+            try {
+                record.setCheckData(objectMapper.writeValueAsString(checkData));
+            } catch (Exception ex) { record.setCheckData("{}"); }
+        }
+        record.setAttachments(attachments);
         stepRecordMapper.insert(record);
 
-        if (stepIndex >= steps.size()) {
+        boolean completed = stepIndex >= steps.size();
+        if (completed) {
             e.setStatus("completed");
             e.setCompletedAt(LocalDateTime.now());
             e.setCurrentStep(stepIndex);
         } else {
             e.setCurrentStep(stepIndex + 1);
         }
+        e.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(e);
+        return completed;
     }
 
     @Override
@@ -87,6 +99,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         if (!e.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
         e.setStatus("completed");
         e.setCompletedAt(LocalDateTime.now());
+        e.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(e);
     }
 
@@ -111,6 +124,23 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Override
     public Sop getSopWithSteps(Long sopId) {
         return sopMapper.selectById(sopId);
+    }
+
+    @Override
+    public List<ExecutionStepRecord> getStepRecords(Long executionId) {
+        return stepRecordMapper.selectList(
+            new LambdaQueryWrapper<ExecutionStepRecord>()
+                .eq(ExecutionStepRecord::getExecutionId, executionId)
+                .orderByAsc(ExecutionStepRecord::getStepIndex)
+        );
+    }
+
+    @Override
+    public int getStepCount(Long executionId) {
+        SopExecution e = getExecution(executionId);
+        Sop sop = sopMapper.selectById(e.getSopId());
+        List<?> steps = parseJson(sop.getContent(), List.class);
+        return steps != null ? steps.size() : 0;
     }
 
     private <T> T parseJson(String json, Class<T> clazz) {

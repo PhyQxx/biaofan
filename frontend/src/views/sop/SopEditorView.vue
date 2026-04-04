@@ -7,6 +7,7 @@
         <input v-model="form.title" class="title-input" placeholder="输入 SOP 标题..." />
       </div>
       <div class="topbar-right">
+        <button v-if="isEdit" class="btn-versions" @click="router.push(`/sop/${route.params.id}/versions`)">📋 版本历史</button>
         <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
         <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
       </div>
@@ -166,6 +167,13 @@ onMounted(async () => {
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .btn-primary:hover { background: #7994FF; }
+.btn-versions {
+  height: 36px; padding: 0 14px;
+  background: #fff; color: #5B7FFF;
+  border: 1.5px solid #5B7FFF; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn-versions:hover { background: #E8ECFF; }
 .editor-body { max-width: 860px; margin: 24px auto; padding: 0 24px; }
 .meta-row { display: flex; gap: 16px; margin-bottom: 16px; }
 .meta-item { flex: 1; }
