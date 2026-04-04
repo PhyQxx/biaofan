@@ -21,8 +21,11 @@
         <div class="sidebar-item active">
           <span>📊</span><span>工作台</span>
         </div>
-        <div class="sidebar-item" @click="router.push('/sops')">
-          <span>📋</span><span>我的 SOP</span>
+        <div class="sidebar-item" @click="router.push('/execution')">
+          <span>▶️</span><span>执行台</span>
+        </div>
+        <div class="sidebar-item" @click="router.push('/stats')">
+          <span>📈</span><span>统计</span>
         </div>
         <div class="sidebar-divider"></div>
         <div class="sidebar-item" @click="handleLogout">
