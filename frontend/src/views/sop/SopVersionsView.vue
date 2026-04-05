@@ -34,7 +34,7 @@
           <div class="version-summary">{{ v.changeSummary || '无变更说明' }}</div>
           <div class="version-steps" v-if="expandedId === v.id">
             <div v-for="(step, i) in parseSteps(v.content)" :key="i" class="step-item">
-              <div class="step-num">{{ i + 1 }}</div>
+              <div class="step-num">{{ Number(i) + 1 }}</div>
               <div class="step-body">
                 <div class="step-title">{{ step.title }}</div>
                 <div class="step-desc" v-if="step.description">{{ step.description }}</div>
@@ -64,7 +64,7 @@
           </div>
           <div class="steps-preview">
             <div v-for="(step, i) in parseSteps(viewingVersion.content)" :key="i" class="step-item">
-              <div class="step-num">{{ i + 1 }}</div>
+              <div class="step-num">{{ Number(i) + 1 }}</div>
               <div class="step-body">
                 <div class="step-title">{{ step.title }}</div>
                 <div class="step-desc" v-if="step.description">{{ step.description }}</div>
