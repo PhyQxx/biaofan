@@ -12,6 +12,7 @@ com/biaofan/util/JwtAuthFilter.class
 com/biaofan/service/PushTokenService.class
 com/biaofan/mapper/ScheduleTaskMapper.class
 com/biaofan/service/impl/SopServiceImpl.class
+com/biaofan/config/RedisConfig.class
 com/biaofan/entity/SopException.class
 com/biaofan/mapper/SopMapper.class
 com/biaofan/service/impl/SopVersionServiceImpl.class
@@ -43,6 +44,7 @@ com/biaofan/entity/SopDispatch.class
 com/biaofan/service/SopExecutionService.class
 com/biaofan/job/ScheduleTaskJob.class
 com/biaofan/service/ScheduleTaskService.class
+com/biaofan/dto/SendCodeRequest.class
 com/biaofan/controller/ScheduleTaskController$ScheduleTaskRequest.class
 com/biaofan/controller/HealthController.class
 com/biaofan/entity/ExecutionStat.class
@@ -53,6 +55,7 @@ com/biaofan/dto/SopRequest$StepItem.class
 com/biaofan/service/ExecutionStatService.class
 com/biaofan/controller/SopVersionController.class
 com/biaofan/controller/DraftController.class
+com/biaofan/controller/SopExecutionController.class
 com/biaofan/dto/LoginRequest.class
 com/biaofan/controller/SopTemplateController.class
 com/biaofan/entity/User.class
@@ -60,6 +63,7 @@ com/biaofan/mapper/SopVersionMapper.class
 com/biaofan/controller/StatisticsController.class
 com/biaofan/mapper/PushTokenMapper.class
 com/biaofan/dto/RegisterRequest.class
+com/biaofan/controller/UploadController.class
 com/biaofan/service/SopExceptionService.class
 com/biaofan/controller/SopStatisticsController.class
 com/biaofan/service/UserService.class

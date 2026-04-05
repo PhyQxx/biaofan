@@ -16,9 +16,11 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/SopVersionServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/config/SecurityConfig.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/PushController.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/config/RedisConfig.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/AuthController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/SopException.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/dto/Result.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/UploadController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/mapper/ExecutionStepRecordMapper.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/ScheduleTaskService.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/SopService.java
@@ -38,6 +40,7 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/SopStatisticsController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/SopExceptionServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/ScheduleTaskServiceImpl.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/dto/SendCodeRequest.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/User.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/util/JwtAuthFilter.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/SopExceptionService.java
@@ -49,6 +52,7 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/ScheduleTask.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/NotificationService.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/ExecutionStat.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/SopExecutionController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/NotificationController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/SopServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/SopDispatchController.java
