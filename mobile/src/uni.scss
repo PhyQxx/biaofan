@@ -1,0 +1,135 @@
+/* UniApp 全局样式变量 */
+$uni-primary: #4A90E2;
+$uni-success: #52C41A;
+$uni-warning: #FAAD14;
+$uni-error: #F5222D;
+$uni-info: #1890FF;
+
+$uni-text-color: #333333;
+$uni-text-color-grey: #999999;
+$uni-bg-color: #F5F5F5;
+$uni-border-color: #E5E5E5;
+
+$uni-spacing-row-sm: 8px;
+$uni-spacing-row-base: 10px;
+$uni-spacing-row-lg: 15px;
+
+$uni-spacing-col-sm: 8px;
+$uni-spacing-col-base: 10px;
+$uni-spacing-col-lg: 15px;
+
+$uni-font-size-sm: 24rpx;
+$uni-font-size-base: 28rpx;
+$uni-font-size-lg: 32rpx;
+
+$uni-border-radius-sm: 4px;
+$uni-border-radius-base: 8px;
+$uni-border-radius-lg: 12px;
+
+/* 全局工具类 */
+.flex { display: flex; }
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+
+.text-primary { color: $uni-primary; }
+.text-success { color: $uni-success; }
+.text-warning { color: $uni-warning; }
+.text-error { color: $uni-error; }
+.text-grey { color: $uni-text-color-grey; }
+.text-center { text-align: center; }
+.text-bold { font-weight: bold; }
+
+.mt-sm { margin-top: $uni-spacing-row-sm; }
+.mt-base { margin-top: $uni-spacing-row-base; }
+.mt-lg { margin-top: $uni-spacing-row-lg; }
+.mb-sm { margin-bottom: $uni-spacing-row-sm; }
+.mb-base { margin-bottom: $uni-spacing-row-base; }
+.mb-lg { margin-bottom: $uni-spacing-row-lg; }
+.ml-sm { margin-left: $uni-spacing-col-sm; }
+.ml-base { margin-left: $uni-spacing-col-base; }
+.mr-sm { margin-right: $uni-spacing-col-sm; }
+.mr-base { margin-right: $uni-spacing-col-base; }
+.p-sm { padding: $uni-spacing-row-sm; }
+.p-base { padding: $uni-spacing-row-base; }
+.p-lg { padding: $uni-spacing-row-lg; }
+
+.bg-white { background-color: #FFFFFF; }
+.bg-grey { background-color: $uni-bg-color; }
+
+.border-radius { border-radius: $uni-border-radius-base; }
+.border-radius-lg { border-radius: $uni-border-radius-lg; }
+
+.font-sm { font-size: $uni-font-size-sm; }
+.font-base { font-size: $uni-font-size-base; }
+.font-lg { font-size: $uni-font-size-lg; }
+
+/* 按钮样式 */
+.btn-primary {
+  background-color: $uni-primary;
+  color: #FFFFFF;
+  border-radius: $uni-border-radius-base;
+  padding: 24rpx 0;
+  text-align: center;
+  font-size: $uni-font-size-lg;
+}
+.btn-primary:active { opacity: 0.8; }
+.btn-default {
+  background-color: #FFFFFF;
+  color: $uni-text-color;
+  border: 1px solid $uni-border-color;
+  border-radius: $uni-border-radius-base;
+  padding: 24rpx 0;
+  text-align: center;
+  font-size: $uni-font-size-lg;
+}
+.btn-danger {
+  background-color: $uni-error;
+  color: #FFFFFF;
+  border-radius: $uni-border-radius-base;
+  padding: 24rpx 0;
+  text-align: center;
+  font-size: $uni-font-size-lg;
+}
+
+/* 卡片样式 */
+.card {
+  background-color: #FFFFFF;
+  border-radius: $uni-border-radius-lg;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 状态标签 */
+.tag {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: $uni-font-size-sm;
+}
+.tag-pending { background-color: #FFF7E6; color: #FA8C16; }
+.tag-progress { background-color: #E6F7FF; color: #1890FF; }
+.tag-completed { background-color: #F6FFED; color: #52C41A; }
+.tag-overdue { background-color: #FFF1F0; color: #F5222D; }
+
+/* 分割线 */
+.divider {
+  height: 1px;
+  background-color: $uni-border-color;
+  margin: 20rpx 0;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+  color: $uni-text-color-grey;
+}
+.empty-state .icon { font-size: 120rpx; margin-bottom: 20rpx; }

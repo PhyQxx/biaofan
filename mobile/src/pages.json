@@ -1,0 +1,94 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "我的待办",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/execute/execute",
+      "style": {
+        "navigationBarTitleText": "SOP 执行台",
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/records/records",
+      "style": {
+        "navigationBarTitleText": "执行记录",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/notifications/notifications",
+      "style": {
+        "navigationBarTitleText": "通知",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/mine/mine",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "标帆 SOP",
+    "navigationBarBackgroundColor": "#4A90E2",
+    "backgroundColor": "#F5F5F5",
+    "backgroundTextStyle": "dark",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#4A90E2",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-active.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/records/records",
+        "iconPath": "static/tab-records.png",
+        "selectedIconPath": "static/tab-records-active.png",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/notifications/notifications",
+        "iconPath": "static/tab-notify.png",
+        "selectedIconPath": "static/tab-notify-active.png",
+        "text": "通知"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "iconPath": "static/tab-mine.png",
+        "selectedIconPath": "static/tab-mine-active.png",
+        "text": "我的"
+      }
+    ]
+  }
+}
