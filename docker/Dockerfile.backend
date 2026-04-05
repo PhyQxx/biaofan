@@ -1,0 +1,14 @@
+FROM amazoncorretto:17-alpine
+
+WORKDIR /app
+
+# JAR is at root of build context
+COPY target/biaofan-backend-1.0.0.jar app.jar
+
+EXPOSE 8013
+
+# Override MySQL host from 172.20.0.2 to 127.0.0.1 (host network mode)
+ENV SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/biaofan?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+ENV SPRING_DATA_REDIS_HOST="127.0.0.1"
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
