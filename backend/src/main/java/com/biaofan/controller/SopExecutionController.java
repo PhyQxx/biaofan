@@ -6,6 +6,7 @@ import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopExecution;
 import com.biaofan.service.SopExecutionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,11 +29,12 @@ public class SopExecutionController {
      */
     @GetMapping("/my")
     public Result<List<SopExecution>> myExecutions(
-            @RequestParam(required = false) String executorId,
-            @RequestParam(required = false) String status) {
-        // executorId 参数由前端传入，实际使用在 service 层通过 @AuthenticationPrincipal 获取
-        // 这里做路径转发，status 参数透传
-        List<SopExecution> result = executionService.getMyExecutions(null, status);
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        List<SopExecution> result = executionService.getMyExecutions(userId, status);
         return Result.ok(result);
     }
 
@@ -43,13 +45,12 @@ public class SopExecutionController {
     @PostMapping("/{sopId}/start")
     public Result<SopExecution> start(
             @PathVariable Long sopId,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
         try {
-            Long executorId = null;
-            if (body != null && body.get("executorId") != null) {
-                executorId = Long.valueOf(body.get("executorId").toString());
-            }
-            SopExecution e = executionService.startExecution(executorId, sopId);
+            SopExecution e = executionService.startExecution(userId, sopId);
             return Result.ok(e);
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
@@ -64,7 +65,11 @@ public class SopExecutionController {
     public Result<Map<String, Object>> completeStep(
             @PathVariable Long execId,
             @PathVariable int stepIndex,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @RequestBody(required = false) Map<String, Object> body,
+            @AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
         try {
             String notes = body != null && body.get("notes") != null ? (String) body.get("notes") : "";
             @SuppressWarnings("unchecked")
@@ -73,7 +78,7 @@ public class SopExecutionController {
             String attachments = body != null && body.get("attachments") != null
                 ? body.get("attachments").toString() : null;
 
-            boolean completed = executionService.completeStep(null, execId, stepIndex, notes, checkData, attachments);
+            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData, attachments);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(execId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
@@ -86,8 +91,13 @@ public class SopExecutionController {
      */
     @GetMapping("/{execId}/record")
     public Result<List<ExecutionStepRecord>> getRecords(
-            @PathVariable Long execId) {
+            @PathVariable Long execId,
+            @AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
         try {
+            executionService.getExecution(execId); // verify access
             return Result.ok(executionService.getStepRecords(execId));
         } catch (RuntimeException ex) {
             return Result.fail(404, ex.getMessage());
