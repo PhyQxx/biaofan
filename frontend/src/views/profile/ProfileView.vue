@@ -1,164 +1,133 @@
 <template>
   <div class="profile-page">
-    <!-- Topbar -->
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="logo">
-          <span class="logo-icon">🚀</span>
-          <span class="logo-text">标帆 SOP</span>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <button class="btn-new" @click="router.push('/execution')">▶️ 执行台</button>
-        <div class="avatar" @click="handleLogout">{{ authStore.userInfo?.username?.charAt(0) || 'U' }}</div>
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1>👤 个人中心</h1>
+      <div class="page-tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab-btn"
+          :class="{ active: activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          {{ tab.icon }} {{ tab.label }}
+        </button>
       </div>
     </div>
 
-    <div class="main-layout">
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-item" @click="router.push('/')"><span>🚀</span><span>工作台</span></div>
-        <div class="sidebar-item" @click="router.push('/execution')"><span>▶️</span><span>执行台</span></div>
-        <div class="sidebar-item" @click="router.push('/stats')"><span>📈</span><span>统计</span></div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-group-label">🏆 游戏化</div>
-        <div class="sidebar-item active" @click="router.push('/profile')"><span>👤</span><span>个人中心</span></div>
-        <div class="sidebar-item" @click="router.push('/leaderboard')"><span>📊</span><span>排行榜</span></div>
-        <div class="sidebar-item" @click="handleLogout"><span>🚪</span><span>退出登录</span></div>
+    <!-- Loading -->
+    <div class="loading-state" v-if="loading">
+      <div class="loading-spinner"></div>
+      <p>加载中...</p>
+    </div>
+
+    <!-- Tab: 概览 -->
+    <div v-if="!loading && activeTab === 'overview'">
+      <ProfileOverview
+        :username="profile?.username || '用户'"
+        :level="profile?.level || 1"
+        :rank="profile?.rank || 'bronze'"
+        :rankName="profile?.rankName || '青铜'"
+        :totalScore="profile?.totalScore || 0"
+        :streakDays="profile?.streakDays || 0"
+        :thisWeekCount="profile?.thisWeekCount || 0"
+        :badgeCount="profile?.badgeCount || 0"
+        :totalBadgeCount="profile?.totalBadgeCount || 16"
+        :equippedTitle="profile?.equippedTitle"
+        :titleExpireAt="profile?.titleExpireAt"
+      />
+      <RecentActivity :activities="profile?.recentActivities || []" />
+    </div>
+
+    <!-- Tab: 徽章墙 -->
+    <div v-if="!loading && activeTab === 'badges'">
+      <BadgeWall
+        :badges="badges"
+        @badge-click="openBadgeModal"
+      />
+    </div>
+
+    <!-- Tab: 成长进度 -->
+    <div v-if="!loading && activeTab === 'growth'">
+      <LevelProgress
+        :username="profile?.username || '用户'"
+        :level="profile?.level || 1"
+        :exp="profile?.exp || 0"
+        :expToNext="profile?.expToNext || 100"
+        :rank="profile?.rank || 'bronze'"
+        :rankName="profile?.rankName || '青铜'"
+        :totalScore="profile?.totalScore || 0"
+        :streakDays="profile?.streakDays || 0"
+        :badgeCount="profile?.badgeCount || 0"
+        :totalBadgeCount="profile?.totalBadgeCount || 16"
+      />
+
+      <div class="growth-tips">
+        <div class="tips-title">💡 成长攻略</div>
+        <div class="tips-grid">
+          <div class="tip-card">📋 每完成1个 SOP<br><strong>获得 10-50 EXP</strong></div>
+          <div class="tip-card">⏰ 按时完成额外奖励<br><strong>+5 EXP</strong></div>
+          <div class="tip-card">🔥 连续7天完成<br><strong>额外奖励 +20</strong></div>
+          <div class="tip-card">🏅 获得徽章<br><strong>大量 EXP + 积分</strong></div>
+        </div>
       </div>
+    </div>
 
-      <!-- Content -->
-      <div class="main-content">
-        <!-- Page Header -->
-        <div class="page-header">
-          <h1>👤 个人中心</h1>
-          <div class="page-tabs">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              class="tab-btn"
-              :class="{ active: activeTab === tab.key }"
-              @click="activeTab = tab.key"
-            >
-              {{ tab.icon }} {{ tab.label }}
-            </button>
-          </div>
+    <!-- Tab: 积分明细 -->
+    <div v-if="!loading && activeTab === 'history'">
+      <div class="history-header">
+        <div class="history-stats">
+          <span class="stat-chip income">📈 本月收入：+{{ monthlyIncome }}</span>
+          <span class="stat-chip expense">📉 本月支出：{{ monthlyExpense }}</span>
         </div>
-
-        <!-- Loading -->
-        <div class="loading-state" v-if="loading">
-          <div class="loading-spinner"></div>
-          <p>加载中...</p>
+        <div class="history-pager">
+          <button class="pager-btn" :disabled="historyPage <= 1" @click="historyPage--; loadHistory()">◀</button>
+          <span>第 {{ historyPage }}/{{ totalPages }} 页</span>
+          <button class="pager-btn" :disabled="historyPage >= totalPages" @click="historyPage++; loadHistory()">▶</button>
         </div>
+      </div>
+      <ScoreHistoryItem
+        v-for="item in historyItems"
+        :key="item.id"
+        :item="item"
+      />
+      <div class="empty-state" v-if="!historyItems.length && !loadingHistory">
+        <span>💰</span>
+        <p>暂无积分记录</p>
+      </div>
+    </div>
 
-        <!-- Tab: 概览 -->
-        <div v-if="!loading && activeTab === 'overview'">
-          <ProfileOverview
-            :username="profile?.username || '用户'"
-            :level="profile?.level || 1"
-            :rank="profile?.rank || 'bronze'"
-            :rankName="profile?.rankName || '青铜'"
-            :totalScore="profile?.totalScore || 0"
-            :streakDays="profile?.streakDays || 0"
-            :thisWeekCount="profile?.thisWeekCount || 0"
-            :badgeCount="profile?.badgeCount || 0"
-            :totalBadgeCount="profile?.totalBadgeCount || 16"
-            :equippedTitle="profile?.equippedTitle"
-            :titleExpireAt="profile?.titleExpireAt"
-          />
-          <RecentActivity :activities="profile?.recentActivities || []" />
+    <!-- Tab: 积分商城 -->
+    <div v-if="!loading && activeTab === 'store'">
+      <div class="store-header">
+        <div class="store-score">
+          我的积分：<strong>{{ profile?.totalScore || 0 }}</strong>
         </div>
-
-        <!-- Tab: 徽章墙 -->
-        <div v-if="!loading && activeTab === 'badges'">
-          <BadgeWall
-            :badges="badges"
-            @badge-click="openBadgeModal"
-          />
+        <div class="store-tabs">
+          <button
+            v-for="cat in categories"
+            :key="cat.key"
+            class="cat-btn"
+            :class="{ active: activeCategory === cat.key }"
+            @click="activeCategory = cat.key; loadStore()"
+          >
+            {{ cat.icon }} {{ cat.label }}
+          </button>
         </div>
-
-        <!-- Tab: 成长进度 -->
-        <div v-if="!loading && activeTab === 'growth'">
-          <LevelProgress
-            :username="profile?.username || '用户'"
-            :level="profile?.level || 1"
-            :exp="profile?.exp || 0"
-            :expToNext="profile?.expToNext || 100"
-            :rank="profile?.rank || 'bronze'"
-            :rankName="profile?.rankName || '青铜'"
-            :totalScore="profile?.totalScore || 0"
-            :streakDays="profile?.streakDays || 0"
-            :badgeCount="profile?.badgeCount || 0"
-            :totalBadgeCount="profile?.totalBadgeCount || 16"
-          />
-
-          <div class="growth-tips">
-            <div class="tips-title">💡 成长攻略</div>
-            <div class="tips-grid">
-              <div class="tip-card">📋 每完成1个 SOP<br><strong>获得 10-50 EXP</strong></div>
-              <div class="tip-card">⏰ 按时完成额外奖励<br><strong>+5 EXP</strong></div>
-              <div class="tip-card">🔥 连续7天完成<br><strong>额外奖励 +20</strong></div>
-              <div class="tip-card">🏅 获得徽章<br><strong>大量 EXP + 积分</strong></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab: 积分明细 -->
-        <div v-if="!loading && activeTab === 'history'">
-          <div class="history-header">
-            <div class="history-stats">
-              <span class="stat-chip income">📈 本月收入：+{{ monthlyIncome }}</span>
-              <span class="stat-chip expense">📉 本月支出：{{ monthlyExpense }}</span>
-            </div>
-            <div class="history-pager">
-              <button class="pager-btn" :disabled="historyPage <= 1" @click="historyPage--; loadHistory()">◀</button>
-              <span>第 {{ historyPage }}/{{ totalPages }} 页</span>
-              <button class="pager-btn" :disabled="historyPage >= totalPages" @click="historyPage++; loadHistory()">▶</button>
-            </div>
-          </div>
-          <ScoreHistoryItem
-            v-for="item in historyItems"
-            :key="item.id"
-            :item="item"
-          />
-          <div class="empty-state" v-if="!historyItems.length && !loadingHistory">
-            <span>💰</span>
-            <p>暂无积分记录</p>
-          </div>
-        </div>
-
-        <!-- Tab: 积分商城 -->
-        <div v-if="!loading && activeTab === 'store'">
-          <div class="store-header">
-            <div class="store-score">
-              我的积分：<strong>{{ profile?.totalScore || 0 }}</strong>
-            </div>
-            <div class="store-tabs">
-              <button
-                v-for="cat in categories"
-                :key="cat.key"
-                class="cat-btn"
-                :class="{ active: activeCategory === cat.key }"
-                @click="activeCategory = cat.key; loadStore()"
-              >
-                {{ cat.icon }} {{ cat.label }}
-              </button>
-            </div>
-          </div>
-          <div class="store-grid">
-            <ScoreStoreCard
-              v-for="product in storeProducts"
-              :key="product.id"
-              :product="product"
-              :userScore="profile?.totalScore || 0"
-              @redeem="handleRedeem"
-            />
-          </div>
-          <div class="empty-state" v-if="!storeProducts.length && !loadingStore">
-            <span>🎁</span>
-            <p>暂无商品</p>
-          </div>
-        </div>
+      </div>
+      <div class="store-grid">
+        <ScoreStoreCard
+          v-for="product in storeProducts"
+          :key="product.id"
+          :product="product"
+          :userScore="profile?.totalScore || 0"
+          @redeem="handleRedeem"
+        />
+      </div>
+      <div class="empty-state" v-if="!storeProducts.length && !loadingStore">
+        <span>🎁</span>
+        <p>暂无商品</p>
       </div>
     </div>
 
@@ -208,7 +177,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { gamificationApi, type ProfileDTO, type Badge, type StoreProduct, type ScoreHistory, type RedeemResult } from '@/api/gamification'
 
@@ -222,7 +190,6 @@ import ScoreHistoryItem from '@/components/gamification/ScoreHistoryItem.vue'
 import ScoreStoreCard from '@/components/gamification/ScoreStoreCard.vue'
 import GrowthCelebration from '@/components/gamification/GrowthCelebration.vue'
 
-const router = useRouter()
 const authStore = useAuthStore()
 
 const tabs = [
@@ -336,11 +303,6 @@ async function handleRedeem(product: StoreProduct) {
   }
 }
 
-function handleLogout() {
-  authStore.logout()
-  router.push('/login')
-}
-
 function rpStyle(i: number) {
   const angle = (i / 8) * 360
   const r = 70 + Math.random() * 30
@@ -351,58 +313,8 @@ function rpStyle(i: number) {
 </script>
 
 <style scoped>
-.profile-page { min-height: 100vh; background: #0f1117; }
-/* reuse workbench styles */
-.topbar, .main-layout, .sidebar, .sidebar-item, .sidebar-divider, .logo, .avatar, .topbar-left, .topbar-right, .btn-new {
-  display: flex; align-items: center;
-}
-.topbar {
-  height: 60px; padding: 0 20px;
-  background: #1a1d27; border-bottom: 1px solid #2d3348;
-  position: sticky; top: 0; z-index: 100;
-}
-.topbar-left { flex: 1; }
-.topbar-right { gap: 12px; }
-.logo { gap: 8px; cursor: pointer; }
-.logo-icon { font-size: 20px; }
-.logo-text { font-size: 16px; font-weight: 700; color: #e8eaf0; }
-.btn-new {
-  background: #1a1d27; border: 1px solid #2d3348; color: #8b90a0;
-  padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
-  transition: all 0.2s;
-}
-.btn-new:hover { background: #22263a; color: #e8eaf0; }
-.avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, #5b7fff, #3b5fdf);
-  color: white; font-weight: 700; cursor: pointer;
-  justify-content: center;
-}
-.main-layout { display: flex; }
-.sidebar {
-  width: 200px; flex-shrink: 0; background: #1a1d27;
-  border-right: 1px solid #2d3348; min-height: calc(100vh - 60px);
-  flex-direction: column; padding: 16px 0;
-}
-.sidebar-group-label {
-  font-size: 11px; color: #555a6e; padding: 8px 16px 4px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-.sidebar-item {
-  gap: 10px; padding: 10px 16px; cursor: pointer;
-  font-size: 14px; color: #8b90a0; transition: all 0.2s;
-  border-left: 3px solid transparent;
-}
-.sidebar-item:hover { background: #22263a; color: #e8eaf0; }
-.sidebar-item.active {
-  background: rgba(91, 127, 255, 0.1);
-  color: #5b7fff;
-  border-left-color: #5b7fff;
-}
-.sidebar-divider { height: 1px; background: #2d3348; margin: 8px 0; }
-.main-content {
-  flex: 1; padding: 28px 32px; min-height: calc(100vh - 60px);
-  overflow-y: auto;
+.profile-page {
+  padding: 0;
 }
 .page-header {
   display: flex; align-items: center; justify-content: space-between;

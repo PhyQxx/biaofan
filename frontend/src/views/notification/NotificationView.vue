@@ -1,47 +1,39 @@
 <template>
-  <div class="notif-page">
-    <!-- Topbar -->
-    <div class="notif-topbar">
-      <div class="topbar-left">
-        <button class="btn-back" @click="router.push('/')">←</button>
-        <div class="topbar-title">通知中心</div>
-      </div>
-      <button v-if="notifications.length" class="btn-read-all" @click="markAllRead">全部已读</button>
-    </div>
-
-    <!-- Filter Tabs -->
+  <!-- Filter Tabs -->
+  <div class="notif-toolbar">
     <div class="filter-tabs">
       <button class="filter-tab" :class="{ active: filter === null }" @click="filter = null">全部</button>
       <button class="filter-tab" :class="{ active: filter === 0 }" @click="filter = 0">未读 ({{ unreadCount }})</button>
       <button class="filter-tab" :class="{ active: filter === 1 }" @click="filter = 1">已读</button>
     </div>
+    <button v-if="notifications.length" class="btn-read-all" @click="markAllRead">全部已读</button>
+  </div>
 
-    <!-- Notification List -->
-    <div class="notif-list" v-if="filteredNotifications.length">
-      <div
-        v-for="n in filteredNotifications"
-        :key="n.id"
-        class="notif-card"
-        :class="{ unread: !n.isRead }"
-        @click="handleClick(n)"
-      >
-        <div class="notif-icon">{{ typeIcon(n.type) }}</div>
-        <div class="notif-body">
-          <div class="notif-header">
-            <div class="notif-title">{{ n.title }}</div>
-            <div class="notif-time">{{ formatDate(n.createTime) }}</div>
-          </div>
-          <div class="notif-content" v-if="n.content">{{ n.content }}</div>
-          <div class="notif-tag" :class="typeClass(n.type)">{{ typeLabel(n.type) }}</div>
+  <!-- Notification List -->
+  <div class="notif-list" v-if="filteredNotifications.length">
+    <div
+      v-for="n in filteredNotifications"
+      :key="n.id"
+      class="notif-card"
+      :class="{ unread: !n.isRead }"
+      @click="handleClick(n)"
+    >
+      <div class="notif-icon">{{ typeIcon(n.type) }}</div>
+      <div class="notif-body">
+        <div class="notif-header">
+          <div class="notif-title">{{ n.title }}</div>
+          <div class="notif-time">{{ formatDate(n.createTime) }}</div>
         </div>
-        <div class="notif-unread-dot" v-if="!n.isRead"></div>
+        <div class="notif-content" v-if="n.content">{{ n.content }}</div>
+        <div class="notif-tag" :class="typeClass(n.type)">{{ typeLabel(n.type) }}</div>
       </div>
+      <div class="notif-unread-dot" v-if="!n.isRead"></div>
     </div>
-    <div v-else class="empty-state">
-      <div class="empty-icon">🔔</div>
-      <p>暂无通知</p>
-      <p class="empty-sub">执行 SOP 后会收到提醒</p>
-    </div>
+  </div>
+  <div v-else class="empty-state">
+    <div class="empty-icon">🔔</div>
+    <p>暂无通知</p>
+    <p class="empty-sub">执行 SOP 后会收到提醒</p>
   </div>
 </template>
 
@@ -100,7 +92,6 @@ const handleClick = async (n: any) => {
     await request.put(`/notifications/${n.id}/read`)
     n.isRead = 1
   }
-  // Navigate based on source type
   if (n.sourceType === 'execution' && n.sourceId) {
     router.push(`/execution/${n.sourceId}`)
   } else if (n.sourceType === 'sop' && n.sourceId) {
@@ -118,23 +109,16 @@ onMounted(loadNotifications)
 </script>
 
 <style scoped>
-.notif-page { min-height: 100vh; background: #F5F7FA; }
-
-.notif-topbar {
+.notif-toolbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: #fff; border-bottom: 1px solid #E8E8E8;
-  position: sticky; top: 0; z-index: 100;
+  padding: 12px 0; margin-bottom: 4px;
 }
-.topbar-left { display: flex; align-items: center; gap: 8px; }
-.btn-back { border: none; background: transparent; font-size: 18px; cursor: pointer; padding: 4px 8px; color: #333; }
-.topbar-title { font-size: 16px; font-weight: 600; color: #212121; }
-.btn-read-all { height: 30px; padding: 0 12px; background: #fff; color: #5B7FFF; border: 1px solid #5B7FFF; border-radius: 6px; font-size: 12px; cursor: pointer; }
-
-.filter-tabs { display: flex; gap: 0; padding: 12px 20px; background: #fff; border-bottom: 1px solid #F0F0F0; }
+.filter-tabs { display: flex; gap: 0; background: #fff; padding: 8px 12px; border-radius: 12px; }
 .filter-tab { padding: 6px 16px; border: none; background: transparent; border-radius: 20px; font-size: 13px; color: #666; cursor: pointer; transition: all 0.15s; }
 .filter-tab.active { background: #E8ECFF; color: #5B7FFF; font-weight: 600; }
+.btn-read-all { height: 30px; padding: 0 12px; background: #fff; color: #5B7FFF; border: 1px solid #5B7FFF; border-radius: 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
 
-.notif-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.notif-list { padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
 .notif-card {
   background: #fff; border-radius: 12px; padding: 14px 16px;
   display: flex; align-items: flex-start; gap: 12px;

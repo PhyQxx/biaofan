@@ -1,83 +1,51 @@
 <template>
-  <div class="execution-page">
-    <!-- Topbar -->
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="logo">
-          <span class="logo-icon">🚀</span>
-          <span class="logo-text">标帆 SOP</span>
+  <div class="page-header">
+    <h1>执行台</h1>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-item" :class="{ active: tab === 'pending' }" @click="tab = 'pending'">待执行 ({{ pendingExecutions.length }})</button>
+    <button class="tab-item" :class="{ active: tab === 'in_progress' }" @click="tab = 'in_progress'">进行中 ({{ inProgressExecutions.length }})</button>
+    <button class="tab-item" :class="{ active: tab === 'completed' }" @click="tab = 'completed'">已完成</button>
+  </div>
+
+  <!-- List -->
+  <div class="exec-list" v-if="currentList.length">
+    <div v-for="e in currentList" :key="e.id" class="exec-card">
+      <div class="exec-sop-title" @click="goExecution(e)">{{ e.sopTitle }}</div>
+      <div class="exec-meta">
+        <span class="exec-status" :class="e.status">{{ statusLabel(e.status) }}</span>
+        <span class="exec-time" v-if="e.startedAt">开始于 {{ formatDate(e.startedAt) }}</span>
+      </div>
+      <div class="exec-progress" v-if="e.status === 'in_progress'">
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: progressWidth(e) }"></div>
         </div>
+        <span class="progress-text">第 {{ e.currentStep }} / {{ e.totalSteps }} 步</span>
       </div>
-      <div class="topbar-right">
-        <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
-        <div class="avatar" @click="handleLogout">{{ user?.username?.charAt(0) || 'U' }}</div>
-      </div>
+      <button class="btn-execute" @click="goExecution(e)">
+        {{ e.status === 'completed' ? '查看' : e.status === 'in_progress' ? '继续执行' : '开始执行' }}
+      </button>
     </div>
-
-    <div class="main-layout">
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-item" @click="router.push('/')">
-          <span>📊</span><span>工作台</span>
-        </div>
-        <div class="sidebar-item active">
-          <span>▶️</span><span>执行台</span>
-        </div>
-        <div class="sidebar-item" @click="router.push('/stats')">
-          <span>📈</span><span>统计</span>
-        </div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-group-label">🏆 游戏化</div>
-        <div class="sidebar-item" @click="router.push('/profile')"><span>👤</span><span>个人中心</span></div>
-        <div class="sidebar-item" @click="router.push('/leaderboard')"><span>📊</span><span>排行榜</span></div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-item" @click="router.push('/notification')">
-          <span>🔔</span><span>通知</span>
-        </div>
-        <div class="sidebar-item" @click="handleLogout">
-          <span>🚪</span><span>退出登录</span>
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="main-content">
-        <div class="page-header">
-          <h1>执行台</h1>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tab-bar">
-          <button class="tab-item" :class="{ active: tab === 'pending' }" @click="tab = 'pending'">待执行 ({{ pendingExecutions.length }})</button>
-          <button class="tab-item" :class="{ active: tab === 'in_progress' }" @click="tab = 'in_progress'">进行中 ({{ inProgressExecutions.length }})</button>
-          <button class="tab-item" :class="{ active: tab === 'completed' }" @click="tab = 'completed'">已完成</button>
-        </div>
-
-        <!-- List -->
-        <div class="exec-list" v-if="currentList.length">
-          <div v-for="e in currentList" :key="e.id" class="exec-card">
-            <div class="exec-sop-title" @click="goExecution(e)">{{ e.sopTitle }}</div>
-            <div class="exec-meta">
-              <span class="exec-status" :class="e.status">{{ statusLabel(e.status) }}</span>
-              <span class="exec-time" v-if="e.startedAt">开始于 {{ formatDate(e.startedAt) }}</span>
-            </div>
-            <div class="exec-progress" v-if="e.status === 'in_progress'">
-              <div class="progress-bar">
-                <div class="progress-fill" :style="{ width: progressWidth(e) }"></div>
-              </div>
-              <span class="progress-text">第 {{ e.currentStep }} / {{ e.totalSteps }} 步</span>
-            </div>
-            <button class="btn-execute" @click="goExecution(e)">
-              {{ e.status === 'completed' ? '查看' : e.status === 'in_progress' ? '继续执行' : '开始执行' }}
-            </button>
-          </div>
-        </div>
-        <div v-else class="empty-state">
-          <p>🎉 暂无执行任务</p>
-          <p class="empty-sub">去创建一个 SOP 开始执行吧</p>
-          <button class="btn-primary-sm" @click="router.push('/')">去工作台</button>
-        </div>
-      </div>
+  </div>
+  <!-- Empty State -->
+  <div v-else class="empty-state">
+    <div class="empty-illustration">
+      <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="36" fill="#EEF2FF" stroke="#C7D0FF" stroke-width="2"/>
+        <path d="M28 40h24M40 28v24" stroke="#8B95C7" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="40" cy="40" r="10" fill="#C7D0FF"/>
+        <circle cx="40" cy="40" r="4" fill="#8B95C7"/>
+      </svg>
     </div>
+    <p class="empty-title" v-if="tab === 'pending'">暂无待执行的 SOP</p>
+    <p class="empty-title" v-else-if="tab === 'in_progress'">暂无正在进行的任务</p>
+    <p class="empty-title" v-else>暂无已完成记录</p>
+    <p class="empty-sub" v-if="tab === 'pending'">去创建一个 SOP 开始执行吧</p>
+    <p class="empty-sub" v-else-if="tab === 'in_progress'">从待执行标签页选择一个 SOP 开始</p>
+    <p class="empty-sub" v-else>完成 SOP 执行后会自动显示在这里</p>
+    <button class="btn-primary-sm" v-if="tab !== 'completed'" @click="tab = 'pending'">查看待执行</button>
   </div>
 </template>
 
@@ -89,7 +57,6 @@ import request from '@/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const user = authStore.userInfo
 
 const executions = ref<any[]>([])
 const tab = ref('pending')
@@ -121,14 +88,11 @@ const goExecution = (e: any) => {
   router.push(`/execution/${e.id}`)
 }
 
-const handleLogout = () => { authStore.logout(); router.push('/login') }
-
 onMounted(async () => {
   await authStore.fetchMe()
   const res: any = await request.get('/execution/my')
   if (res.code === 200) {
     executions.value = res.data || []
-    // Fetch sop titles
     const sopIds = [...new Set(executions.value.map(e => e.sopId))]
     for (const sopId of sopIds) {
       try {
@@ -136,7 +100,6 @@ onMounted(async () => {
         if (r.code === 200) sopMap.value[sopId] = r.data
       } catch {}
     }
-    // Attach sop info to executions
     for (const e of executions.value) {
       const sop = sopMap.value[e.sopId]
       if (sop) {
@@ -155,26 +118,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.execution-page { min-height: 100vh; background: #F5F7FA; }
-.topbar { height: 56px; background: #fff; border-bottom: 1px solid #E8E8E8; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; }
-.topbar-left { display: flex; align-items: center; gap: 24px; }
-.logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; color: #212121; }
-.logo-icon { font-size: 22px; }
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.btn-new { height: 36px; padding: 0 16px; background: #5B7FFF; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn-new:hover { background: #7994FF; }
-.avatar { width: 36px; height: 36px; background: #5B7FFF; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; }
-.main-layout { display: flex; min-height: calc(100vh - 56px); }
-.sidebar { width: 200px; background: #fff; border-right: 1px solid #E8E8E8; padding: 12px 0; flex-shrink: 0; }
-.sidebar-item { padding: 9px 16px; font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-.sidebar-item:hover { background: #F5F7FA; color: #333; }
-.sidebar-item.active { background: #E8ECFF; color: #5B7FFF; font-weight: 500; }
-.sidebar-divider { height: 1px; background: #2d3348; margin: 8px 0; }
-.sidebar-group-label {
-  font-size: 11px; color: #555a6e; padding: 8px 16px 4px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-.main-content { flex: 1; padding: 24px; overflow-y: auto; }
 .page-header { margin-bottom: 20px; }
 .page-header h1 { margin: 0; font-size: 22px; font-weight: 600; color: #212121; }
 .tab-bar { display: flex; gap: 4px; background: #fff; padding: 8px 12px; border-radius: 12px; margin-bottom: 16px; }
@@ -198,7 +141,8 @@ onMounted(async () => {
 .btn-execute { height: 32px; padding: 0 14px; background: #5B7FFF; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; align-self: flex-start; }
 .btn-execute:hover { background: #7994FF; }
 .empty-state { text-align: center; padding: 60px 0; color: #999; }
-.empty-state p { margin: 0 0 8px; }
-.empty-sub { font-size: 13px; }
-.btn-primary-sm { height: 36px; padding: 0 20px; background: #5B7FFF; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 12px; }
+.empty-illustration { margin-bottom: 20px; }
+.empty-title { font-size: 16px; font-weight: 600; color: #333; margin: 0 0 8px; }
+.empty-sub { font-size: 13px; color: #999; margin: 0 0 16px; }
+.btn-primary-sm { height: 36px; padding: 0 20px; background: #5B7FFF; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
 </style>

@@ -1,15 +1,13 @@
 <template>
-  <div class="version-page">
-    <!-- Topbar -->
-    <div class="version-topbar">
-      <button class="btn-back" @click="router.push(`/sop/${sopId}/edit`)">← 返回</button>
-      <div class="topbar-title">版本历史</div>
-      <div class="topbar-right">
-        <button class="btn-publish" @click="showPublishModal = true">发布新版本</button>
-      </div>
+  <div class="version-topbar">
+    <button class="btn-back" @click="router.push(`/sop/${sopId}/edit`)">← 返回</button>
+    <div class="topbar-title">版本历史</div>
+    <div class="topbar-right">
+      <button class="btn-publish" @click="showPublishModal = true">发布新版本</button>
     </div>
+  </div>
 
-    <div class="page-body">
+  <div class="page-body">
       <!-- SOP Info -->
       <div class="sop-info-card" v-if="sop">
         <div class="sop-info-title">{{ sop.title }}</div>
@@ -90,7 +88,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">

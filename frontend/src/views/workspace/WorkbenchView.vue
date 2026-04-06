@@ -1,106 +1,47 @@
 <template>
-  <div class="workbench">
-    <!-- Topbar -->
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="logo">
-          <span class="logo-icon">🚀</span>
-          <span class="logo-text">标帆 SOP</span>
-        </div>
+  <div class="welcome-card">
+    <h2>{{ greeting }}，{{ user?.username || '朋友' }} 👋</h2>
+    <p>开始管理你的 SOP 流程，让每一步都有标准</p>
+    <button class="btn-primary" @click="router.push('/sop/new')">创建第一个 SOP</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">{{ total }}</div>
+      <div class="stat-label">我的 SOP</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num blue">{{ pendingExec }}</div>
+      <div class="stat-label">待执行</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num green">{{ completedRate }}%</div>
+      <div class="stat-label">完成率</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <h3>最近编辑</h3>
+    <button class="btn-secondary" @click="router.push('/sops')">查看全部</button>
+  </div>
+
+  <div class="sop-grid" v-if="sops.length">
+    <div v-for="sop in sops" :key="sop.id" class="sop-card">
+      <div class="sop-category">{{ sop.category }}</div>
+      <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
+      <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
+      <div class="sop-footer">
+        <span class="sop-date">{{ formatDate(sop.updatedAt) }}</span>
+        <span class="sop-status" :class="sop.status">{{ sop.status === 'published' ? '已发布' : '草稿' }}</span>
       </div>
-      <div class="topbar-right">
-        <button v-if="isAdmin" class="btn-admin" @click="router.push('/admin/badges')">⚙️ 管理后台</button>
-        <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
-        <div class="notif-bell" @click="router.push('/notification')">
-          🔔
-          <span class="notif-badge" v-if="unreadNotif > 0">{{ unreadNotif > 9 ? '9+' : unreadNotif }}</span>
-        </div>
-        <div class="avatar" @click="handleLogout">{{ user?.username?.charAt(0) || 'U' }}</div>
+      <div class="sop-actions">
+        <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
+        <button class="btn-xs btn-primary-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
       </div>
     </div>
-
-    <!-- Main -->
-    <div class="main-layout">
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-item active">
-          <span>📊</span><span>工作台</span>
-        </div>
-        <div class="sidebar-item" @click="router.push('/execution')">
-          <span>▶️</span><span>执行台</span>
-        </div>
-        <div class="sidebar-item" @click="router.push('/stats')">
-          <span>📈</span><span>统计</span>
-        </div>
-        <div class="sidebar-item" @click="router.push('/notification')">
-          <span>🔔</span><span>通知</span>
-          <span class="sidebar-badge" v-if="unreadNotif > 0">{{ unreadNotif }}</span>
-        </div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-group-label">🏆 游戏化</div>
-        <div class="sidebar-item" @click="router.push('/profile')">
-          <span>👤</span><span>个人中心</span>
-        </div>
-        <div class="sidebar-item" @click="router.push('/leaderboard')">
-          <span>📊</span><span>排行榜</span>
-        </div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-item" @click="handleLogout">
-          <span>🚪</span><span>退出登录</span>
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="main-content">
-        <!-- Welcome -->
-        <div class="welcome-card">
-          <h2>{{ greeting }}，{{ user?.username || '朋友' }} 👋</h2>
-          <p>开始管理你的 SOP 流程，让每一步都有标准</p>
-          <button class="btn-primary" @click="router.push('/sop/new')">创建第一个 SOP</button>
-        </div>
-
-        <!-- Stats -->
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-num">{{ total }}</div>
-            <div class="stat-label">我的 SOP</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num blue">{{ pendingExec }}</div>
-            <div class="stat-label">待执行</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num green">{{ completedRate }}%</div>
-            <div class="stat-label">完成率</div>
-          </div>
-        </div>
-
-        <!-- SOP List -->
-        <div class="section-header">
-          <h3>最近编辑</h3>
-          <button class="btn-secondary" @click="router.push('/sops')">查看全部</button>
-        </div>
-
-        <div class="sop-grid" v-if="sops.length">
-          <div v-for="sop in sops" :key="sop.id" class="sop-card">
-            <div class="sop-category">{{ sop.category }}</div>
-            <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
-            <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
-            <div class="sop-footer">
-              <span class="sop-date">{{ formatDate(sop.updatedAt) }}</span>
-              <span class="sop-status" :class="sop.status">{{ sop.status === 'published' ? '已发布' : '草稿' }}</span>
-            </div>
-            <div class="sop-actions">
-              <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
-              <button class="btn-xs btn-primary-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
-            </div>
-          </div>
-        </div>
-        <div v-else class="empty-state">
-          <p>还没有 SOP，创建一个开始吧！</p>
-        </div>
-      </div>
-    </div>
+  </div>
+  <div v-else class="empty-state">
+    <p>还没有 SOP，创建一个开始吧！</p>
   </div>
 </template>
 
@@ -115,13 +56,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 const sopStore = useSopStore()
 
-const user = authStore.userInfo
-const isAdmin = computed(() => user.value?.username === 'admin')
+const user = computed(() => authStore.userInfo)
 const sops = ref<any[]>([])
 const total = ref(0)
 const pendingExec = ref(0)
 const completedRate = ref(0)
-const unreadNotif = ref(0)
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -136,29 +75,13 @@ const formatDate = (d: string) => {
   return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
 }
 
-const loadUnread = async () => {
-  try {
-    const res: any = await request.get('/notifications/unread-count')
-    if (res.code === 200) unreadNotif.value = res.data?.count || 0
-  } catch {}
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
-
 onMounted(async () => {
   await authStore.fetchMe()
-  await loadUnread()
-
   const res: any = await sopStore.fetchMySops(1, 6)
   if (res.code === 200) {
     sops.value = res.data.records || []
     total.value = res.data.total || 0
   }
-
-  // Load execution stats
   try {
     const execRes: any = await request.get('/execution/my')
     if (execRes.code === 200) {
@@ -172,104 +95,22 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.workbench { min-height: 100vh; background: #F5F7FA; }
-.topbar {
-  height: 56px; background: #fff;
-  border-bottom: 1px solid #E8E8E8;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 20px; position: sticky; top: 0; z-index: 100;
-}
-.topbar-left { display: flex; align-items: center; gap: 24px; }
-.logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; color: #212121; }
-.logo-icon { font-size: 22px; }
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.btn-new {
-  height: 36px; padding: 0 16px;
-  background: #5B7FFF; color: white;
-  border: none; border-radius: 8px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.btn-new:hover { background: #7994FF; }
-.btn-admin {
-  height: 34px; padding: 0 14px;
-  background: rgba(91,127,255,0.1); color: #5B7FFF;
-  border: 1.5px solid rgba(91,127,255,0.3); border-radius: 8px;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-admin:hover { background: rgba(91,127,255,0.2); border-color: #5B7FFF; }
-.notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 4px 8px; border-radius: 8px; }
-.notif-bell:hover { background: #F5F7FA; }
-.notif-badge {
-  position: absolute; top: -2px; right: -2px;
-  min-width: 16px; height: 16px; background: #FF4D4F;
-  color: white; border-radius: 8px; font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; padding: 0 3px;
-}
-.avatar {
-  width: 36px; height: 36px; background: #5B7FFF; color: white;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-weight: 600; cursor: pointer;
-}
-.main-layout { display: flex; min-height: calc(100vh - 56px); }
-.sidebar {
-  width: 200px; background: #fff; border-right: 1px solid #E8E8E8;
-  padding: 12px 0; flex-shrink: 0;
-}
-.sidebar-item {
-  padding: 9px 16px; font-size: 14px; color: #666;
-  cursor: pointer; display: flex; align-items: center; gap: 8px; position: relative;
-}
-.sidebar-item:hover { background: #F5F7FA; color: #333; }
-.sidebar-item.active { background: #E8ECFF; color: #5B7FFF; font-weight: 500; }
-.sidebar-badge {
-  position: absolute; right: 16px;
-  min-width: 18px; height: 18px; background: #FF4D4F;
-  color: white; border-radius: 9px; font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; padding: 0 4px;
-}
-.sidebar-divider { height: 1px; background: #2d3348; margin: 8px 0; }
-.sidebar-group-label {
-  font-size: 11px; color: #555a6e; padding: 8px 16px 4px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-.main-content { flex: 1; padding: 24px; overflow-y: auto; }
-.welcome-card {
-  background: linear-gradient(135deg, #5B7FFF, #7994FF);
-  border-radius: 16px; padding: 32px; color: white; margin-bottom: 24px;
-}
+.welcome-card { background: linear-gradient(135deg, #5B7FFF, #7994FF); border-radius: 16px; padding: 32px; color: white; margin-bottom: 24px; }
 .welcome-card h2 { margin: 0 0 8px 0; font-size: 22px; font-weight: 600; }
 .welcome-card p { margin: 0 0 20px 0; font-size: 14px; opacity: 0.9; }
-.btn-primary {
-  height: 40px; padding: 0 24px;
-  background: white; color: #5B7FFF;
-  border: none; border-radius: 8px;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-}
+.btn-primary { height: 40px; padding: 0 24px; background: white; color: #5B7FFF; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
 .stats-row { display: flex; gap: 14px; margin-bottom: 24px; }
-.stat-card {
-  flex: 1; background: #fff; border-radius: 12px; padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
+.stat-card { flex: 1; background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .stat-num { font-size: 28px; font-weight: 700; color: #333; }
 .stat-num.blue { color: #5B7FFF; }
 .stat-num.green { color: #52C41A; }
 .stat-label { font-size: 13px; color: #999; margin-top: 4px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: #212121; }
-.btn-secondary {
-  height: 32px; padding: 0 14px;
-  background: #fff; color: #333;
-  border: 1.5px solid #E8E8E8; border-radius: 8px;
-  font-size: 13px; cursor: pointer;
-}
+.btn-secondary { height: 32px; padding: 0 14px; background: #fff; color: #333; border: 1.5px solid #E8E8E8; border-radius: 8px; font-size: 13px; cursor: pointer; }
 .btn-secondary:hover { background: #F5F7FA; }
 .sop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-.sop-card {
-  background: #fff; border-radius: 12px; padding: 16px;
-  cursor: pointer; transition: all 0.15s;
-  border: 1px solid transparent;
-}
+.sop-card { background: #fff; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
 .sop-card:hover { border-color: #D0D8FF; box-shadow: 0 6px 16px rgba(91,127,255,0.12); }
 .sop-category { font-size: 11px; color: #5B7FFF; font-weight: 500; margin-bottom: 6px; }
 .sop-title { margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: #212121; }

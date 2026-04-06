@@ -11,6 +11,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (res.code === 200) {
       token.value = res.data.token
       localStorage.setItem('bf_token', res.data.token)
+    } else {
+      throw new Error(res.message || '登录失败')
     }
     return res
   }

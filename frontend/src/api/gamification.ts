@@ -109,7 +109,21 @@ export const gamificationApi = {
   getBadge: (badgeId: string) => request.get<any, Badge>(`/gamification/badges/${badgeId}`),
 
   // 排行榜
-  getLeaderboard: (type = 'weekly') => request.get<any, LeaderboardOverview>(`/gamification/leaderboard?type=${type}`),
+  getLeaderboard: (type = 'weekly') => request.get<any, LeaderboardOverview>(`/gamification/leaderboard?type=${type}`).then((res: any) => {
+      // res 是 { code, data: [...] } 格式，data 才是数组
+      const arr = Array.isArray(res) ? res : (res?.data ?? [])
+      return {
+        type,
+        label: type === 'weekly' ? '周榜' : type === 'monthly' ? '月榜' : type,
+        startDate: '',
+        endDate: '',
+        totalParticipants: arr.length,
+        items: arr.map((item: any) => ({
+          ...item,
+          rankTitle: item.rankTitle || 'bronze',
+        })),
+      }
+    }),
   getLeaderboardOverview: () => request.get<any, LeaderboardOverview>('/gamification/leaderboard/overview'),
 
   // 积分

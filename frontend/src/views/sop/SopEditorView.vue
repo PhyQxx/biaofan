@@ -1,19 +1,17 @@
 <template>
-  <div class="editor-page">
-    <!-- Topbar -->
-    <div class="editor-topbar">
-      <div class="topbar-left">
-        <button class="btn-back" @click="router.back()">← 返回</button>
-        <input v-model="form.title" class="title-input" placeholder="输入 SOP 标题..." />
-      </div>
-      <div class="topbar-right">
-        <button v-if="isEdit" class="btn-versions" @click="router.push(`/sop/${route.params.id}/versions`)">📋 版本历史</button>
-        <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
-        <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
-      </div>
+  <div class="editor-topbar">
+    <div class="topbar-left">
+      <button class="btn-back" @click="router.back()">← 返回</button>
+      <input v-model="form.title" class="title-input" placeholder="输入 SOP 标题..." />
     </div>
+    <div class="topbar-right">
+      <button v-if="isEdit" class="btn-versions" @click="router.push(`/sop/${route.params.id}/versions`)">📋 版本历史</button>
+      <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
+      <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
+    </div>
+  </div>
 
-    <div class="editor-body">
+  <div class="editor-body">
       <!-- Meta -->
       <div class="meta-row">
         <div class="meta-item">
@@ -159,7 +157,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">

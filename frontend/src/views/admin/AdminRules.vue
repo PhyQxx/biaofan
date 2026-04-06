@@ -1,7 +1,6 @@
 <template>
-  <AdminLayout>
-    <div class="page-header">
-      <h2 class="page-title">📈 成长规则配置</h2>
+  <div class="page-header">
+    <h2 class="page-title">📈 成长规则配置</h2>
       <button class="btn-primary" @click="handleSaveAll" :disabled="saving">
         {{ saving ? '保存中...' : '💾 保存全部' }}
       </button>
@@ -157,13 +156,11 @@
       </div>
 
     </template>
-  </AdminLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import AdminLayout from './AdminLayout.vue'
 import {
   getGrowthRules,
   updateGrowthRules,

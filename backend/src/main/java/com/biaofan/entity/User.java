@@ -14,6 +14,7 @@ public class User {
     private String username;
     private String phone;
     private String password;
+    private String role = "user"; // default role
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

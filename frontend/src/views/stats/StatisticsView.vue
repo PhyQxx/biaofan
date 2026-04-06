@@ -1,28 +1,5 @@
 <template>
-  <div class="stats-page">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="logo"><span class="logo-icon">🚀</span><span class="logo-text">标帆 SOP</span></div>
-      </div>
-      <div class="topbar-right">
-        <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
-        <div class="avatar" @click="handleLogout">{{ user?.username?.charAt(0) || 'U' }}</div>
-      </div>
-    </div>
 
-    <div class="main-layout">
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <div class="sidebar-item" @click="router.push('/')"><span>🚀</span><span>工作台</span></div>
-        <div class="sidebar-item" @click="router.push('/execution')"><span>▶️</span><span>执行台</span></div>
-        <div class="sidebar-item active"><span>📈</span><span>统计</span></div>
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-item" @click="router.push('/notification')"><span>🔔</span><span>通知</span></div>
-        <div class="sidebar-item" @click="handleLogout"><span>🚪</span><span>退出登录</span></div>
-      </div>
-
-      <!-- Main Content -->
-      <div class="main-content">
         <div class="page-header">
           <h1>数据统计</h1>
           <div class="header-actions">
@@ -155,23 +132,14 @@
           <p>暂无 SOP 统计数据</p>
           <p class="empty-sub">开始分发 SOP 后这里会显示统计</p>
         </div>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { getDashboardStats, getTrend, type DashboardStats } from '@/api/stats'
 import request from '@/api'
 
-const router = useRouter()
-const authStore = useAuthStore()
-const user = authStore.userInfo
 
 const dash = reactive<DashboardStats>({
   todayTotal: 0, todayCompleted: 0, todayOverdue: 0,
@@ -261,12 +229,6 @@ const rankClass = (rank: number) => rank === 1 ? 'gold' : rank === 2 ? 'silver' 
 const formatDate = (d: string) => {
   if (!d) return ''
   return d.slice(0, 10)
-}
-
-const handleLogout = () => {
-  localStorage.removeItem('bf_token')
-  router.push('/login')
-  ElMessage.success('已退出登录')
 }
 
 onMounted(async () => {

@@ -1,9 +1,8 @@
 <template>
-  <AdminLayout>
-    <div class="page-header">
-      <h2 class="page-title">🏅 徽章管理</h2>
-      <button class="btn-primary" @click="openForm()">+ 新增徽章</button>
-    </div>
+  <div class="page-header">
+    <h2 class="page-title">🏅 徽章管理</h2>
+    <button class="btn-primary" @click="openForm()">+ 新增徽章</button>
+  </div>
 
     <!-- Badge Table -->
     <div class="card">
@@ -140,13 +139,11 @@
         </div>
       </div>
     </div>
-  </AdminLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import AdminLayout from './AdminLayout.vue'
 import { getBadgeList, createBadge, updateBadge, deleteBadge, type Badge } from '@/api/admin'
 
 const badges = ref<Badge[]>([])

@@ -1,7 +1,6 @@
 <template>
-  <AdminLayout>
-    <div class="page-header">
-      <h2 class="page-title">🎁 商品管理</h2>
+  <div class="page-header">
+    <h2 class="page-title">🎁 商品管理</h2>
       <button class="btn-primary" @click="openForm()">+ 新增商品</button>
     </div>
 
@@ -126,13 +125,11 @@
         </div>
       </div>
     </div>
-  </AdminLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import AdminLayout from './AdminLayout.vue'
 import { getProductList, createProduct, updateProduct, deleteProduct, type Product } from '@/api/admin'
 
 const products = ref<Product[]>([])

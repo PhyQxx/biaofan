@@ -26,6 +26,7 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/GamificationController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/UserServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/SopVersionService.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/GamificationGrowthRule.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/ExecutionController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/Notification.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/mapper/GamificationUserStatsMapper.java
@@ -42,6 +43,7 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/ExecutionStat.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/SopExecutionController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/SopTemplateController.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/AdminGamificationServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/SopNotificationConfigService.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/BiaofanApplication.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/GamificationServiceImpl.java
@@ -67,11 +69,14 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/dto/RegisterRequest.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/PushToken.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/SopExecutionServiceImpl.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/AdminGamificationController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/StatisticsController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/SopNotificationConfigServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/GamificationLeaderboardCache.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/GamificationUserProduct.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/job/ScheduleTaskJob.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/mapper/GamificationGrowthRuleMapper.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/AdminGamificationService.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/GamificationStoreProduct.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/ScheduleTaskServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/util/JwtAuthFilter.java
