@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class GamificationScoreHistory {
     @TableId(type = IdType.AUTO)
     private Long id;
+    @TableField("user_id")
     private Long userId;
     private String type;
     private Integer amount;

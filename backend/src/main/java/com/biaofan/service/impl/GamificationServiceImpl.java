@@ -3,7 +3,14 @@ package com.biaofan.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
-import com.biaofan.mapper.*;
+import com.biaofan.mapper.GamificationUserStatsMapper;
+import com.biaofan.mapper.GamificationBadgeDefinitionMapper;
+import com.biaofan.mapper.GamificationUserBadgeMapper;
+import com.biaofan.mapper.GamificationScoreHistoryMapper;
+import com.biaofan.mapper.GamificationStoreProductMapper;
+import com.biaofan.mapper.GamificationUserProductMapper;
+import com.biaofan.mapper.GamificationLeaderboardCacheMapper;
+import com.biaofan.mapper.UserMapper;
 import com.biaofan.service.GamificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +30,7 @@ public class GamificationServiceImpl implements GamificationService {
     private final GamificationStoreProductMapper storeProductMapper;
     private final GamificationUserProductMapper userProductMapper;
     private final GamificationLeaderboardCacheMapper leaderboardCacheMapper;
+    private final UserMapper userMapper;
 
     // === EXP / Level helpers ===
     private int expForLevel(int level) { return level * 100; }
@@ -131,22 +139,7 @@ public class GamificationServiceImpl implements GamificationService {
 
     @Override
     public List<Map<String, Object>> getLeaderboard(String period) {
-        List<GamificationLeaderboardCache> cached = leaderboardCacheMapper.selectList(
-            new LambdaQueryWrapper<GamificationLeaderboardCache>()
-                .eq(GamificationLeaderboardCache::getPeriod, period != null ? period : "all")
-                .orderByAsc(GamificationLeaderboardCache::getRank)
-                .last("LIMIT 20"));
-        if (!cached.isEmpty()) {
-            List<Map<String, Object>> r = new ArrayList<>();
-            for (GamificationLeaderboardCache c : cached) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("userId", c.getUserId()); m.put("username", c.getUsername());
-                m.put("score", c.getScore()); m.put("rank", c.getRank());
-                r.add(m);
-            }
-            return r;
-        }
-        // Fallback: top score users
+        // Directly query gamification_user_stats, ordered by total_score desc
         List<GamificationUserStats> top = statsMapper.selectList(
             new LambdaQueryWrapper<GamificationUserStats>()
                 .orderByDesc(GamificationUserStats::getTotalScore)
@@ -155,8 +148,20 @@ public class GamificationServiceImpl implements GamificationService {
         int rank = 1;
         for (GamificationUserStats s : top) {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("userId", s.getUserId()); m.put("username", "用户" + s.getUserId());
-            m.put("score", s.getTotalScore()); m.put("rank", rank++);
+            m.put("userId", s.getUserId());
+            // Try to get real username from user table
+            String username = "用户" + s.getUserId();
+            try {
+                var user = userMapper.selectById(s.getUserId());
+                if (user != null && user.getUsername() != null) {
+                    username = user.getUsername();
+                }
+            } catch (Exception ignored) {}
+            m.put("username", username);
+            m.put("score", s.getTotalScore());
+            m.put("rank", rank++);
+            m.put("level", s.getLevel());
+            m.put("rankTitle", s.getRank());
             r.add(m);
         }
         return r;

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class GamificationUserBadge {
     @TableId(type = IdType.AUTO)
     private Long id;
+    @TableField("user_id")
     private Long userId;
     @TableField("badge_id")
     private Long badgeId;
