@@ -13,6 +13,13 @@ const router = createRouter({
     { path: '/sop/:id/edit', name: 'SopEdit', component: () => import('@/views/sop/SopEditorView.vue'), meta: { requiresAuth: true } },
     { path: '/sop/:id/versions', name: 'SopVersions', component: () => import('@/views/sop/VersionHistoryView.vue'), meta: { requiresAuth: true } },
     { path: '/notification', name: 'Notification', component: () => import('@/views/notification/NotificationView.vue'), meta: { requiresAuth: true } },
+    // Admin routes
+    { path: '/admin/badges', name: 'AdminBadges', component: () => import('@/views/admin/AdminBadges.vue'), meta: { requiresAuth: true } },
+    { path: '/admin/products', name: 'AdminProducts', component: () => import('@/views/admin/AdminProducts.vue'), meta: { requiresAuth: true } },
+    { path: '/admin/rules', name: 'AdminRules', component: () => import('@/views/admin/AdminRules.vue'), meta: { requiresAuth: true } },
+    // Gamification routes
+    { path: '/profile', name: 'Profile', component: () => import('@/views/profile/ProfileView.vue'), meta: { requiresAuth: true } },
+    { path: '/leaderboard', name: 'Leaderboard', component: () => import('@/views/profile/LeaderboardView.vue'), meta: { requiresAuth: true } },
   ],
 })
 

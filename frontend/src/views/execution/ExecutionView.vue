@@ -27,6 +27,10 @@
           <span>📈</span><span>统计</span>
         </div>
         <div class="sidebar-divider"></div>
+        <div class="sidebar-group-label">🏆 游戏化</div>
+        <div class="sidebar-item" @click="router.push('/profile')"><span>👤</span><span>个人中心</span></div>
+        <div class="sidebar-item" @click="router.push('/leaderboard')"><span>📊</span><span>排行榜</span></div>
+        <div class="sidebar-divider"></div>
         <div class="sidebar-item" @click="router.push('/notification')">
           <span>🔔</span><span>通知</span>
         </div>
@@ -165,7 +169,11 @@ onMounted(async () => {
 .sidebar-item { padding: 9px 16px; font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .sidebar-item:hover { background: #F5F7FA; color: #333; }
 .sidebar-item.active { background: #E8ECFF; color: #5B7FFF; font-weight: 500; }
-.sidebar-divider { height: 1px; background: #E8E8E8; margin: 8px 16px; }
+.sidebar-divider { height: 1px; background: #2d3348; margin: 8px 0; }
+.sidebar-group-label {
+  font-size: 11px; color: #555a6e; padding: 8px 16px 4px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
 .main-content { flex: 1; padding: 24px; overflow-y: auto; }
 .page-header { margin-bottom: 20px; }
 .page-header h1 { margin: 0; font-size: 22px; font-weight: 600; color: #212121; }

@@ -9,6 +9,7 @@
         </div>
       </div>
       <div class="topbar-right">
+        <button v-if="isAdmin" class="btn-admin" @click="router.push('/admin/badges')">⚙️ 管理后台</button>
         <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
         <div class="notif-bell" @click="router.push('/notification')">
           🔔
@@ -34,6 +35,14 @@
         <div class="sidebar-item" @click="router.push('/notification')">
           <span>🔔</span><span>通知</span>
           <span class="sidebar-badge" v-if="unreadNotif > 0">{{ unreadNotif }}</span>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-group-label">🏆 游戏化</div>
+        <div class="sidebar-item" @click="router.push('/profile')">
+          <span>👤</span><span>个人中心</span>
+        </div>
+        <div class="sidebar-item" @click="router.push('/leaderboard')">
+          <span>📊</span><span>排行榜</span>
         </div>
         <div class="sidebar-divider"></div>
         <div class="sidebar-item" @click="handleLogout">
@@ -107,6 +116,7 @@ const authStore = useAuthStore()
 const sopStore = useSopStore()
 
 const user = authStore.userInfo
+const isAdmin = computed(() => user.value?.username === 'admin')
 const sops = ref<any[]>([])
 const total = ref(0)
 const pendingExec = ref(0)
@@ -180,6 +190,14 @@ onMounted(async () => {
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .btn-new:hover { background: #7994FF; }
+.btn-admin {
+  height: 34px; padding: 0 14px;
+  background: rgba(91,127,255,0.1); color: #5B7FFF;
+  border: 1.5px solid rgba(91,127,255,0.3); border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-admin:hover { background: rgba(91,127,255,0.2); border-color: #5B7FFF; }
 .notif-bell { font-size: 18px; cursor: pointer; position: relative; padding: 4px 8px; border-radius: 8px; }
 .notif-bell:hover { background: #F5F7FA; }
 .notif-badge {
@@ -210,7 +228,11 @@ onMounted(async () => {
   color: white; border-radius: 9px; font-size: 10px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; padding: 0 4px;
 }
-.sidebar-divider { height: 1px; background: #E8E8E8; margin: 8px 16px; }
+.sidebar-divider { height: 1px; background: #2d3348; margin: 8px 0; }
+.sidebar-group-label {
+  font-size: 11px; color: #555a6e; padding: 8px 16px 4px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
 .main-content { flex: 1; padding: 24px; overflow-y: auto; }
 .welcome-card {
   background: linear-gradient(135deg, #5B7FFF, #7994FF);

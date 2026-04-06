@@ -8,10 +8,10 @@
       </div>
 
       <div class="form-group">
-        <label>手机号</label>
+        <label>用户名 / 手机号</label>
         <div class="input-wrap">
-          <span class="input-icon">📱</span>
-          <input v-model="form.phone" class="form-input" placeholder="请输入手机号" type="tel" />
+          <span class="input-icon">👤</span>
+          <input v-model="form.phone" class="form-input" placeholder="请输入用户名或手机号" type="text" />
         </div>
       </div>
 
@@ -53,7 +53,7 @@ const form = reactive({ phone: '', password: '' })
 
 const handleLogin = async () => {
   if (!form.phone || !form.password) {
-    ElMessage.warning('请填写手机号和密码')
+    ElMessage.warning('请填写用户名和密码')
     return
   }
   loading.value = true
