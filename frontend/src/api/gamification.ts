@@ -111,7 +111,7 @@ export const gamificationApi = {
   // 排行榜
   getLeaderboard: (type = 'weekly') => request.get<any, LeaderboardOverview>(`/gamification/leaderboard?type=${type}`).then((res: any) => {
       // res 是 { code, data: [...] } 格式，data 才是数组
-      const arr = Array.isArray(res) ? res : (res?.data ?? [])
+      const arr = Array.isArray(res) ? res : (res?.data?.data ?? (Array.isArray(res?.data) ? res.data : []))
       return {
         type,
         label: type === 'weekly' ? '周榜' : type === 'monthly' ? '月榜' : type,
