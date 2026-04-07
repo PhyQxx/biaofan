@@ -5,7 +5,6 @@ import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.SopExecutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +12,25 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class SopExecutionServiceImpl implements SopExecutionService {
 
     private final SopExecutionMapper executionMapper;
     private final SopMapper sopMapper;
     private final ExecutionStepRecordMapper stepRecordMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final NotificationMapper notificationMapper;
+    private final ObjectMapper objectMapper;
+
+    public SopExecutionServiceImpl(
+            SopExecutionMapper executionMapper,
+            SopMapper sopMapper,
+            ExecutionStepRecordMapper stepRecordMapper,
+            NotificationMapper notificationMapper) {
+        this.executionMapper = executionMapper;
+        this.sopMapper = sopMapper;
+        this.stepRecordMapper = stepRecordMapper;
+        this.notificationMapper = notificationMapper;
+        this.objectMapper = new ObjectMapper();
+    }
 
     @Override
     @Transactional
@@ -46,6 +57,19 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         e.setCreatedAt(LocalDateTime.now());
         e.setUpdatedAt(LocalDateTime.now());
         executionMapper.insert(e);
+
+        // 通知：开始执行提醒
+        Notification notif = new Notification();
+        notif.setUserId(userId);
+        notif.setType("execution_started");
+        notif.setTitle("SOP 开始执行");
+        notif.setContent("您已开始执行 SOP《" + sop.getTitle() + "》，记得完成所有步骤哦！");
+        notif.setSourceType("sop");
+        notif.setSourceId(sop.getId());
+        notif.setIsRead(0);
+        notif.setCreatedAt(LocalDateTime.now());
+        notificationMapper.insert(notif);
+
         return e;
     }
 
@@ -53,11 +77,11 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Transactional
     public boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
                                  Map<String, Object> checkData, String attachments) {
-        SopExecution e = getExecution(executionId);
-        if (!e.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
-        if (!"in_progress".equals(e.getStatus())) throw new RuntimeException("执行状态不允许操作");
+        SopExecution exec = getExecution(executionId);
+        if (!exec.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if (!"in_progress".equals(exec.getStatus())) throw new RuntimeException("执行状态不允许操作");
 
-        Sop sop = sopMapper.selectById(e.getSopId());
+        Sop sop = sopMapper.selectById(exec.getSopId());
         List<?> steps = parseJson(sop.getContent(), List.class);
         if (steps == null) steps = Collections.emptyList();
 
@@ -81,26 +105,61 @@ public class SopExecutionServiceImpl implements SopExecutionService {
 
         boolean completed = stepIndex >= steps.size();
         if (completed) {
-            e.setStatus("completed");
-            e.setCompletedAt(LocalDateTime.now());
-            e.setCurrentStep(stepIndex);
+            exec.setStatus("completed");
+            exec.setCompletedAt(LocalDateTime.now());
+            exec.setCurrentStep(stepIndex);
+            // 通知：SOP 执行完成
+            Notification notif = new Notification();
+            notif.setUserId(userId);
+            notif.setType("execution_completed");
+            notif.setTitle("SOP 执行完成");
+            notif.setContent("您执行的 SOP《" + sop.getTitle() + "》已全部完成，干得漂亮！");
+            notif.setSourceType("sop");
+            notif.setSourceId(sop.getId());
+            notif.setIsRead(0);
+            notif.setCreatedAt(LocalDateTime.now());
+            notificationMapper.insert(notif);
         } else {
-            e.setCurrentStep(stepIndex + 1);
+            exec.setCurrentStep(stepIndex + 1);
+            // 通知：步骤完成提醒
+            Notification notif = new Notification();
+            notif.setUserId(userId);
+            notif.setType("step_completed");
+            notif.setTitle("步骤完成");
+            notif.setContent("SOP《" + sop.getTitle() + "》第 " + stepIndex + " 步已完成，继续加油！");
+            notif.setSourceType("sop");
+            notif.setSourceId(sop.getId());
+            notif.setIsRead(0);
+            notif.setCreatedAt(LocalDateTime.now());
+            notificationMapper.insert(notif);
         }
-        e.setUpdatedAt(LocalDateTime.now());
-        executionMapper.updateById(e);
+        exec.setUpdatedAt(LocalDateTime.now());
+        executionMapper.updateById(exec);
         return completed;
     }
 
     @Override
     @Transactional
     public void finishExecution(Long userId, Long executionId) {
-        SopExecution e = getExecution(executionId);
-        if (!e.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
-        e.setStatus("completed");
-        e.setCompletedAt(LocalDateTime.now());
-        e.setUpdatedAt(LocalDateTime.now());
-        executionMapper.updateById(e);
+        SopExecution exec = getExecution(executionId);
+        if (!exec.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        exec.setStatus("completed");
+        exec.setCompletedAt(LocalDateTime.now());
+        exec.setUpdatedAt(LocalDateTime.now());
+        executionMapper.updateById(exec);
+
+        // 通知：SOP 强制结束
+        Sop sop = sopMapper.selectById(exec.getSopId());
+        Notification notif = new Notification();
+        notif.setUserId(userId);
+        notif.setType("execution_completed");
+        notif.setTitle("SOP 执行完成");
+        notif.setContent("SOP《" + sop.getTitle() + "》已标记完成！");
+        notif.setSourceType("sop");
+        notif.setSourceId(sop.getId());
+        notif.setIsRead(0);
+        notif.setCreatedAt(LocalDateTime.now());
+        notificationMapper.insert(notif);
     }
 
     @Override

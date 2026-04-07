@@ -1,6 +1,7 @@
 package com.biaofan.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -14,6 +15,7 @@ public class ExecutionStepRecord {
     private Long executionId;
     private Integer stepIndex;
     private String stepTitle;
+    @TableField("check_items")
     private String checkData;  // JSON - check item values
     private String attachments; // JSON - uploaded files
     private LocalDateTime completedAt;

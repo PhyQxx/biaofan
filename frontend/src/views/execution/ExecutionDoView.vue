@@ -36,7 +36,7 @@
     </div>
 
     <!-- Loading -->
-    <div class="loading-state" v-if="!currentStepData && !isCompleted">
+    <div class="loading-state" v-if="!stepsLoaded">
       <div class="loading-spinner"></div>
       <p>加载中...</p>
     </div>
@@ -165,6 +165,14 @@
       </div>
     </div>
 
+    <!-- Empty SOP State -->
+    <div class="empty-state" v-else-if="stepsLoaded && totalSteps === 0">
+      <div class="empty-icon">📋</div>
+      <h2>暂无步骤</h2>
+      <p>当前 SOP 还没有添加步骤，请先编辑 SOP 添加执行步骤</p>
+      <button class="btn-primary" @click="router.push(`/sop/${route.params.id}/edit`)">去编辑 SOP</button>
+    </div>
+
     <!-- Completed State -->
     <div class="complete-state" v-else-if="isCompleted">
       <div class="complete-icon">🎉</div>
@@ -210,6 +218,7 @@ const notes = ref('')
 const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
+const stepsLoaded = ref(false)
 
 const totalSteps = computed(() => steps.value.length || 0)
 const currentStepData = computed(() => steps.value[currentStep.value - 1])
@@ -229,7 +238,7 @@ const checkItems = computed(() => {
   const ci = currentStepData.value.checkItems
   if (!ci) return []
   if (Array.isArray(ci)) return ci
-  try { return JSON.parse(ci) } catch { return [] }
+  try { return (ci && ci !== 'null' && ci !== 'undefined') ? JSON.parse(ci) : [] } catch { return [] }
 })
 
 const prevStep = () => {
@@ -332,8 +341,10 @@ onMounted(async () => {
       sop.value = sopRes.data
       execution.value.sopTitle = sop.value.title
       try {
-        steps.value = JSON.parse(sop.value.content || '[]')
+        const raw = sop.value.content
+        steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
       } catch { steps.value = [] }
+      stepsLoaded.value = true
     }
   } catch (e) {
     ElMessage.error('加载失败')

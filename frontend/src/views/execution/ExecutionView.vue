@@ -105,7 +105,8 @@ onMounted(async () => {
       if (sop) {
         e.sopTitle = sop.title
         try {
-          const steps = JSON.parse(sop.content || '[]')
+          const raw = sop.content
+          const steps = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
           e.totalSteps = steps.length
         } catch { e.totalSteps = 0 }
       } else {

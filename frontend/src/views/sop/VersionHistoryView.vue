@@ -138,7 +138,7 @@ const loadSop = async () => {
 const viewVersion = async (v: any) => {
   selectedVersion.value = v
   try {
-    versionSteps.value = v.content ? JSON.parse(v.content) : []
+    versionSteps.value = (v.content && v.content !== 'null' && v.content !== 'undefined') ? JSON.parse(v.content) : []
   } catch { versionSteps.value = [] }
   showDetailModal.value = true
 }
