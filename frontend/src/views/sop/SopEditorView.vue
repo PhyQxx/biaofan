@@ -342,8 +342,8 @@ onMounted(async () => {
       form.title = sop.title
       form.description = sop.description || ''
       form.category = sop.category || '工作'
-      form.content = sop.content ? JSON.parse(sop.content) : []
-      tagsInput.value = sop.tags ? JSON.parse(sop.tags).join(',') : ''
+      form.content = (sop.content && sop.content !== 'null' && sop.content !== 'undefined') ? JSON.parse(sop.content) : []
+      tagsInput.value = (sop.tags && sop.tags !== 'null' && sop.tags !== 'undefined') ? JSON.parse(sop.tags).join(',') : ''
     }
     await loadSchedule()
   }

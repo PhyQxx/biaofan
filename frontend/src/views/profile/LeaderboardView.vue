@@ -99,15 +99,15 @@ onMounted(() => {
 async function loadLeaderboard() {
   loading.value = true
   try {
-    const raw = await gamificationApi.getLeaderboard(activeType.value)
+    const raw: any = await gamificationApi.getLeaderboard(activeType.value)
     if (Array.isArray(raw)) {
-      lbData.value = { items: raw }
+      lbData.value = { items: raw } as any
     } else if (raw && raw.items) {
-      lbData.value = raw
+      lbData.value = raw as any
     } else if (raw && raw.data) {
-      lbData.value = { items: Array.isArray(raw.data) ? raw.data : [] }
+      lbData.value = { items: Array.isArray(raw.data) ? raw.data : [] } as any
     } else {
-      lbData.value = { items: [] }
+      lbData.value = { items: [] } as any
     }
   } catch {
     ElMessage.error('加载排行榜失败')
