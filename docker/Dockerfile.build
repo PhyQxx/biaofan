@@ -1,0 +1,8 @@
+FROM amazoncorretto:17-alpine
+WORKDIR /build
+COPY backend/pom.xml .
+COPY backend/src ./src
+RUN apk add --no-cache maven && \
+    sed -i 's/<java.version>17<\/java.version>/<java.version>17<\/java.version>/' pom.xml && \
+    mvn clean package -DskipTests -q
+CMD ["ls", "target/"]

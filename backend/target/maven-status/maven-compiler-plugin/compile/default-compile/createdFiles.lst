@@ -72,6 +72,7 @@ com/biaofan/dto/DashboardStatsDTO$TrendPoint.class
 com/biaofan/entity/GamificationUserBadge.class
 com/biaofan/mapper/NotificationMapper.class
 com/biaofan/entity/GamificationUserProduct.class
+com/biaofan/config/MybatisPlusConfig.class
 com/biaofan/mapper/GamificationLeaderboardCacheMapper.class
 com/biaofan/entity/GamificationGrowthRule.class
 com/biaofan/service/impl/SopExecutionServiceImpl.class

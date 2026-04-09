@@ -26,6 +26,7 @@
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/GamificationController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/impl/UserServiceImpl.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/service/SopVersionService.java
+/root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/config/MybatisPlusConfig.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/GamificationGrowthRule.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/controller/ExecutionController.java
 /root/.openclaw/workspace-dev/biaofan/backend/src/main/java/com/biaofan/entity/Notification.java
