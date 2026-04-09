@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.Notification;
 import com.biaofan.mapper.NotificationMapper;
 import com.biaofan.service.NotificationService;
+import com.biaofan.service.NotificationDispatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import java.util.List;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationMapper notificationMapper;
+    private final NotificationDispatcher notificationDispatcher;
 
     @Override
     public List<Notification> getMyNotifications(Long userId) {
@@ -62,5 +64,6 @@ public class NotificationServiceImpl implements NotificationService {
         n.setContent(content);
         n.setIsRead(0);
         notificationMapper.insert(n);
+        notificationDispatcher.dispatch(userId, title, content);
     }
 }

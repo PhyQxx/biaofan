@@ -42,11 +42,20 @@ public class ExecutionController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
-            String attachments = body != null && body.get("attachments") != null
-                ? body.get("attachments").toString() : null;
-
-            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData, attachments);
+            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(executionId) ? stepIndex : stepIndex + 1));
+        } catch (RuntimeException ex) {
+            return Result.fail(400, ex.getMessage());
+        }
+    }
+
+    @PostMapping("/{executionId}/activate")
+    public Result<Void> activate(
+            @PathVariable Long executionId,
+            @AuthenticationPrincipal Long userId) {
+        try {
+            executionService.activateExecution(userId, executionId);
+            return Result.ok();
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
         }

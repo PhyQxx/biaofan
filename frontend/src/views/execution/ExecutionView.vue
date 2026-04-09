@@ -3,33 +3,32 @@
     <h1>执行台</h1>
   </div>
 
-  <!-- Tabs -->
   <div class="tab-bar">
-    <button class="tab-item" :class="{ active: tab === 'pending' }" @click="tab = 'pending'">待执行 ({{ pendingExecutions.length }})</button>
-    <button class="tab-item" :class="{ active: tab === 'in_progress' }" @click="tab = 'in_progress'">进行中 ({{ inProgressExecutions.length }})</button>
+    <button class="tab-item" :class="{ active: tab === 'pending' }" @click="tab = 'pending'">待执行 ({{ pendingList.length }})</button>
+    <button class="tab-item" :class="{ active: tab === 'in_progress' }" @click="tab = 'in_progress'">执行中 ({{ inProgressList.length }})</button>
     <button class="tab-item" :class="{ active: tab === 'completed' }" @click="tab = 'completed'">已完成</button>
+    <button class="tab-item" :class="{ active: tab === 'overdue' }" @click="tab = 'overdue'">已逾期 ({{ overdueList.length }})</button>
   </div>
 
-  <!-- List -->
   <div class="exec-list" v-if="currentList.length">
-    <div v-for="e in currentList" :key="e.id" class="exec-card">
-      <div class="exec-sop-title" @click="goExecution(e)">{{ e.sopTitle }}</div>
+    <div v-for="inst in currentList" :key="inst.id" class="exec-card">
+      <div class="exec-sop-title" @click="goExecution(inst)">{{ inst.sopTitle }}</div>
       <div class="exec-meta">
-        <span class="exec-status" :class="e.status">{{ statusLabel(e.status) }}</span>
-        <span class="exec-time" v-if="e.startedAt">开始于 {{ formatDate(e.startedAt) }}</span>
+        <span class="exec-status" :class="inst.status">{{ statusLabel(inst.status) }}</span>
+        <span class="exec-period">{{ formatPeriod(inst) }}</span>
+        <span class="exec-time" v-if="inst.startedAt">开始于 {{ formatDate(inst.startedAt) }}</span>
       </div>
-      <div class="exec-progress" v-if="e.status === 'in_progress'">
+      <div class="exec-progress" v-if="inst.status === 'in_progress'">
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: progressWidth(e) }"></div>
+          <div class="progress-fill" :style="{ width: progressWidth(inst) }"></div>
         </div>
-        <span class="progress-text">第 {{ e.currentStep }} / {{ e.totalSteps }} 步</span>
+        <span class="progress-text">第 {{ inst.currentStep }} / {{ inst.totalSteps }} 步</span>
       </div>
-      <button class="btn-execute" @click="goExecution(e)">
-        {{ e.status === 'completed' ? '查看' : e.status === 'in_progress' ? '继续执行' : '开始执行' }}
+      <button class="btn-execute" @click="goExecution(inst)">
+        {{ inst.status === 'completed' ? '查看' : inst.status === 'overdue' ? '继续执行' : inst.status === 'in_progress' ? '继续执行' : '开始执行' }}
       </button>
     </div>
   </div>
-  <!-- Empty State -->
   <div v-else class="empty-state">
     <div class="empty-illustration">
       <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -41,11 +40,14 @@
     </div>
     <p class="empty-title" v-if="tab === 'pending'">暂无待执行的 SOP</p>
     <p class="empty-title" v-else-if="tab === 'in_progress'">暂无正在进行的任务</p>
+    <p class="empty-title" v-else-if="tab === 'overdue'">暂无逾期任务</p>
     <p class="empty-title" v-else>暂无已完成记录</p>
-    <p class="empty-sub" v-if="tab === 'pending'">去创建一个 SOP 开始执行吧</p>
+    <p class="empty-sub" v-if="tab === 'pending'">发布 SOP 后会按周期自动生成执行实例</p>
     <p class="empty-sub" v-else-if="tab === 'in_progress'">从待执行标签页选择一个 SOP 开始</p>
+    <p class="empty-sub" v-else-if="tab === 'overdue'">按时完成可避免逾期</p>
     <p class="empty-sub" v-else>完成 SOP 执行后会自动显示在这里</p>
-    <button class="btn-primary-sm" v-if="tab !== 'completed'" @click="tab = 'pending'">查看待执行</button>
+    <button class="btn-primary-sm" v-if="tab === 'pending'" @click="router.push('/sop/new')">创建 SOP</button>
+    <button class="btn-primary-sm" v-else-if="tab === 'in_progress'" @click="tab = 'pending'">查看待执行</button>
   </div>
 </template>
 
@@ -58,60 +60,74 @@ import request from '@/api'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const executions = ref<any[]>([])
+const instances = ref<any[]>([])
 const tab = ref('pending')
-const sopMap = ref<Record<number, any>>({})
 
-const pendingExecutions = computed(() => executions.value.filter(e => e.status === 'pending'))
-const inProgressExecutions = computed(() => executions.value.filter(e => e.status === 'in_progress'))
-const completedExecutions = computed(() => executions.value.filter(e => e.status === 'completed'))
+const pendingList = computed(() => instances.value.filter(e => e.status === 'pending'))
+const inProgressList = computed(() => instances.value.filter(e => e.status === 'in_progress'))
+const completedList = computed(() => instances.value.filter(e => e.status === 'completed'))
+const overdueList = computed(() => instances.value.filter(e => e.status === 'overdue'))
 
 const currentList = computed(() => {
-  if (tab.value === 'pending') return pendingExecutions.value
-  if (tab.value === 'in_progress') return inProgressExecutions.value
-  return completedExecutions.value
+  if (tab.value === 'pending') return pendingList.value
+  if (tab.value === 'in_progress') return inProgressList.value
+  if (tab.value === 'overdue') return overdueList.value
+  return completedList.value
 })
 
-const statusLabel = (s: string) => ({ pending: '待执行', in_progress: '进行中', completed: '已完成', abnormal: '异常' }[s] || s)
+const statusLabel = (s: string) => ({
+  pending: '待执行', in_progress: '执行中', completed: '已完成', overdue: '已逾期'
+} as any)[s] || s
 
 const formatDate = (d: string) => {
   if (!d) return ''
   return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const progressWidth = (e: any) => {
-  if (!e.totalSteps) return '0%'
-  return Math.round((e.currentStep / e.totalSteps) * 100) + '%'
+const formatPeriod = (inst: any) => {
+  if (!inst.periodStart || !inst.periodEnd) return ''
+  const s = new Date(inst.periodStart)
+  const e = new Date(inst.periodEnd)
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+  return `${fmt(s)} ~ ${fmt(e)}`
 }
 
-const goExecution = (e: any) => {
-  router.push(`/execution/${e.id}`)
+const progressWidth = (inst: any) => {
+  if (!inst.totalSteps) return '0%'
+  return Math.round((inst.currentStep / inst.totalSteps) * 100) + '%'
+}
+
+const goExecution = (inst: any) => {
+  router.push(`/instance/${inst.id}`)
 }
 
 onMounted(async () => {
   await authStore.fetchMe()
-  const res: any = await request.get('/execution/my')
+  const res: any = await request.get('/instance/my')
   if (res.code === 200) {
-    executions.value = res.data || []
-    const sopIds = [...new Set(executions.value.map(e => e.sopId))]
+    instances.value = res.data || []
+    const sopIds = [...new Set(instances.value.map((e: any) => e.sopId))]
+    const sopMap: Record<number, any> = {}
     for (const sopId of sopIds) {
       try {
         const r: any = await request.get(`/sop/${sopId}`)
-        if (r.code === 200) sopMap.value[sopId] = r.data
+        if (r.code === 200) {
+          sopMap[sopId] = r.data
+        }
       } catch {}
     }
-    for (const e of executions.value) {
-      const sop = sopMap.value[e.sopId]
+    for (const inst of instances.value) {
+      const sop = sopMap[inst.sopId]
       if (sop) {
-        e.sopTitle = sop.title
+        inst.sopTitle = sop.title
         try {
           const raw = sop.content
           const steps = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
-          e.totalSteps = steps.length
-        } catch { e.totalSteps = 0 }
+          inst.totalSteps = steps.length
+        } catch { inst.totalSteps = 0 }
       } else {
-        e.sopTitle = 'SOP'
-        e.totalSteps = 0
+        inst.sopTitle = 'SOP'
+        inst.totalSteps = 0
       }
     }
   }
@@ -129,11 +145,13 @@ onMounted(async () => {
 .exec-card { background: #fff; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .exec-sop-title { font-size: 15px; font-weight: 600; color: #212121; cursor: pointer; }
 .exec-sop-title:hover { color: #5B7FFF; }
-.exec-meta { display: flex; align-items: center; gap: 10px; }
+.exec-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .exec-status { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
 .exec-status.pending { background: #F5F5F5; color: #999; }
 .exec-status.in_progress { background: #E8F3FF; color: #5B7FFF; }
 .exec-status.completed { background: #F6FFED; color: #52C41A; }
+.exec-status.overdue { background: #FFF1F0; color: #FF4D4F; }
+.exec-period { font-size: 12px; color: #5B7FFF; background: #E8ECFF; padding: 1px 8px; border-radius: 4px; }
 .exec-time { font-size: 12px; color: #999; }
 .exec-progress { display: flex; align-items: center; gap: 10px; }
 .progress-bar { flex: 1; height: 6px; background: #F0F0F0; border-radius: 3px; overflow: hidden; }

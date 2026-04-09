@@ -9,4 +9,7 @@ public interface UserService {
     void register(RegisterRequest req);
     User getUserById(Long id);
     User getUserByPhone(String phone);
+    void updateProfile(Long userId, String username);
+    void updatePassword(Long userId, String oldPassword, String newPassword);
+    void updatePhone(Long userId, String phone);
 }

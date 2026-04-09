@@ -3,11 +3,9 @@ package com.biaofan.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.biaofan.entity.Sop;
-import com.biaofan.entity.SopVersion;
+import com.biaofan.entity.*;
 import com.biaofan.dto.SopRequest;
-import com.biaofan.mapper.SopMapper;
-import com.biaofan.mapper.SopVersionMapper;
+import com.biaofan.mapper.*;
 import com.biaofan.service.SopService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +22,12 @@ public class SopServiceImpl implements SopService {
 
     private final SopMapper sopMapper;
     private final SopVersionMapper versionMapper;
+    private final SopExecutionMapper executionMapper;
+    private final ExecutionStepRecordMapper stepRecordMapper;
+    private final ExecutionStatMapper executionStatMapper;
+    private final ScheduleTaskMapper scheduleTaskMapper;
+    private final SopDraftMapper draftMapper;
+    private final SopExceptionMapper exceptionMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -44,7 +49,7 @@ public class SopServiceImpl implements SopService {
 
     @Override
     @Transactional
-    public void create(Long userId, SopRequest req) {
+    public Sop create(Long userId, SopRequest req) {
         Sop sop = new Sop();
         sop.setUserId(userId);
         fillSop(sop, req);
@@ -52,8 +57,8 @@ public class SopServiceImpl implements SopService {
         sop.setStatus("draft");
         sopMapper.insert(sop);
 
-        // Auto-create initial version v1
         createVersionSnapshot(sop, userId, "初始版本");
+        return sop;
     }
 
     @Override
@@ -65,8 +70,31 @@ public class SopServiceImpl implements SopService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id, Long userId) {
         Sop sop = getById(id, userId);
+
+        // 1. Delete execution step records + exceptions (via execution ids)
+        List<Long> executionIds = executionMapper.selectList(
+                new LambdaQueryWrapper<SopExecution>().eq(SopExecution::getSopId, id)
+        ).stream().map(SopExecution::getId).collect(java.util.stream.Collectors.toList());
+        if (!executionIds.isEmpty()) {
+            stepRecordMapper.delete(
+                    new LambdaQueryWrapper<ExecutionStepRecord>().in(ExecutionStepRecord::getExecutionId, executionIds)
+            );
+            exceptionMapper.delete(
+                    new LambdaQueryWrapper<SopException>().in(SopException::getExecutionId, executionIds)
+            );
+        }
+
+        // 2. Delete related records (direct sopId FK)
+        executionMapper.delete(new LambdaQueryWrapper<SopExecution>().eq(SopExecution::getSopId, id));
+        executionStatMapper.delete(new LambdaQueryWrapper<ExecutionStat>().eq(ExecutionStat::getSopId, id));
+        versionMapper.delete(new LambdaQueryWrapper<SopVersion>().eq(SopVersion::getSopId, id));
+        scheduleTaskMapper.delete(new LambdaQueryWrapper<ScheduleTask>().eq(ScheduleTask::getSopId, id));
+        draftMapper.delete(new LambdaQueryWrapper<SopDraft>().eq(SopDraft::getSopId, id));
+
+        // 3. Finally delete the SOP itself
         sopMapper.deleteById(id);
     }
 
@@ -82,7 +110,6 @@ public class SopServiceImpl implements SopService {
         Sop sop = getById(id, userId);
         sop.setStatus("published");
         sop.setPublishedAt(LocalDateTime.now());
-        // Increment version on each publish
         sop.setVersion(sop.getVersion() == null ? 1 : sop.getVersion() + 1);
         sopMapper.updateById(sop);
 
@@ -112,7 +139,7 @@ public class SopServiceImpl implements SopService {
     private void fillSop(Sop sop, SopRequest req) {
         sop.setTitle(req.getTitle());
         sop.setDescription(req.getDescription());
-        sop.setCategory(req.getCategory() != null ? req.getCategory() : "其他");
+        sop.setCategory(req.getCategory() != null ? req.getCategory() : "daily");
         try {
             sop.setContent(objectMapper.writeValueAsString(req.getContent()));
             sop.setTags(objectMapper.writeValueAsString(req.getTags()));

@@ -15,6 +15,10 @@
       <div class="stat-label">待执行</div>
     </div>
     <div class="stat-card">
+      <div class="stat-num orange">{{ inProgressExec }}</div>
+      <div class="stat-label">执行中</div>
+    </div>
+    <div class="stat-card">
       <div class="stat-num green">{{ completedRate }}%</div>
       <div class="stat-label">完成率</div>
     </div>
@@ -27,7 +31,7 @@
 
   <div class="sop-grid" v-if="sops.length">
     <div v-for="sop in sops" :key="sop.id" class="sop-card">
-      <div class="sop-category">{{ sop.category }}</div>
+      <div class="sop-category">{{ ({daily:'日SOP',weekly:'周SOP',monthly:'月SOP',yearly:'年SOP'} as any)[sop.category] || sop.category }}</div>
       <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
       <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
       <div class="sop-footer">
@@ -36,7 +40,8 @@
       </div>
       <div class="sop-actions">
         <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
-        <button class="btn-xs btn-primary-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
+        <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
+        <button class="btn-xs btn-start" v-if="sop.status === 'published'" @click.stop="router.push('/execution')">▶️ 去执行</button>
       </div>
     </div>
   </div>
@@ -60,6 +65,7 @@ const user = computed(() => authStore.userInfo)
 const sops = ref<any[]>([])
 const total = ref(0)
 const pendingExec = ref(0)
+const inProgressExec = ref(0)
 const completedRate = ref(0)
 
 const greeting = computed(() => {
@@ -83,12 +89,13 @@ onMounted(async () => {
     total.value = res.data.total || 0
   }
   try {
-    const execRes: any = await request.get('/execution/my')
-    if (execRes.code === 200) {
-      const execs = execRes.data || []
-      pendingExec.value = execs.filter((e: any) => e.status === 'in_progress' || e.status === 'pending').length
-      const completed = execs.filter((e: any) => e.status === 'completed').length
-      completedRate.value = execs.length ? Math.round((completed / execs.length) * 100) : 0
+    const instRes: any = await request.get('/instance/my')
+    if (instRes.code === 200) {
+      const insts = instRes.data || []
+      pendingExec.value = insts.filter((e: any) => e.status === 'pending').length
+      inProgressExec.value = insts.filter((e: any) => e.status === 'in_progress').length
+      const completed = insts.filter((e: any) => e.status === 'completed').length
+      completedRate.value = insts.length ? Math.round((completed / insts.length) * 100) : 0
     }
   } catch {}
 })
@@ -103,6 +110,7 @@ onMounted(async () => {
 .stat-card { flex: 1; background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .stat-num { font-size: 28px; font-weight: 700; color: #333; }
 .stat-num.blue { color: #5B7FFF; }
+.stat-num.orange { color: #FA8C16; }
 .stat-num.green { color: #52C41A; }
 .stat-label { font-size: 13px; color: #999; margin-top: 4px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -126,4 +134,6 @@ onMounted(async () => {
 .btn-xs:hover { background: #F5F7FA; }
 .btn-primary-xs { background: #E8ECFF; color: #5B7FFF; border-color: #D0D8FF; }
 .btn-primary-xs:hover { background: #D0D8FF; }
+.btn-start { background: #E8F3FF; color: #5B7FFF; border-color: #D0D8FF; }
+.btn-start:hover { background: #D0D8FF; }
 </style>

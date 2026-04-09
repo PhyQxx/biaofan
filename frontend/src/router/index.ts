@@ -13,6 +13,12 @@ const router = createRouter({
       component: () => import('@/views/execution/ExecutionDoView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/instance/:id',
+      name: 'InstanceDo',
+      component: () => import('@/views/execution/InstanceDoView.vue'),
+      meta: { requiresAuth: true }
+    },
 
     // Layout-wrapped routes
     {

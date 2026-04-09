@@ -36,12 +36,12 @@ public class SopController {
     }
 
     @PostMapping
-    public Result<Void> create(
+    public Result<Sop> create(
             @AuthenticationPrincipal Long userId,
             @RequestBody SopRequest req) {
         try {
-            sopService.create(userId, req);
-            return Result.ok();
+            Sop sop = sopService.create(userId, req);
+            return Result.ok(sop);
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());
         }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.SopExecutionService;
+import com.biaofan.service.NotificationDispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,17 +19,20 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     private final SopMapper sopMapper;
     private final ExecutionStepRecordMapper stepRecordMapper;
     private final NotificationMapper notificationMapper;
+    private final NotificationDispatcher notificationDispatcher;
     private final ObjectMapper objectMapper;
 
     public SopExecutionServiceImpl(
             SopExecutionMapper executionMapper,
             SopMapper sopMapper,
             ExecutionStepRecordMapper stepRecordMapper,
-            NotificationMapper notificationMapper) {
+            NotificationMapper notificationMapper,
+            NotificationDispatcher notificationDispatcher) {
         this.executionMapper = executionMapper;
         this.sopMapper = sopMapper;
         this.stepRecordMapper = stepRecordMapper;
         this.notificationMapper = notificationMapper;
+        this.notificationDispatcher = notificationDispatcher;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -36,8 +40,12 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Transactional
     public SopExecution startExecution(Long userId, Long sopId) {
         Sop sop = sopMapper.selectById(sopId);
-        if (sop == null) throw new RuntimeException("SOP不存在");
-        if (!"published".equals(sop.getStatus())) throw new RuntimeException("SOP未发布");
+        if (sop == null) {
+            throw new RuntimeException("SOP不存在");
+        }
+        if (!"published".equals(sop.getStatus())) {
+            throw new RuntimeException("SOP未发布");
+        }
 
         SopExecution ongoing = executionMapper.selectOne(
             new LambdaQueryWrapper<SopExecution>()
@@ -45,20 +53,21 @@ public class SopExecutionServiceImpl implements SopExecutionService {
                 .eq(SopExecution::getSopId, sopId)
                 .in(SopExecution::getStatus, "pending", "in_progress")
         );
-        if (ongoing != null) return ongoing;
+        if (ongoing != null) {
+            return ongoing;
+        }
 
         SopExecution e = new SopExecution();
         e.setSopId(sopId);
         e.setSopVersion(sop.getVersion());
         e.setExecutorId(userId);
-        e.setStatus("in_progress");
-        e.setCurrentStep(1);
+        e.setStatus("pending");
+        e.setCurrentStep(0);
         e.setStartedAt(LocalDateTime.now());
         e.setCreatedAt(LocalDateTime.now());
         e.setUpdatedAt(LocalDateTime.now());
         executionMapper.insert(e);
 
-        // 通知：开始执行提醒
         Notification notif = new Notification();
         notif.setUserId(userId);
         notif.setType("execution_started");
@@ -69,6 +78,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         notif.setIsRead(0);
         notif.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(notif);
+        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
 
         return e;
     }
@@ -76,14 +86,20 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
-                                 Map<String, Object> checkData, String attachments) {
+                                 Map<String, Object> checkData) {
         SopExecution exec = getExecution(executionId);
-        if (!exec.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
-        if (!"in_progress".equals(exec.getStatus())) throw new RuntimeException("执行状态不允许操作");
+        if (!exec.getExecutorId().equals(userId)) {
+            throw new RuntimeException("无权操作");
+        }
+        if (!"in_progress".equals(exec.getStatus())) {
+            throw new RuntimeException("执行状态不允许操作");
+        }
 
         Sop sop = sopMapper.selectById(exec.getSopId());
         List<?> steps = parseJson(sop.getContent(), List.class);
-        if (steps == null) steps = Collections.emptyList();
+        if (steps == null) {
+            steps = Collections.emptyList();
+        }
 
         ExecutionStepRecord record = new ExecutionStepRecord();
         record.setExecutionId(executionId);
@@ -98,9 +114,10 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         if (checkData != null) {
             try {
                 record.setCheckData(objectMapper.writeValueAsString(checkData));
-            } catch (Exception ex) { record.setCheckData("{}"); }
+            } catch (Exception ex) {
+                record.setCheckData("{}");
+            }
         }
-        record.setAttachments(attachments);
         stepRecordMapper.insert(record);
 
         boolean completed = stepIndex >= steps.size();
@@ -108,7 +125,6 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             exec.setStatus("completed");
             exec.setCompletedAt(LocalDateTime.now());
             exec.setCurrentStep(stepIndex);
-            // 通知：SOP 执行完成
             Notification notif = new Notification();
             notif.setUserId(userId);
             notif.setType("execution_completed");
@@ -119,9 +135,9 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             notif.setIsRead(0);
             notif.setCreatedAt(LocalDateTime.now());
             notificationMapper.insert(notif);
+            notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
         } else {
             exec.setCurrentStep(stepIndex + 1);
-            // 通知：步骤完成提醒
             Notification notif = new Notification();
             notif.setUserId(userId);
             notif.setType("step_completed");
@@ -132,6 +148,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             notif.setIsRead(0);
             notif.setCreatedAt(LocalDateTime.now());
             notificationMapper.insert(notif);
+            notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
         }
         exec.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(exec);
@@ -140,15 +157,33 @@ public class SopExecutionServiceImpl implements SopExecutionService {
 
     @Override
     @Transactional
+    public void activateExecution(Long userId, Long executionId) {
+        SopExecution exec = getExecution(executionId);
+        if (!exec.getExecutorId().equals(userId)) {
+            throw new RuntimeException("无权操作");
+        }
+        if (!"pending".equals(exec.getStatus())) {
+            return;
+        }
+        exec.setStatus("in_progress");
+        exec.setCurrentStep(1);
+        exec.setStartedAt(LocalDateTime.now());
+        exec.setUpdatedAt(LocalDateTime.now());
+        executionMapper.updateById(exec);
+    }
+
+    @Override
+    @Transactional
     public void finishExecution(Long userId, Long executionId) {
         SopExecution exec = getExecution(executionId);
-        if (!exec.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if (!exec.getExecutorId().equals(userId)) {
+            throw new RuntimeException("无权操作");
+        }
         exec.setStatus("completed");
         exec.setCompletedAt(LocalDateTime.now());
         exec.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(exec);
 
-        // 通知：SOP 强制结束
         Sop sop = sopMapper.selectById(exec.getSopId());
         Notification notif = new Notification();
         notif.setUserId(userId);
@@ -160,6 +195,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         notif.setIsRead(0);
         notif.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(notif);
+        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
     }
 
     @Override
@@ -176,7 +212,9 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Override
     public SopExecution getExecution(Long executionId) {
         SopExecution e = executionMapper.selectById(executionId);
-        if (e == null) throw new RuntimeException("执行记录不存在");
+        if (e == null) {
+            throw new RuntimeException("执行记录不存在");
+        }
         return e;
     }
 
@@ -199,11 +237,16 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         SopExecution e = getExecution(executionId);
         Sop sop = sopMapper.selectById(e.getSopId());
         List<?> steps = parseJson(sop.getContent(), List.class);
-        return steps != null ? steps.size() : 0;
+        if (steps != null) {
+            return steps.size();
+        }
+        return 0;
     }
 
     private <T> T parseJson(String json, Class<T> clazz) {
-        if (json == null || json.isBlank()) return null;
+        if (json == null || json.isBlank()) {
+            return null;
+        }
         try {
             return objectMapper.readValue(json, clazz);
         } catch (Exception e) {

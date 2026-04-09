@@ -335,6 +335,13 @@ onMounted(async () => {
       execution.value = execRes.data
       execution.value.sopTitle = ''
       currentStep.value = execution.value.currentStep || 1
+
+      if (execution.value.status === 'pending') {
+        await request.post(`/execution/${executionId}/activate`)
+        execution.value.status = 'in_progress'
+        execution.value.currentStep = 1
+        currentStep.value = 1
+      }
     }
 
     if (sopRes?.code === 200) {

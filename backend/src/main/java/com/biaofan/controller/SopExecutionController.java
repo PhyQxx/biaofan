@@ -61,6 +61,21 @@ public class SopExecutionController {
      * POST /api/sop/executions/:execId/steps/:stepIndex/complete
      * 转发到: POST /api/execution/:execId/step/:stepIndex
      */
+    @PostMapping("/{execId}/activate")
+    public Result<Void> activate(
+            @PathVariable Long execId,
+            @AuthenticationPrincipal Long userId) {
+        if (userId == null) {
+            return Result.fail(401, "未登录");
+        }
+        try {
+            executionService.activateExecution(userId, execId);
+            return Result.ok();
+        } catch (RuntimeException ex) {
+            return Result.fail(400, ex.getMessage());
+        }
+    }
+
     @PostMapping("/{execId}/steps/{stepIndex}/complete")
     public Result<Map<String, Object>> completeStep(
             @PathVariable Long execId,
@@ -75,10 +90,7 @@ public class SopExecutionController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
-            String attachments = body != null && body.get("attachments") != null
-                ? body.get("attachments").toString() : null;
-
-            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData, attachments);
+            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(execId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());

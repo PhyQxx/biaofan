@@ -15,9 +15,8 @@ public class ExecutionStepRecord {
     private Long executionId;
     private Integer stepIndex;
     private String stepTitle;
-    @TableField("check_data")
-    private String checkData;  // JSON - check item values
-    private String attachments; // JSON - uploaded files
+    @TableField("check_items")
+    private String checkData;
     private LocalDateTime completedAt;
     private String notes;
 }

@@ -10,8 +10,9 @@ import java.util.Map;
 public interface SopExecutionService {
     SopExecution startExecution(Long userId, Long sopId);
     boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
-                         Map<String, Object> checkData, String attachments);
+                         Map<String, Object> checkData);
     void finishExecution(Long userId, Long executionId);
+    void activateExecution(Long userId, Long executionId);
     List<SopExecution> getMyExecutions(Long userId, String status);
     SopExecution getExecution(Long executionId);
     Sop getSopWithSteps(Long sopId);

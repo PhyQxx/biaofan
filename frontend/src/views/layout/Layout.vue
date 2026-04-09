@@ -15,7 +15,18 @@
           <span class="bell-icon">🔔</span>
           <span class="notif-badge" v-if="unreadNotif > 0">{{ unreadNotif > 9 ? '9+' : unreadNotif }}</span>
         </div>
-        <div class="avatar" @click="handleLogout">{{ userInitial }}</div>
+        <div class="avatar-wrapper">
+          <div class="avatar" @click="showUserMenu = !showUserMenu">{{ userInitial }}</div>
+          <div class="user-menu" v-if="showUserMenu" @mouseleave="showUserMenu = false">
+            <div class="menu-item" @click="showUserMenu = false; router.push('/profile')">
+              <span>👤</span> 个人中心
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item menu-item-danger" @click="showUserMenu = false; handleLogout()">
+              <span>🚪</span> 退出登录
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -66,18 +77,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const notifStore = useNotificationStore()
+const showUserMenu = ref(false)
 
 const user = computed(() => authStore.userInfo)
 const isAdmin = computed(() => user.value?.username === 'admin')
 const userInitial = computed(() => user.value?.username?.charAt(0)?.toUpperCase() || 'U')
-const unreadNotif = computed(() => 0) // fallback if store has no unreadNotif
+const unreadNotif = computed(() => notifStore.unreadCount)
 const isDarkRoute = computed(() =>
   route.path.startsWith('/profile') ||
   route.path.startsWith('/leaderboard') ||
@@ -94,6 +108,9 @@ function handleLogout() {
   authStore.logout()
   router.push('/login')
 }
+
+onMounted(notifStore.fetchUnreadCount)
+watch(() => route.path, notifStore.fetchUnreadCount)
 </script>
 
 <style scoped>
@@ -247,6 +264,51 @@ function handleLogout() {
 
 .avatar:hover {
   opacity: 0.85;
+}
+
+.avatar-wrapper {
+  position: relative;
+}
+
+.user-menu {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  min-width: 140px;
+  padding: 6px 0;
+  z-index: 200;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-item:hover {
+  background: #F5F7FA;
+}
+
+.menu-item-danger {
+  color: #FF4D4F;
+}
+
+.menu-item-danger:hover {
+  background: #FFF1F0;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #F0F0F0;
+  margin: 4px 0;
 }
 
 /* Body */

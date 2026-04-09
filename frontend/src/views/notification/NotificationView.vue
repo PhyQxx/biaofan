@@ -22,7 +22,7 @@
       <div class="notif-body">
         <div class="notif-header">
           <div class="notif-title">{{ n.title }}</div>
-          <div class="notif-time">{{ formatDate(n.createTime) }}</div>
+          <div class="notif-time">{{ formatDate(n.createdAt) }}</div>
         </div>
         <div class="notif-content" v-if="n.content">{{ n.content }}</div>
         <div class="notif-tag" :class="typeClass(n.type)">{{ typeLabel(n.type) }}</div>
@@ -41,9 +41,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useNotificationStore } from '@/stores/notification'
 import request from '@/api'
 
 const router = useRouter()
+const notifStore = useNotificationStore()
 const notifications = ref<any[]>([])
 const filter = ref<number | null>(null)
 const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length)
@@ -91,6 +93,7 @@ const handleClick = async (n: any) => {
   if (!n.isRead) {
     await request.put(`/notifications/${n.id}/read`)
     n.isRead = 1
+    notifStore.fetchUnreadCount()
   }
   if (n.sourceType === 'execution' && n.sourceId) {
     router.push(`/execution/${n.sourceId}`)
@@ -102,6 +105,7 @@ const handleClick = async (n: any) => {
 const markAllRead = async () => {
   await request.put('/notifications/read-all')
   for (const n of notifications.value) n.isRead = 1
+  notifStore.fetchUnreadCount()
   ElMessage.success('已全部标记为已读')
 }
 

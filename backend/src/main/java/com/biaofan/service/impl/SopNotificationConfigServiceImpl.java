@@ -26,7 +26,7 @@ public class SopNotificationConfigServiceImpl implements SopNotificationConfigSe
 
     @Override
     public SopNotificationConfig saveConfig(Long userId, String platform,
-            String webhookUrl, String secret, String botName, String triggerConfig) {
+            String webhookUrl, String secret, String botName, String triggerConfig, String email) {
         SopNotificationConfig existing = mapper.selectOne(new LambdaQueryWrapper<SopNotificationConfig>()
             .eq(SopNotificationConfig::getUserId, userId)
             .eq(SopNotificationConfig::getPlatform, platform)
@@ -37,6 +37,7 @@ public class SopNotificationConfigServiceImpl implements SopNotificationConfigSe
             existing.setSecret(secret);
             existing.setBotName(botName);
             existing.setTriggerConfig(triggerConfig);
+            if (email != null) existing.setEmail(email);
             existing.setUpdatedAt(LocalDateTime.now());
             mapper.updateById(existing);
             return existing;
@@ -49,6 +50,7 @@ public class SopNotificationConfigServiceImpl implements SopNotificationConfigSe
             c.setBotName(botName);
             c.setEnabled(true);
             c.setTriggerConfig(triggerConfig);
+            c.setEmail(email);
             c.setCreatedAt(LocalDateTime.now());
             c.setUpdatedAt(LocalDateTime.now());
             mapper.insert(c);

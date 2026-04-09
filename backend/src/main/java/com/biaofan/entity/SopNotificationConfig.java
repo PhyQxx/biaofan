@@ -17,6 +17,7 @@ public class SopNotificationConfig {
     private String botName;
     private Boolean enabled;      // true=启用 false=禁用
     private String triggerConfig; // JSON: which events to trigger
+    private String email;
     private Long userId;          // null means global config
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -6,6 +6,7 @@
     </div>
     <div class="topbar-right">
       <button v-if="isEdit" class="btn-versions" @click="router.push(`/sop/${route.params.id}/versions`)">📋 版本历史</button>
+      <button v-if="isEdit" class="btn-delete" @click="handleDelete">🗑 删除</button>
       <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
       <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
     </div>
@@ -17,11 +18,10 @@
         <div class="meta-item">
           <label>分类</label>
           <select v-model="form.category" class="meta-select">
-            <option value="工作">工作</option>
-            <option value="生活">生活</option>
-            <option value="学习">学习</option>
-            <option value="健康">健康</option>
-            <option value="其他">其他</option>
+            <option value="daily">日 SOP</option>
+            <option value="weekly">周 SOP</option>
+            <option value="monthly">月 SOP</option>
+            <option value="yearly">年 SOP</option>
           </select>
         </div>
         <div class="meta-item">
@@ -162,7 +162,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSopStore } from '@/stores/sop'
 
 const route = useRoute()
@@ -175,7 +175,7 @@ const tagsInput = ref('')
 const form = reactive({
   title: '',
   description: '',
-  category: '工作',
+  category: 'daily',
   content: [] as { title: string; description: string; duration: number }[],
   status: 'draft',
 })
@@ -309,6 +309,23 @@ const removeStep = (index: number) => {
   form.content.splice(index, 1)
 }
 
+const handleDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除该 SOP 吗？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await sopStore.deleteSop(Number(route.params.id))
+    ElMessage.success('SOP 已删除')
+    router.push('/')
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.message || '删除失败')
+    }
+  }
+}
+
 const handleSave = async (status: string) => {
   if (!form.title.trim()) {
     ElMessage.warning('请输入标题')
@@ -318,19 +335,30 @@ const handleSave = async (status: string) => {
   const data = {
     ...form,
     tags,
-    status,
+    status: 'draft',
   }
   try {
+    let sopId = Number(route.params.id)
     if (isEdit) {
-      await sopStore.updateSop(Number(route.params.id), data)
-      ElMessage.success('保存成功')
+      await sopStore.updateSop(sopId, data)
     } else {
-      await sopStore.createSop(data)
-      ElMessage.success('创建成功')
+      const createRes: any = await sopStore.createSop(data)
+      if (createRes?.code === 200 && createRes.data?.id) {
+        sopId = createRes.data.id
+      } else if (createRes?.data) {
+        sopId = Number(createRes.data)
+      }
+    }
+
+    if (status === 'published' && sopId) {
+      await sopStore.publishSop(sopId)
+      ElMessage.success('发布成功')
+    } else {
+      ElMessage.success(isEdit ? '保存成功' : '创建成功')
     }
     router.push('/')
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e.message || '操作失败')
   }
 }
 
@@ -341,7 +369,7 @@ onMounted(async () => {
       const sop = res.data
       form.title = sop.title
       form.description = sop.description || ''
-      form.category = sop.category || '工作'
+      form.category = sop.category || 'daily'
       form.content = (sop.content && sop.content !== 'null' && sop.content !== 'undefined') ? JSON.parse(sop.content) : []
       tagsInput.value = (sop.tags && sop.tags !== 'null' && sop.tags !== 'undefined') ? JSON.parse(sop.tags).join(',') : ''
     }
@@ -390,6 +418,13 @@ onMounted(async () => {
   font-size: 13px; font-weight: 500; cursor: pointer;
 }
 .btn-versions:hover { background: #E8ECFF; }
+.btn-delete {
+  height: 36px; padding: 0 14px;
+  background: #fff; color: #FF4D4F;
+  border: 1.5px solid #FF4D4F; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn-delete:hover { background: #FFF1F0; }
 .editor-body { max-width: 860px; margin: 24px auto; padding: 0 24px; }
 .meta-row { display: flex; gap: 16px; margin-bottom: 16px; }
 .meta-item { flex: 1; }

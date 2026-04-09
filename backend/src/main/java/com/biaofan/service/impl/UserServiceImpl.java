@@ -59,4 +59,32 @@ public class UserServiceImpl implements UserService {
             new LambdaQueryWrapper<User>().eq(User::getPhone, phone)
         );
     }
+
+    @Override
+    public void updateProfile(Long userId, String username) {
+        User user = userMapper.selectById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+        if (username == null || username.isBlank()) throw new RuntimeException("用户名不能为空");
+        user.setUsername(username);
+        userMapper.updateById(user);
+    }
+
+    @Override
+    public void updatePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) throw new RuntimeException("旧密码错误");
+        if (newPassword == null || newPassword.length() < 6) throw new RuntimeException("新密码至少6位");
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+    }
+
+    @Override
+    public void updatePhone(Long userId, String phone) {
+        User user = userMapper.selectById(userId);
+        if (user == null) throw new RuntimeException("用户不存在");
+        if (phone == null || !phone.matches("^1[3-9]\\d{9}$")) throw new RuntimeException("手机号格式不正确");
+        user.setPhone(phone);
+        userMapper.updateById(user);
+    }
 }

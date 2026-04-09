@@ -31,16 +31,14 @@ public class SopNotificationConfigController {
     public Result<SopNotificationConfig> save(
             @AuthenticationPrincipal Long userId,
             @RequestBody SaveRequest req) {
-        if (req.getWebhookUrl() == null || req.getWebhookUrl().isBlank()) {
-            return Result.fail("webhookUrl 不能为空");
-        }
         SopNotificationConfig config = configService.saveConfig(
             userId,
             req.getPlatform() != null ? req.getPlatform() : "feishu",
             req.getWebhookUrl(),
             req.getSecret(),
             req.getBotName(),
-            req.getTriggerConfig()
+            req.getTriggerConfig(),
+            req.getEmail()
         );
         return Result.ok(config);
     }
@@ -71,12 +69,14 @@ public class SopNotificationConfigController {
         private String secret;
         private String botName;
         private String triggerConfig;
+        private String email;
 
         public String getPlatform() { return platform; }
         public String getWebhookUrl() { return webhookUrl; }
         public String getSecret() { return secret; }
         public String getBotName() { return botName; }
         public String getTriggerConfig() { return triggerConfig; }
+        public String getEmail() { return email; }
     }
 
     public static class ToggleRequest {

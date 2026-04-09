@@ -7,7 +7,7 @@ import com.biaofan.dto.SopRequest;
 public interface SopService {
     IPage<Sop> getMySops(Long userId, int page, int size);
     Sop getById(Long id, Long userId);
-    void create(Long userId, SopRequest req);
+    Sop create(Long userId, SopRequest req);
     void update(Long id, Long userId, SopRequest req);
     void delete(Long id, Long userId);
     void publish(Long id, Long userId);

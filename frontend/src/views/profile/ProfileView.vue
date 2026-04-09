@@ -131,6 +131,72 @@
       </div>
     </div>
 
+    <!-- Tab: 设置 -->
+    <div v-if="!loading && activeTab === 'settings'">
+      <!-- 账号设置 -->
+      <div class="settings-card">
+        <div class="settings-title">🔑 账号设置</div>
+        <div class="settings-group">
+          <label class="settings-label">用户名</label>
+          <div class="settings-row">
+            <input v-model="settingsForm.username" class="settings-input" placeholder="输入用户名" />
+            <button class="settings-btn" @click="saveProfile">保存</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">修改密码</label>
+          <input v-model="settingsForm.oldPassword" type="password" class="settings-input" placeholder="旧密码" />
+          <input v-model="settingsForm.newPassword" type="password" class="settings-input" placeholder="新密码（至少6位）" style="margin-top:8px" />
+          <input v-model="settingsForm.confirmPassword" type="password" class="settings-input" placeholder="确认新密码" style="margin-top:8px" />
+          <button class="settings-btn" style="margin-top:10px" @click="savePassword">修改密码</button>
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">手机号</label>
+          <div class="settings-row">
+            <input v-model="settingsForm.phone" class="settings-input" placeholder="输入手机号" />
+            <button class="settings-btn" @click="savePhone">保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 通知设置 -->
+      <div class="settings-card" style="margin-top:16px">
+        <div class="settings-title">🔔 通知设置</div>
+        <div class="settings-group">
+          <label class="settings-label">Webhook 通知</label>
+          <select v-model="notifForm.platform" class="settings-input">
+            <option value="feishu">飞书</option>
+            <option value="dingtalk">钉钉</option>
+          </select>
+          <input v-model="notifForm.webhookUrl" class="settings-input" placeholder="Webhook URL" style="margin-top:8px" />
+          <input v-model="notifForm.secret" class="settings-input" placeholder="Secret（选填）" style="margin-top:8px" />
+          <input v-model="notifForm.botName" class="settings-input" placeholder="Bot 名称（选填）" style="margin-top:8px" />
+          <div class="settings-toggle-row" style="margin-top:10px">
+            <span class="settings-label" style="margin:0">启用 Webhook</span>
+            <button class="settings-toggle" :class="{ active: notifForm.webhookEnabled }" @click="notifForm.webhookEnabled = !notifForm.webhookEnabled">
+              <span class="settings-toggle-dot"></span>
+            </button>
+          </div>
+          <button class="settings-btn" style="margin-top:12px" @click="saveWebhook">保存 Webhook</button>
+        </div>
+        <div class="settings-divider"></div>
+        <div class="settings-group">
+          <label class="settings-label">邮箱通知</label>
+          <div class="settings-row">
+            <input v-model="notifForm.email" class="settings-input" placeholder="输入邮箱地址" />
+            <button class="settings-btn" @click="saveEmail">保存</button>
+          </div>
+          <div class="settings-toggle-row" style="margin-top:10px">
+            <span class="settings-label" style="margin:0">启用邮箱通知</span>
+            <button class="settings-toggle" :class="{ active: notifForm.emailEnabled }" @click="notifForm.emailEnabled = !notifForm.emailEnabled">
+              <span class="settings-toggle-dot"></span>
+            </button>
+          </div>
+          <button class="settings-btn" style="margin-top:12px" @click="saveEmail">保存邮箱设置</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Badge Modal -->
     <BadgeModal
       v-if="selectedBadge"
@@ -175,9 +241,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import request from '@/api'
 import { gamificationApi, type ProfileDTO, type Badge, type StoreProduct, type ScoreHistory, type RedeemResult } from '@/api/gamification'
 
 // Components
@@ -198,6 +265,7 @@ const tabs = [
   { key: 'growth', label: '成长', icon: '📈' },
   { key: 'history', label: '积分明细', icon: '💰' },
   { key: 'store', label: '积分商城', icon: '🎁' },
+  { key: 'settings', label: '设置', icon: '⚙️' },
 ]
 const categories = [
   { key: '', label: '全部', icon: '📦' },
@@ -242,6 +310,7 @@ onMounted(async () => {
   await loadProfile()
   loadBadges()
   loadHistory()
+  loadSettings()
 })
 
 async function loadProfile() {
@@ -309,6 +378,105 @@ function rpStyle(i: number) {
   const x = Math.cos((angle * Math.PI) / 180) * r
   const y = Math.sin((angle * Math.PI) / 180) * r
   return { transform: `translate(${x}px, ${y}px)`, animationDelay: `${(i / 8) * 0.4}s` }
+}
+
+const settingsForm = reactive({
+  username: '',
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+  phone: '',
+})
+
+const notifForm = reactive({
+  platform: 'feishu',
+  webhookUrl: '',
+  secret: '',
+  botName: '',
+  webhookEnabled: false,
+  email: '',
+  emailEnabled: false,
+})
+
+async function loadSettings() {
+  try {
+    const userRes: any = await request.get('/auth/me')
+    if (userRes.code === 200 && userRes.data) {
+      settingsForm.username = userRes.data.username || ''
+      settingsForm.phone = userRes.data.phone || ''
+    }
+  } catch {}
+  try {
+    const notifRes: any = await request.get('/notification-config')
+    if (notifRes.code === 200 && notifRes.data) {
+      const c = notifRes.data
+      notifForm.platform = c.platform || 'feishu'
+      notifForm.webhookUrl = c.webhookUrl || ''
+      notifForm.secret = c.secret || ''
+      notifForm.botName = c.botName || ''
+      notifForm.webhookEnabled = !!c.enabled
+      notifForm.email = c.email || ''
+      notifForm.emailEnabled = !!c.enabled && !!c.email
+    }
+  } catch {}
+}
+
+async function saveProfile() {
+  if (!settingsForm.username.trim()) return ElMessage.warning('用户名不能为空')
+  try {
+    const res: any = await request.put('/user/profile', { username: settingsForm.username })
+    if (res.code === 200) { ElMessage.success('用户名已更新'); authStore.fetchMe() }
+    else ElMessage.error(res.message || '更新失败')
+  } catch (e: any) { ElMessage.error(e.message || '更新失败') }
+}
+
+async function savePassword() {
+  if (!settingsForm.oldPassword || !settingsForm.newPassword) return ElMessage.warning('请填写完整')
+  if (settingsForm.newPassword.length < 6) return ElMessage.warning('新密码至少6位')
+  if (settingsForm.newPassword !== settingsForm.confirmPassword) return ElMessage.warning('两次密码不一致')
+  try {
+    const res: any = await request.put('/user/password', { oldPassword: settingsForm.oldPassword, newPassword: settingsForm.newPassword })
+    if (res.code === 200) { ElMessage.success('密码已更新'); settingsForm.oldPassword = ''; settingsForm.newPassword = ''; settingsForm.confirmPassword = '' }
+    else ElMessage.error(res.message || '修改失败')
+  } catch (e: any) { ElMessage.error(e.message || '修改失败') }
+}
+
+async function savePhone() {
+  if (!settingsForm.phone.match(/^1[3-9]\d{9}$/)) return ElMessage.warning('手机号格式不正确')
+  try {
+    const res: any = await request.put('/user/phone', { phone: settingsForm.phone })
+    if (res.code === 200) { ElMessage.success('手机号已更新'); authStore.fetchMe() }
+    else ElMessage.error(res.message || '更新失败')
+  } catch (e: any) { ElMessage.error(e.message || '更新失败') }
+}
+
+async function saveWebhook() {
+  if (!notifForm.webhookUrl) return ElMessage.warning('请填写 Webhook URL')
+  try {
+    const res: any = await request.post('/notification-config/save', {
+      platform: notifForm.platform,
+      webhookUrl: notifForm.webhookUrl,
+      secret: notifForm.secret || null,
+      botName: notifForm.botName || null,
+    })
+    if (res.code === 200) ElMessage.success('Webhook 已保存')
+    else ElMessage.error(res.message || '保存失败')
+  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
+}
+
+async function saveEmail() {
+  if (notifForm.email && !notifForm.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return ElMessage.warning('邮箱格式不正确')
+  try {
+    const res: any = await request.post('/notification-config/save', {
+      platform: notifForm.platform,
+      webhookUrl: notifForm.webhookUrl || null,
+      secret: notifForm.secret || null,
+      botName: notifForm.botName || null,
+      email: notifForm.email,
+    })
+    if (res.code === 200) ElMessage.success('邮箱已保存')
+    else ElMessage.error(res.message || '保存失败')
+  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
 }
 </script>
 
@@ -460,4 +628,49 @@ function rpStyle(i: number) {
   .page-header { flex-direction: column; align-items: flex-start; }
   .store-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Settings */
+.settings-card {
+  background: #1a1d27; border: 1px solid #2d3348; border-radius: 14px; padding: 24px;
+}
+.settings-title {
+  font-size: 16px; font-weight: 700; color: #e8eaf0; margin-bottom: 20px;
+}
+.settings-group { margin-bottom: 20px; }
+.settings-group:last-child { margin-bottom: 0; }
+.settings-label {
+  display: block; font-size: 13px; font-weight: 600; color: #8b90a0; margin-bottom: 8px;
+}
+.settings-input {
+  width: 100%; height: 40px; padding: 0 14px;
+  background: #22263a; border: 1px solid #2d3348; border-radius: 8px;
+  color: #e8eaf0; font-size: 14px; outline: none; box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.settings-input:focus { border-color: #5b7fff; }
+.settings-input::placeholder { color: #555a6e; }
+select.settings-input { cursor: pointer; }
+select.settings-input option { background: #1a1d27; color: #e8eaf0; }
+.settings-row { display: flex; gap: 10px; }
+.settings-row .settings-input { flex: 1; }
+.settings-btn {
+  height: 40px; padding: 0 20px; background: #5b7fff; color: white;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
+}
+.settings-btn:hover { background: #4a6fee; }
+.settings-divider { height: 1px; background: #2d3348; margin: 20px 0; }
+.settings-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.settings-toggle {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: #2d3348; border: none; cursor: pointer; position: relative;
+  transition: background 0.2s;
+}
+.settings-toggle.active { background: #52C41A; }
+.settings-toggle-dot {
+  width: 18px; height: 18px; background: #fff; border-radius: 50%;
+  position: absolute; top: 3px; left: 3px; transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.settings-toggle.active .settings-toggle-dot { left: 23px; }
 </style>
