@@ -8,7 +8,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MybatisPlusConfig {
+<<<<<<< HEAD
 
+=======
+>>>>>>> b91a05891f0b9d8b692ac3ae2f52b0b0b6d5c5c8
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
