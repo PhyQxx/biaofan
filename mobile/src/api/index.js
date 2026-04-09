@@ -119,6 +119,34 @@ export default {
     }
   },
 
+  // ========== 周期实例相关 ==========
+  instance: {
+    myInstances(status) {
+      const params = {}
+      if (status) params.status = status
+      return request({ url: '/api/instance/my', data: params })
+    },
+    detail(id) {
+      return request({ url: `/api/instance/${id}` })
+    },
+    activate(id) {
+      return request({ url: `/api/instance/${id}/activate`, method: 'POST' })
+    },
+    completeStep(id, stepIndex, data) {
+      return request({ url: `/api/instance/${id}/steps/${stepIndex}/complete`, method: 'POST', data })
+    },
+    finish(id) {
+      return request({ url: `/api/instance/${id}/finish`, method: 'POST' })
+    }
+  },
+
+  // ========== SOP 相关 ==========
+  sop: {
+    detail(id) {
+      return request({ url: `/api/sop/${id}` })
+    }
+  },
+
   // ========== 离线草稿同步 ==========
   draft: {
     // 同步离线草稿

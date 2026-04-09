@@ -83,6 +83,7 @@
 <script>
 import { useAuthStore } from '../../store/auth'
 import { useDraftStore } from '../../store/draft'
+import api from '../../api'
 
 export default {
   data() {
@@ -102,15 +103,21 @@ export default {
   methods: {
     loadUserInfo() {
       const auth = useAuthStore()
-      const stored = uni.getStorageSync('userInfo')
-      if (stored) {
-        try {
-          this.userInfo = JSON.parse(stored)
-        } catch (e) {
-          this.userInfo = { phone: auth.userId }
-        }
-      } else {
-        this.userInfo = { phone: auth.userId }
+      const token = uni.getStorageSync('token')
+      if (token) {
+        uni.request({
+          url: api.baseUrl + '/api/auth/me',
+          header: { Authorization: `Bearer ${token}` },
+          success: (res) => {
+            if (res.statusCode === 200 && res.data.code === 200 && res.data.data) {
+              this.userInfo = {
+                nickname: res.data.data.username,
+                phone: res.data.data.phone,
+                avatar: res.data.data.avatar
+              }
+            }
+          }
+        })
       }
     },
     

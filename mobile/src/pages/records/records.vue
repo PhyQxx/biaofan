@@ -109,16 +109,26 @@ export default {
   methods: {
     async loadRecords() {
       try {
-        const res = await api.execution.myCompleted()
-        this.recordsList = res.data || []
+        const res = await api.instance.myInstances('completed')
+        const records = res.data || []
         
-        // 获取异常记录
-        try {
-          const exceptionRes = await api.execution.reportException
-          // 合并异常记录
-        } catch (e) {
-          console.error('获取异常记录失败:', e)
+        const sopIds = [...new Set(records.map(e => e.sopId))]
+        const sopMap = {}
+        for (const sopId of sopIds) {
+          try {
+            const r = await api.sop.detail(sopId)
+            if (r.code === 200) sopMap[sopId] = r.data
+          } catch {}
         }
+        
+        this.recordsList = records.map(r => {
+          const sop = sopMap[r.sopId]
+          return {
+            ...r,
+            sopTitle: sop?.title || 'SOP',
+            startedAt: r.startedAt || r.createdAt,
+          }
+        })
       } catch (e) {
         console.error('加载记录失败:', e)
       } finally {
@@ -128,7 +138,7 @@ export default {
     },
     
     viewDetail(item) {
-      uni.navigateTo({ url: `/pages/execute/execute?id=${item.id}` })
+      uni.navigateTo({ url: `/pages/execute/execute?instanceId=${item.id}&sopId=${item.sopId}` })
     },
     
     onRefresh() {

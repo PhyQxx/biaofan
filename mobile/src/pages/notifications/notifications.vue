@@ -22,7 +22,7 @@
         v-for="item in notifications" 
         :key="item.id" 
         class="notification-card"
-        :class="{ unread: !item.readAt }"
+        :class="{ unread: !item.isRead }"
         @click="handleNotification(item)"
       >
         <view class="notif-icon">
@@ -37,13 +37,13 @@
             <text class="notif-title">{{ item.title }}</text>
             <text class="notif-time">{{ relativeTime(item.createdAt) }}</text>
           </view>
-          <view class="notif-body">{{ item.message }}</view>
+          <view class="notif-body">{{ item.content }}</view>
           <view class="notif-action" v-if="item.actionUrl">
             <text>点击查看 ></text>
           </view>
         </view>
         
-        <view class="unread-dot" v-if="!item.readAt"></view>
+        <view class="unread-dot" v-if="!item.isRead"></view>
       </view>
     </scroll-view>
   </view>
@@ -83,19 +83,17 @@ export default {
     },
     
     async handleNotification(item) {
-      // 标记已读
-      if (!item.readAt) {
+      if (!item.isRead) {
         try {
           await api.notification.markRead(item.id)
-          item.readAt = new Date().toISOString()
+          item.isRead = 1
         } catch (e) {
           console.error('标记已读失败:', e)
         }
       }
       
-      // 根据通知类型跳转
-      if (item.executionId) {
-        uni.navigateTo({ url: `/pages/execute/execute?id=${item.executionId}` })
+      if (item.sourceType === 'execution' && item.sourceId) {
+        uni.navigateTo({ url: `/pages/execute/execute?id=${item.sourceId}` })
       }
     },
     
@@ -103,7 +101,7 @@ export default {
       try {
         await api.notification.markAllRead()
         this.notifications.forEach(n => {
-          n.readAt = new Date().toISOString()
+          n.isRead = 1
         })
         uni.showToast({ title: '已全部标为已读', icon: 'success' })
       } catch (e) {

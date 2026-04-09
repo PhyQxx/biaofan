@@ -160,6 +160,9 @@ export default {
   data() {
     return {
       executionId: null,
+      instanceId: null,
+      sopId: null,
+      isInstanceMode: false,
       executionDetail: {
         steps: []
       },
@@ -187,11 +190,16 @@ export default {
   },
   
   onLoad(options) {
-    if (options.id) {
-      this.executionId = parseInt(options.id)
-      this.loadDetail()
-    }
-  },
+      if (options.instanceId) {
+        this.instanceId = parseInt(options.instanceId)
+        this.sopId = parseInt(options.sopId)
+        this.isInstanceMode = true
+        this.loadInstanceDetail()
+      } else if (options.id) {
+        this.executionId = parseInt(options.id)
+        this.loadDetail()
+      }
+    },
   
   methods: {
     async loadDetail() {
@@ -200,22 +208,62 @@ export default {
         const res = await api.execution.getSteps(this.executionId)
         this.executionDetail = res.data || res
         
-        // 找出当前需要执行的步骤
         const pendingStep = this.executionDetail.steps?.find(s => s.status === 'pending')
         this.currentStepIndex = pendingStep?.index || this.executionDetail.steps?.length || 1
         
-        // 初始化 stepPhotos
         this.stepPhotos = {}
         this.executionDetail.steps?.forEach(s => {
           this.stepPhotos[s.index] = []
         })
         
-        // 如果还没开始执行，自动开始
         if (this.executionDetail.status === 'pending') {
           await this.startExecution()
         }
       } catch (e) {
         console.error('加载执行详情失败:', e)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+      }
+    },
+    
+    async loadInstanceDetail() {
+      uni.showLoading({ title: '加载中...' })
+      try {
+        const instRes = await api.instance.detail(this.instanceId)
+        const instData = instRes.data?.instance || instRes.data
+        this.executionDetail = { steps: [], sopTitle: '' }
+        
+        if (instData.status === 'pending') {
+          await api.instance.activate(this.instanceId)
+          instData.status = 'in_progress'
+          instData.currentStep = 1
+        }
+        
+        this.currentStepIndex = instData.currentStep || 1
+        
+        const sopRes = await api.sop.detail(this.sopId)
+        if (sopRes.code === 200 && sopRes.data) {
+          this.executionDetail.sopTitle = sopRes.data.title
+          let steps = []
+          try {
+            const raw = sopRes.data.content
+            steps = (raw && raw !== 'null') ? JSON.parse(raw) : []
+          } catch {}
+          this.executionDetail.steps = steps.map((s, i) => ({
+            ...s,
+            index: i + 1,
+            status: i + 1 < this.currentStepIndex ? 'completed' : (i + 1 === this.currentStepIndex ? 'pending' : 'pending')
+          }))
+          this.executionDetail.totalSteps = steps.length
+        }
+        
+        this.stepPhotos = {}
+        this.executionDetail.steps?.forEach(s => {
+          this.stepPhotos[s.index] = []
+        })
+      } catch (e) {
+        console.error('加载实例详情失败:', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
       } finally {
         uni.hideLoading()
@@ -237,18 +285,21 @@ export default {
       
       try {
         if (isOnline) {
-          // 在线：直接调用 API
-          let photoUrl = ''
-          if (this.stepPhotos[step.index]?.length > 0) {
-            const uploadRes = await api.upload.image(this.stepPhotos[step.index][0])
-            photoUrl = uploadRes.data?.url || ''
+          if (this.isInstanceMode) {
+            await api.instance.completeStep(this.instanceId, step.index, {
+              notes: this.stepNote
+            })
+          } else {
+            let photoUrl = ''
+            if (this.stepPhotos[step.index]?.length > 0) {
+              const uploadRes = await api.upload.image(this.stepPhotos[step.index][0])
+              photoUrl = uploadRes.data?.url || ''
+            }
+            await api.execution.completeStep(this.executionId, step.id || step.index, {
+              note: this.stepNote,
+              photoUrl
+            })
           }
-          
-          await api.execution.completeStep(this.executionId, step.id || step.index, {
-            note: this.stepNote,
-            photoUrl
-          })
-          
           uni.showToast({ title: '打卡成功', icon: 'success' })
         } else {
           // 离线：保存到本地草稿
@@ -301,7 +352,7 @@ export default {
           if (res.confirm) {
             try {
               uni.showLoading({ title: '提交中...' })
-              await api.execution.finish(this.executionId)
+              await (this.isInstanceMode ? api.instance.finish(this.instanceId) : api.execution.finish(this.executionId))
               uni.showToast({ title: '执行完成', icon: 'success' })
               setTimeout(() => {
                 uni.navigateBack()
