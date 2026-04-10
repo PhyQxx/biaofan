@@ -188,7 +188,7 @@
           <div class="cs-label">已完成</div>
         </div>
         <div class="complete-stat">
-          <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt).getTime()) / 60000) }}</div>
+          <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt ?? '').getTime()) / 60000) }}</div>
           <div class="cs-label">用时(分钟)</div>
         </div>
       </div>
@@ -216,7 +216,8 @@ const sop = ref<Sop | null>(null)
 const steps = ref<StepData[]>([])
 const currentStep = ref(1)
 const notes = ref('')
-const checkData = ref<Record<string, unknown>>({})
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
 const stepsLoaded = ref(false)

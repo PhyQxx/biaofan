@@ -8,14 +8,6 @@ interface SopListData {
   total: number
 }
 
-interface ScheduleTask {
-  id: number
-  sopId: number
-  cronExpression: string
-  enabled: number
-  [key: string]: unknown
-}
-
 export const useSopStore = defineStore('sop', () => {
   const sops = ref<Sop[]>([])
   const total = ref(0)

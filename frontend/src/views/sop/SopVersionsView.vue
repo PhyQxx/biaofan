@@ -111,8 +111,9 @@ const rollback = async (v: any) => {
     } else {
       ElMessage.error(res.message || '回滚失败')
     }
-  } catch (e) {
-    if (e !== 'cancel' && e?.message !== 'cancel') {
+  } catch (e: unknown) {
+    const err = e as { message?: string }
+    if (err.message !== 'cancel') {
       console.error('[SopVersionsView] rollback failed:', e)
     }
   }

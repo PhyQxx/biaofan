@@ -188,7 +188,7 @@
           <div class="cs-label">已完成</div>
         </div>
         <div class="complete-stat">
-          <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt).getTime()) / 60000) }}</div>
+          <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt ?? '').getTime()) / 60000) }}</div>
           <div class="cs-label">用时(分钟)</div>
         </div>
       </div>
@@ -209,7 +209,6 @@ import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const executionId = Number(route.params.id)
 const instanceId = Number(route.params.id)
 
 const execution = ref<Execution | null>(null)
@@ -217,7 +216,8 @@ const sop = ref<Sop | null>(null)
 const steps = ref<StepData[]>([])
 const currentStep = ref(1)
 const notes = ref('')
-const checkData = ref<Record<string, unknown>>({})
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
 const stepsLoaded = ref(false)
@@ -306,7 +306,7 @@ const completeStep = async () => {
       try {
         const instRes = await request.get<unknown, ApiResponse<{ instance?: Execution }>>(`/instance/${instanceId}`)
         if (instRes?.code === 200) {
-          const instData = instRes.data?.instance || instRes.data
+          const instData = (instRes.data?.instance || instRes.data) as Execution
           if (instData) execution.value = instData
         }
       } catch (e) {
