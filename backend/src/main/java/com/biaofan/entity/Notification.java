@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 通知消息实体类
+ * 存储系统向用户发送的通知消息，包括执行提醒、到期通知等
+ */
 @Data
 @TableName("notification")
 public class Notification {

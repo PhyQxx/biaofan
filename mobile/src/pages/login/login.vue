@@ -49,6 +49,14 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端登录页面
+ * - 手机号 + 验证码登录
+ * - 60秒倒计时防重复获取验证码
+ * - 登录成功后跳转到首页 TabBar
+ */
 import api from '../../api'
 import { useAuthStore } from '../../store/auth'
 

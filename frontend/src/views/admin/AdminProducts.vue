@@ -128,6 +128,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 积分商品管理页
+ * - 商品列表（名称、积分价格、库存）
+ * - 上架 / 下架 / 编辑
+ */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProductList, createProduct, updateProduct, deleteProduct, type Product } from '@/api/admin'

@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 模板评价实体类
+ * 存储用户对模板市场上SOP模板的评价和评分
+ */
 @Data
 @TableName("marketplace_review")
 public class MarketplaceReview {

@@ -39,6 +39,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端登录页
+ * - 用户名/手机号 + 密码登录
+ * - 记住我复选框
+ * - 登录成功后跳转到首页
+ */
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

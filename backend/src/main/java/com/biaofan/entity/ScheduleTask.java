@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 定时任务实体类
+ * 配置SOP的定时执行任务，使用cron表达式控制触发时间
+ */
 @Data
 @TableName("schedule_task")
 public class ScheduleTask {

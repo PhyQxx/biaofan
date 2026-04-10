@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * SOP执行记录实体类
+ * 记录用户执行SOP的实例，包括执行状态、当前步骤、开始/完成时间等
+ */
 @Data
 @TableName("sop_execution")
 public class SopExecution {

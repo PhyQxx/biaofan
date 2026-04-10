@@ -1,5 +1,14 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * 游戏化服务实现（用户端）
+ * - 用户积分增减（执行完成奖励、异常扣分等）
+ * - 等级计算：根据积分判断用户等级
+ * - 徽章判定：检查用户是否满足徽章获取条件
+ * - 排行榜查询：按积分降序，支持日/周/月/总榜
+ * - 积分历史记录
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
@@ -19,6 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 积分化服务实现类
+ * 提供用户等级、经验值、积分、排行榜、徽章、商城兑换等功能
+ * SOP执行完成后自动增加经验和积分，检查并授予徽章
+ *
+ * @author biaofan
+ */
 @Service
 @RequiredArgsConstructor
 public class GamificationServiceImpl implements GamificationService {
@@ -32,8 +48,15 @@ public class GamificationServiceImpl implements GamificationService {
     private final GamificationLeaderboardCacheMapper leaderboardCacheMapper;
     private final UserMapper userMapper;
 
+    /**
+     * 计算指定等级所需的经验值
+     */
     // === EXP / Level helpers ===
     private int expForLevel(int level) { return level * 100; }
+    
+    /**
+     * 根据等级获取段位标识
+     */
     private String rankForLevel(int level) {
         if (level >= 80) return "diamond";
         if (level >= 60) return "platinum";
@@ -41,13 +64,24 @@ public class GamificationServiceImpl implements GamificationService {
         if (level >= 20) return "silver";
         return "bronze";
     }
+    
+    /**
+     * 获取段位中文名称
+     */
     private String rankName(String r) {
         return switch (r) { case "diamond" -> "钻石"; case "platinum" -> "铂金"; case "gold" -> "黄金"; case "silver" -> "白银"; default -> "青铜"; };
     }
+    
+    /**
+     * 获取段位图标Emoji
+     */
     private String rankIcon(String r) {
         return switch (r) { case "diamond" -> "💎"; case "platinum" -> "🏆"; case "gold" -> "🥇"; case "silver" -> "🥈"; default -> "🥉"; };
     }
 
+    /**
+     * 构建用户积分化统计Map
+     */
     private Map<String, Object> buildStats(GamificationUserStats s) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("userId", s.getUserId());
@@ -65,6 +99,11 @@ public class GamificationServiceImpl implements GamificationService {
         return m;
     }
 
+    /**
+     * 获取用户积分化档案
+     * @param userId 用户ID
+     * @return 包含等级、积分、段位、徽章等信息
+     */
     @Override
     public Map<String, Object> getProfile(Long userId) {
         GamificationUserStats s = getOrCreateStats(userId);
@@ -83,6 +122,11 @@ public class GamificationServiceImpl implements GamificationService {
         return p;
     }
 
+    /**
+     * 获取用户的所有徽章（含已解锁和未解锁）
+     * @param userId 用户ID
+     * @return 徽章列表
+     */
     @Override
     public List<Map<String, Object>> getBadges(Long userId) {
         List<GamificationBadgeDefinition> all = badgeDefMapper.selectList(null);
@@ -118,6 +162,12 @@ public class GamificationServiceImpl implements GamificationService {
         return result;
     }
 
+    /**
+     * 获取徽章详情
+     * @param userId 用户ID
+     * @param badgeId 徽章ID
+     * @return 徽章详情
+     */
     @Override
     public Map<String, Object> getBadgeDetail(Long userId, Long badgeId) {
         GamificationBadgeDefinition def = badgeDefMapper.selectById(badgeId);
@@ -137,6 +187,11 @@ public class GamificationServiceImpl implements GamificationService {
         return m;
     }
 
+    /**
+     * 获取排行榜
+     * @param period 周期（weekly/monthly/all）
+     * @return 排名前20的用户列表
+     */
     @Override
     public List<Map<String, Object>> getLeaderboard(String period) {
         // Directly query gamification_user_stats, ordered by total_score desc
@@ -167,6 +222,10 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * 获取排行榜概览
+     * @return 包含周榜、月榜、总榜前三名
+     */
     @Override
     public Map<String, Object> getLeaderboardOverview() {
         List<Map<String, Object>> weekly = getLeaderboard("weekly");
@@ -179,6 +238,11 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * 获取用户积分余额信息
+     * @param userId 用户ID
+     * @return 积分余额、累计获得、累计消费
+     */
     @Override
     public Map<String, Object> getScore(Long userId) {
         GamificationUserStats s = getOrCreateStats(userId);
@@ -190,6 +254,13 @@ public class GamificationServiceImpl implements GamificationService {
         return m;
     }
 
+    /**
+     * 获取用户积分历史记录
+     * @param userId 用户ID
+     * @param page 页码
+     * @param size 每页数量
+     * @return 积分变动记录列表
+     */
     @Override
     public List<Map<String, Object>> getScoreHistory(Long userId, int page, int size) {
         Page<GamificationScoreHistory> p = new Page<>(page, size);
@@ -210,6 +281,12 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * 兑换商城商品
+     * @param userId 用户ID
+     * @param productId 商品ID
+     * @return 兑换结果信息
+     */
     @Override
     @Transactional
     public Map<String, Object> redeemProduct(Long userId, Long productId) {
@@ -252,6 +329,10 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * 获取积分商城商品列表
+     * @return 上架商品列表
+     */
     @Override
     public List<Map<String, Object>> getStore() {
         List<GamificationStoreProduct> products = storeProductMapper.selectList(
@@ -269,6 +350,11 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * 获取用户成长进度
+     * @param userId 用户ID
+     * @return 等级、段位、经验进度
+     */
     @Override
     public Map<String, Object> getProgress(Long userId) {
         GamificationUserStats s = getOrCreateStats(userId);
@@ -286,6 +372,10 @@ public class GamificationServiceImpl implements GamificationService {
         return m;
     }
 
+    /**
+     * 获取等级排行榜
+     * @return 前10名用户
+     */
     @Override
     public List<Map<String, Object>> getLevelRanking() {
         List<GamificationUserStats> top = statsMapper.selectList(
@@ -305,6 +395,12 @@ public class GamificationServiceImpl implements GamificationService {
         return r;
     }
 
+    /**
+     * SOP执行完成回调
+     * 增加经验值和积分，检查并授予徽章
+     * @param userId 用户ID
+     * @param sopId SOP ID
+     */
     @Override
     @Transactional
     public void onExecutionCompleted(Long userId, Long sopId) {
@@ -339,6 +435,9 @@ public class GamificationServiceImpl implements GamificationService {
         checkAndGrantStreakBadge(userId, s);
     }
 
+    /**
+     * 检查并授予指定徽章
+     */
     private void checkAndGrantBadge(Long userId, String badgeKey, GamificationUserStats s) {
         GamificationBadgeDefinition def = badgeDefMapper.selectList(
             new LambdaQueryWrapper<GamificationBadgeDefinition>()
@@ -357,6 +456,9 @@ public class GamificationServiceImpl implements GamificationService {
         }
     }
 
+    /**
+     * 检查并授予连续签到徽章
+     */
     private void checkAndGrantStreakBadge(Long userId, GamificationUserStats s) {
         // Streak logic: if last active was yesterday
         GamificationBadgeDefinition def = badgeDefMapper.selectList(
@@ -376,6 +478,9 @@ public class GamificationServiceImpl implements GamificationService {
         }
     }
 
+    /**
+     * 获取或创建用户统计记录
+     */
     private GamificationUserStats getOrCreateStats(Long userId) {
         GamificationUserStats s = statsMapper.selectOne(
             new LambdaQueryWrapper<GamificationUserStats>()
@@ -392,6 +497,9 @@ public class GamificationServiceImpl implements GamificationService {
         return s;
     }
 
+    /**
+     * 获取等级对应的中文名称
+     */
     private String levelName(int level) {
         if (level >= 80) return "王者";
         if (level >= 60) return "钻石";

@@ -142,6 +142,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 徽章管理页
+ * - 徽章列表（图标、名称、描述、所需积分）
+ * - 新建 / 编辑 / 删除徽章
+ * - 启用/禁用徽章
+ */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBadgeList, createBadge, updateBadge, deleteBadge, type Badge } from '@/api/admin'

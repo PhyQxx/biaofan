@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 排行榜缓存实体类，按周期缓存用户的排名及分数信息
+ */
 @Data
 @TableName("gamification_leaderboard_cache")
 public class GamificationLeaderboardCache {

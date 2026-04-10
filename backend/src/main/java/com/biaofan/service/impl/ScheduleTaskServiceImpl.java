@@ -14,6 +14,20 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 定时任务服务实现类
+ * 管理SOP的Cron表达式定时调度配置，支持任务的创建、删除、启用/禁用
+ * 提供下次触发时间的计算，支持分/时/日/月/周五种Cron字段
+ *
+ * @author biaofan
+ */
+
+/**
+ * 周期任务服务实现
+ * - 管理 ScheduleTask（周期任务配置）的 CRUD
+ * - 计算下次触发时间
+ * - 供 ScheduleTaskJob 调用生成 SopInstance
+ */
 @Service
 @RequiredArgsConstructor
 public class ScheduleTaskServiceImpl implements ScheduleTaskService {
@@ -21,6 +35,12 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
     private final ScheduleTaskMapper scheduleTaskMapper;
     private final SopMapper sopMapper;
 
+    /**
+     * 获取SOP关联的定时任务
+     * @param sopId SOP ID
+     * @param userId 用户ID
+     * @return 定时任务实体
+     */
     @Override
     public ScheduleTask getBySopId(Long sopId, Long userId) {
         return scheduleTaskMapper.selectOne(new LambdaQueryWrapper<ScheduleTask>()
@@ -28,6 +48,12 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
                 .eq(ScheduleTask::getUserId, userId));
     }
 
+    /**
+     * 创建或更新SOP定时任务
+     * @param sopId SOP ID
+     * @param userId 用户ID
+     * @param cronExpression Cron表达式
+     */
     @Override
     public void create(Long sopId, Long userId, String cronExpression) {
         // 删除旧的
@@ -44,6 +70,11 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         scheduleTaskMapper.insert(task);
     }
 
+    /**
+     * 删除SOP定时任务
+     * @param sopId SOP ID
+     * @param userId 用户ID
+     */
     @Override
     public void delete(Long sopId, Long userId) {
         scheduleTaskMapper.delete(new LambdaQueryWrapper<ScheduleTask>()
@@ -51,6 +82,12 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
                 .eq(ScheduleTask::getUserId, userId));
     }
 
+    /**
+     * 启用或禁用定时任务
+     * @param id 任务ID
+     * @param userId 用户ID
+     * @param enabled 是否启用（1启用，0禁用）
+     */
     @Override
     public void updateEnabled(Long id, Long userId, Integer enabled) {
         ScheduleTask task = scheduleTaskMapper.selectById(id);
@@ -62,11 +99,20 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         scheduleTaskMapper.updateById(task);
     }
 
+    /**
+     * 获取已达触发时间的定时任务
+     * @return 待执行任务列表
+     */
     @Override
     public List<ScheduleTask> getDueTasks() {
         return scheduleTaskMapper.findDueTasks(LocalDateTime.now());
     }
 
+    /**
+     * 获取当前用户的定时任务列表
+     * @param userId 用户ID
+     * @return 任务列表
+     */
     @Override
     public List<ScheduleTask> getMyTasks(Long userId) {
         return scheduleTaskMapper.selectList(new LambdaQueryWrapper<ScheduleTask>()
@@ -74,6 +120,11 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
                 .orderByDesc(ScheduleTask::getCreatedAt));
     }
 
+    /**
+     * 更新任务的下次触发时间
+     * @param id 任务ID
+     * @param cronExpression Cron表达式
+     */
     @Override
     public void advanceNextFireTime(Long id, String cronExpression) {
         ScheduleTask task = scheduleTaskMapper.selectById(id);
@@ -83,6 +134,11 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         }
     }
 
+    /**
+     * 根据Cron表达式计算下次触发时间
+     * @param cronExpression Cron表达式（分 时 日 月 周）
+     * @return 下次触发时间
+     */
     private LocalDateTime calcNextFireTime(String cronExpression) {
         try {
             // cron格式: 分 时 日 月 周

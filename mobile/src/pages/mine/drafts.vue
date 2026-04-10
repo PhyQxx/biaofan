@@ -59,6 +59,15 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端草稿管理页
+ * - 展示所有本地草稿（已同步 / 待同步）
+ * - 支持单条立即同步、全部同步
+ * - 支持删除草稿
+ * - 重试计数显示
+ */
 import { useDraftStore } from '../../store/draft'
 import { formatDateTime } from '../../common/utils'
 

@@ -22,6 +22,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 近期活动记录组件
+ * - 展示最近的积分变动、徽章获得等
+ */
 import type { Activity } from '@/api/gamification'
 
 defineProps<{ activities: Activity[] }>()

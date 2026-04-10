@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * SOP标准操作流程实体类
+ * 存储SOP模板的元数据信息，包括标题、描述、内容、分类、标签等
+ */
 @Data
 @TableName("sop")
 public class Sop {

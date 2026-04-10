@@ -3,6 +3,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 状态徽章组件
+ * - 用颜色标签显示 SOP/执行单状态
+ */
 import { computed } from 'vue'
 
 const props = defineProps<{ status: string }>()

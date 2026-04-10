@@ -53,6 +53,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 徽章详情弹窗
+ * - 展示徽章大图、名称、获得条件
+ * - 炫耀按钮（社交分享占位）
+ */
 import type { Badge } from '@/api/gamification'
 
 defineProps<{ badge: Badge }>()

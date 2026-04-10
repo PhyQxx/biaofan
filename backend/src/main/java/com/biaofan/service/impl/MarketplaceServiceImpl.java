@@ -1,5 +1,15 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * 模板市场服务实现
+ * - 模板列表查询（分类、关键词、排序）
+ * - 模板详情
+ * - 模板提交审核
+ * - 模板使用（创建执行单）
+ * - 收藏 / 取消收藏
+ * - 评分评论
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,6 +33,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 模板市场服务实现类
+ * 提供SOP模板的浏览、搜索、使用、收藏、评价、提交审核及管理功能
+ * 支持按热度/评分/时间排序，模板使用后自动增加使用计数
+ *
+ * @author biaofan
+ */
 @Service
 @RequiredArgsConstructor
 public class MarketplaceServiceImpl implements MarketplaceService {
@@ -32,6 +49,15 @@ public class MarketplaceServiceImpl implements MarketplaceService {
     private final MarketplaceFavoriteMapper favoriteMapper;
     private final SopMapper sopMapper;
 
+    /**
+     * 获取模板市场列表
+     * @param category 分类筛选
+     * @param keyword 关键词搜索（标题/描述）
+     * @param sort 排序方式：popular/rated/newest
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 模板分页列表
+     */
     @Override
     public IPage<MarketplaceTemplate> getTemplateList(String category, String keyword, String sort, int page, int pageSize) {
         Page<MarketplaceTemplate> p = new Page<>(page, pageSize);
@@ -54,6 +80,12 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         return templateMapper.selectPage(p, q);
     }
 
+    /**
+     * 获取模板详情
+     * @param templateId 模板ID
+     * @param userId 当前用户ID
+     * @return 模板详情
+     */
     @Override
     public MarketplaceTemplate getTemplateDetail(String templateId, String userId) {
         MarketplaceTemplate t = templateMapper.selectOne(
@@ -63,6 +95,14 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         return t;
     }
 
+    /**
+     * 使用模板创建SOP
+     * 将模板内容复制为用户的新SOP草稿
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @param sopName 自定义的SOP名称
+     * @return 新创建的SOP ID
+     */
     @Override
     @Transactional
     public Long useTemplate(String templateId, String userId, String sopName) {
@@ -98,6 +138,11 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         return copy.getId();
     }
 
+    /**
+     * 添加模板收藏
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     */
     @Override
     public void addFavorite(String templateId, String userId) {
         MarketplaceFavorite existing = favoriteMapper.selectOne(
@@ -112,6 +157,11 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         favoriteMapper.insert(fav);
     }
 
+    /**
+     * 取消模板收藏
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     */
     @Override
     public void removeFavorite(String templateId, String userId) {
         favoriteMapper.delete(new LambdaQueryWrapper<MarketplaceFavorite>()
@@ -119,6 +169,12 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                 .eq(MarketplaceFavorite::getTemplateId, templateId));
     }
 
+    /**
+     * 检查模板是否已收藏
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @return 是否已收藏
+     */
     @Override
     public boolean isFavorited(String templateId, String userId) {
         return favoriteMapper.selectOne(
@@ -127,6 +183,13 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                         .eq(MarketplaceFavorite::getTemplateId, templateId)) != null;
     }
 
+    /**
+     * 获取用户的收藏模板列表
+     * @param userId 用户ID
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 收藏模板分页列表
+     */
     @Override
     public IPage<MarketplaceTemplate> getFavorites(String userId, int page, int pageSize) {
         Page<MarketplaceFavorite> favPage = new Page<>(page, pageSize);
@@ -155,6 +218,17 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         return result;
     }
 
+    /**
+     * 提交SOP为市场模板（待审核）
+     * @param userId 用户ID
+     * @param userName 用户名
+     * @param sopId 源SOP ID
+     * @param title 模板标题
+     * @param description 模板描述
+     * @param category 分类
+     * @param subCategory 子分类
+     * @param coverUrl 封面图URL
+     */
     @Override
     @Transactional
     public void submitTemplate(String userId, String userName, String sopId, String title,
@@ -183,6 +257,13 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         templateMapper.insert(tpl);
     }
 
+    /**
+     * 获取模板的评价列表
+     * @param templateId 模板ID
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 评价分页列表
+     */
     @Override
     public IPage<MarketplaceReview> getReviews(String templateId, int page, int pageSize) {
         Page<MarketplaceReview> p = new Page<>(page, pageSize);
@@ -192,6 +273,14 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                         .orderByDesc(MarketplaceReview::getCreatedAt));
     }
 
+    /**
+     * 添加或更新模板评价（幂等）
+     * @param templateId 模板ID
+     * @param userId 用户ID
+     * @param userName 用户名
+     * @param rating 评分
+     * @param comment 评价内容
+     */
     @Override
     @Transactional
     public void addReview(String templateId, String userId, String userName, Integer rating, String comment) {
@@ -230,6 +319,13 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                         .set(MarketplaceTemplate::getRatingCount, count != null ? count : 0));
     }
 
+    /**
+     * 获取待审核模板列表（管理员）
+     * @param status 状态筛选
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 模板分页列表
+     */
     @Override
     public IPage<MarketplaceTemplate> getAuditList(String status, int page, int pageSize) {
         Page<MarketplaceTemplate> p = new Page<>(page, pageSize);
@@ -241,6 +337,13 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         return templateMapper.selectPage(p, q);
     }
 
+    /**
+     * 审核模板（管理员）
+     * @param templateId 模板ID
+     * @param auditorId 审核员ID
+     * @param status 审核状态：approved/rejected
+     * @param rejectReason 拒绝原因
+     */
     @Override
     @Transactional
     public void auditTemplate(String templateId, String auditorId, String status, String rejectReason) {
@@ -258,6 +361,10 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                         .set(MarketplaceTemplate::getAuditedAt, LocalDateTime.now()));
     }
 
+    /**
+     * 下架模板
+     * @param templateId 模板ID
+     */
     @Override
     @Transactional
     public void offlineTemplate(String templateId) {

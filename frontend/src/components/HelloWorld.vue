@@ -1,4 +1,8 @@
 <script setup lang="ts">
+
+/**
+ * HelloWorld 示例组件（Vue CLI 默认生成）
+ */
 import { ref } from 'vue'
 import viteLogo from '../assets/vite.svg'
 import heroImg from '../assets/hero.png'

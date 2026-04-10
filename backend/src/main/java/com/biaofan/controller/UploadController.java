@@ -13,10 +13,38 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+/**
+ * 文件上传 Controller
+ * - POST /api/upload/image: 上传图片
+ *   - 存储到 /www/sop-uploads/ 目录
+ *   - 最大 10MB，支持 jpg/png/gif/webp 格式
+ *   - 返回访问 URL
+ */
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 文件上传控制器
+ * 提供图片上传功能，支持JPG、PNG、GIF等常见图片格式
+ */
+
+/**
+ * 文件上传 Controller
+ * - POST /api/upload/image: 上传图片
+ *   - 存储到 /www/sop-uploads/ 目录
+ *   - 最大 10MB，支持 jpg/png/gif/webp 格式
+ *   - 返回访问 URL
+ */
+
+/**
+ * 文件上传 Controller
+ * - POST /api/upload/image: 上传图片
+ *   - 存储到 /www/sop-uploads/ 目录
+ *   - 最大 10MB，支持 jpg/png/gif/webp 格式
+ *   - 返回访问 URL
+ */
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
@@ -31,9 +59,10 @@ public class UploadController {
     );
 
     /**
-     * POST /api/upload/image
-     * 接收 multipartFile，上传到服务器本地目录 /www/sop-uploads/YYYYMMDD/
-     * 返回 {code: 0, data: {url: "/uploads/20260405/xxx.jpg"}}
+     * 上传图片
+     * 接收multipartFile，上传到服务器本地目录 /www/sop-uploads/YYYYMMDD/
+     * @param file 图片文件（支持JPG、PNG、GIF、BMP、WebP、SVG，最大10MB）
+     * @return 上传结果，包含文件访问路径
      */
     @PostMapping("/image")
     public Result<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {

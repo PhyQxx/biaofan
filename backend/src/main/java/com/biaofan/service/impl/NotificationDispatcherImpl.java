@@ -1,5 +1,12 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * 通知分发服务实现
+ * - 实现 NotificationDispatcher 接口
+ * - 根据通知配置决定发送渠道（站内通知/极光推送等）
+ * - 异常发生时自动触发通知给 SOP 负责人
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.SopNotificationConfig;
 import com.biaofan.mapper.SopNotificationConfigMapper;
@@ -19,6 +26,13 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * 通知分发器实现类
+ * 异步将站内通知通过用户配置渠道发送（钉钉Webhook、企业邮件）
+ * 根据平台类型构造不同格式的Webhook消息体
+ *
+ * @author biaofan
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,6 +45,13 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
+    /**
+     * 分发通知到第三方渠道
+     * 根据用户配置发送Webhook和/或邮件
+     * @param userId 用户ID
+     * @param title 通知标题
+     * @param content 通知内容
+     */
     @Override
     @Async
     public void dispatch(Long userId, String title, String content) {
@@ -47,6 +68,10 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
         sendEmail(config, title, content);
     }
 
+    /**
+     * 发送Webhook通知
+     * 支持钉钉和企业微信等平台的消息格式
+     */
     private void sendWebhook(SopNotificationConfig config, String title, String content) {
         if (config.getWebhookUrl() == null || config.getWebhookUrl().isBlank()) {
             return;
@@ -86,6 +111,9 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
         }
     }
 
+    /**
+     * 发送邮件通知
+     */
     private void sendEmail(SopNotificationConfig config, String title, String content) {
         if (config.getEmail() == null || config.getEmail().isBlank()) {
             return;

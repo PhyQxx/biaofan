@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 用户实体类
+ * 存储系统用户信息，包括用户名、手机号、密码和角色等
+ */
 @Data
 @TableName("user")
 public class User {

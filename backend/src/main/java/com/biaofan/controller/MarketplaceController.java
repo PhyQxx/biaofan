@@ -1,5 +1,16 @@
 package com.biaofan.controller;
 
+
+/**
+ * 模板市场 Controller（用户端）
+ * - GET  /api/marketplace/templates: 模板列表（支持分类、搜索、排序）
+ * - GET  /api/marketplace/templates/{id}: 模板详情
+ * - POST /api/marketplace/templates: 提交模板到市场（审核）
+ * - POST /api/marketplace/templates/{id}/use: 使用模板创建执行单
+ * - POST /api/marketplace/templates/{id}/favorite: 收藏/取消收藏
+ * - GET  /api/marketplace/favorites: 我的收藏列表
+ * - POST /api/marketplace/templates/{id}/review: 对模板评分评论
+ */
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.MarketplaceReviewRequest;
@@ -20,6 +31,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 模板市场控制器
+ * 提供模板市场相关的API，包括模板浏览、收藏、使用、评价等功能
+ */
+
+/**
+ * 模板市场 Controller（用户端）
+ * - GET  /api/marketplace/templates: 模板列表（支持分类、搜索、排序）
+ * - GET  /api/marketplace/templates/{id}: 模板详情
+ * - POST /api/marketplace/templates: 提交模板到市场（审核）
+ * - POST /api/marketplace/templates/{id}/use: 使用模板创建执行单
+ * - POST /api/marketplace/templates/{id}/favorite: 收藏/取消收藏
+ * - GET  /api/marketplace/favorites: 我的收藏列表
+ * - POST /api/marketplace/templates/{id}/review: 对模板评分评论
+ */
 @RestController
 @RequestMapping("/api/marketplace")
 @RequiredArgsConstructor
@@ -29,6 +55,15 @@ public class MarketplaceController {
     // M-09: 移除直接注入的 Mapper，通过 Service 操作
     private final UserService userService;
 
+    /**
+     * 获取模板列表
+     * @param category 分类筛选（可选）
+     * @param keyword 关键词搜索（可选）
+     * @param sort 排序方式：recent（最新）、popular（最热）、rating（评分）
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认20）
+     * @return 模板分页列表
+     */
     // ========== 2.4.1 GET /api/marketplace/templates — 模板列表 ==========
     @GetMapping("/templates")
     public Result<?> getTemplateList(
@@ -46,6 +81,12 @@ public class MarketplaceController {
         return Result.ok(data);
     }
 
+    /**
+     * 获取模板详情
+     * @param templateId 模板ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 模板详细信息，包含是否已收藏状态
+     */
     // ========== 2.4.2 GET /api/marketplace/templates/:template_id — 模板详情 ==========
     @GetMapping("/templates/{templateId}")
     public Result<?> getTemplateDetail(
@@ -78,6 +119,14 @@ public class MarketplaceController {
         }
     }
 
+    /**
+     * 使用模板
+     * 将市场模板复制到用户自己的SOP列表中
+     * @param templateId 模板ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param req 使用请求，包含SOP名称
+     * @return 新创建的SOP ID和名称
+     */
     // ========== 2.4.3 POST /api/marketplace/templates/:template_id/use — 使用模板 ==========
     @PostMapping("/templates/{templateId}/use")
     public Result<?> useTemplate(
@@ -96,6 +145,12 @@ public class MarketplaceController {
         }
     }
 
+    /**
+     * 收藏模板
+     * @param templateId 模板ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 操作结果
+     */
     // ========== 2.4.4 POST /api/marketplace/templates/:template_id/favorite — 收藏模板 ==========
     @PostMapping("/templates/{templateId}/favorite")
     public Result<?> addFavorite(
@@ -106,6 +161,12 @@ public class MarketplaceController {
         return Result.ok(Map.of("message", "已收藏"));
     }
 
+    /**
+     * 取消收藏模板
+     * @param templateId 模板ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 操作结果
+     */
     // ========== 2.4.4 DELETE /api/marketplace/templates/:template_id/favorite — 取消收藏 ==========
     @DeleteMapping("/templates/{templateId}/favorite")
     public Result<?> removeFavorite(
@@ -116,6 +177,13 @@ public class MarketplaceController {
         return Result.ok(Map.of("message", "已取消收藏"));
     }
 
+    /**
+     * 获取用户收藏的模板列表
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认20）
+     * @return 用户收藏的模板分页列表
+     */
     // ========== 2.4.5 GET /api/marketplace/templates/favorites — 用户收藏列表 ==========
     @GetMapping("/templates/favorites")
     public Result<?> getFavorites(
@@ -133,6 +201,13 @@ public class MarketplaceController {
         return Result.ok(data);
     }
 
+    /**
+     * 提交模板到市场审核
+     * 用户将自己的SOP模板提交到市场供其他用户使用，需经过管理员审核
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param req 提交请求，包含SOP ID、标题、描述、分类等信息
+     * @return 操作结果
+     */
     // ========== 2.4.6 POST /api/marketplace/templates — 提交模板审核 ==========
     @PostMapping("/templates")
     public Result<?> submitTemplate(
@@ -153,6 +228,13 @@ public class MarketplaceController {
         }
     }
 
+    /**
+     * 获取模板的评价列表
+     * @param templateId 模板ID
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认10）
+     * @return 评价分页列表
+     */
     // ========== 2.4.7 GET /api/marketplace/templates/:template_id/reviews — 获取评价列表 ==========
     @GetMapping("/templates/{templateId}/reviews")
     public Result<?> getReviews(
@@ -168,6 +250,14 @@ public class MarketplaceController {
         return Result.ok(data);
     }
 
+    /**
+     * 提交模板评价
+     * 用户对使用过的模板进行评分和评论
+     * @param templateId 模板ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param req 评价请求，包含评分（1-5）和评论内容
+     * @return 操作结果
+     */
     // ========== 2.4.8 POST /api/marketplace/templates/:template_id/reviews — 提交评价 ==========
     @PostMapping("/templates/{templateId}/reviews")
     public Result<?> addReview(

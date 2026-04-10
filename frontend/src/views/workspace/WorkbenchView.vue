@@ -51,6 +51,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端工作台首页
+ * - 今日任务统计卡片
+ * - 最近执行的 SOP 列表
+ * - 快捷操作入口
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

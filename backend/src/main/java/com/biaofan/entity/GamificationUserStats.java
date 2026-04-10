@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 用户游戏化统计实体类，记录用户的等级、经验值、积分、排名及连续活跃天数等信息
+ */
 @Data
 @TableName("gamification_user_stats")
 public class GamificationUserStats {

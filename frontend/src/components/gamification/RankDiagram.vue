@@ -31,6 +31,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 等级段位图表组件
+ * - 用图形化方式展示等级体系
+ * - 当前等级高亮
+ */
 import { computed } from 'vue'
 
 const props = defineProps<{

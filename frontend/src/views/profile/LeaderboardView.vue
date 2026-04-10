@@ -65,6 +65,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端排行榜页
+ * - 积分排行榜 Top3 特殊展示
+ * - 完整排名列表（头像、昵称、积分）
+ * - 筛选：日 / 周 / 月 / 总榜
+ */
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { gamificationApi, type LeaderboardOverview } from '@/api/gamification'

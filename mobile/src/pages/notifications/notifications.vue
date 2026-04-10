@@ -50,6 +50,14 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端通知列表页
+ * - 显示通知图标（任务/告警/异常）
+ * - 未读红点标记，点击标记已读
+ * - 全部标为已读功能
+ */
 import api from '../../api'
 import { relativeTime } from '../../common/utils'
 

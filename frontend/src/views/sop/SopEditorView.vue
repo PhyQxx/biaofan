@@ -160,6 +160,16 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * SOP 编辑器页（新建 / 编辑）
+ * - SOP 基本信息：标题、描述、分类、标签
+ * - 执行人选择
+ * - 步骤列表：拖拽排序 / 新增 / 删除 / 复制
+ * - 每步骤：标题 + 描述 + 检查项配置（类型/是否必填/选项）
+ * - 保存 / 发布
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

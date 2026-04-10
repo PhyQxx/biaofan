@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 用户徽章实体类，记录用户已解锁的徽章及解锁时间
+ */
 @Data
 @TableName("gamification_user_badge")
 public class GamificationUserBadge {

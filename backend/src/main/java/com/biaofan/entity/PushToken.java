@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 推送Token实体类
+ * 存储用户的设备推送Token信息，用于个推等第三方推送服务
+ */
 @Data
 @TableName("push_token")
 public class PushToken {

@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 模板收藏实体类
+ * 记录用户收藏的模板市场SOP模板
+ */
 @Data
 @TableName("marketplace_favorite")
 public class MarketplaceFavorite {

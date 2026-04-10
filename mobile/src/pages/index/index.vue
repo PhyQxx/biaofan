@@ -68,6 +68,15 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端首页 - 执行单列表
+ * - 三个 Tab：待执行 / 执行中 / 逾期
+ * - 支持下拉刷新、下拉加载
+ * - 离线提示 + 草稿同步入口
+ * - 根据 instanceId 判断是周期实例模式
+ */
 import api from '../../api'
 import { useAuthStore } from '../../store/auth'
 import { useDraftStore } from '../../store/draft'

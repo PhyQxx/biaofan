@@ -137,6 +137,15 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 模板详情页
+ * - 模板信息（标题、描述、发布者、标签）
+ * - 步骤预览
+ * - 评分 / 评论
+ * - 一键使用（创建执行单）
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

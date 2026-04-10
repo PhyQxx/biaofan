@@ -201,6 +201,19 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端 SOP 执行详情页（逐步执行）
+ * - 顶部：返回按钮 + SOP 标题 + 步骤进度
+ * - 步骤圆点进度条（点击已完成步骤可切换回去查看）
+ * - 当前步骤卡片：标题 + 描述 + 预计时长
+ * - 下一步预览
+ * - 检查项（支持 checkbox/text/number/date/select 类型，必填校验）
+ * - 执行笔记（选填）
+ * - 上一步 / 完成本步 按钮
+ * - 最后一步完成后显示完成统计（总步骤数、用时）
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

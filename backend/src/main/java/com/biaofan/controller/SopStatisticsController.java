@@ -1,5 +1,12 @@
 package com.biaofan.controller;
 
+
+/**
+ * SOP 统计 Controller
+ * - GET /api/sop/{sopId}/stats: 获取某 SOP 的执行统计数据
+ *   - 执行次数、完成率、平均完成时长、异常率
+ * - GET /api/sop/{sopId}/stats/export: 导出执行统计数据（Excel）
+ */
 import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.dto.Result;
@@ -24,6 +31,22 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * SOP统计控制器
+ * <p>提供SOP执行的统计数据概览和Excel报表导出功能。
+ * 包括执行次数、完成率、平均耗时、各SOP明细等。</p>
+ *
+ * @RestController
+ * @RequestMapping("/api/sop/statistics")
+ * @RequiredArgsConstructor
+ */
+
+/**
+ * SOP 统计 Controller
+ * - GET /api/sop/{sopId}/stats: 获取某 SOP 的执行统计数据
+ *   - 执行次数、完成率、平均完成时长、异常率
+ * - GET /api/sop/{sopId}/stats/export: 导出执行统计数据（Excel）
+ */
 @RestController
 @RequestMapping("/api/sop/statistics")
 @RequiredArgsConstructor
@@ -33,6 +56,15 @@ public class SopStatisticsController {
     private final SopExecutionMapper executionMapper;
     private final ExecutionStatMapper statMapper;
 
+    /**
+     * 获取SOP执行统计概览
+     * <p>返回总执行数、完成数、异常数、进行中数、完成率、平均耗时，以及各SOP的执行明细。</p>
+     *
+     * @param userId 当前登录用户ID
+     * @param from   可选的开始日期过滤
+     * @param to     可选的结束日期过滤
+     * @return 统计结果
+     */
     /** 统计概览 */
     @GetMapping
     public Result<Map<String, Object>> statistics(
@@ -91,6 +123,16 @@ public class SopStatisticsController {
         ));
     }
 
+    /**
+     * 导出执行记录为Excel报表
+     * <p>根据日期范围筛选执行记录，生成xlsx格式的Excel文件下载。</p>
+     *
+     * @param from     可选的开始日期
+     * @param to       可选的结束日期
+     * @param format   导出格式（默认xlsx）
+     * @param response HTTP响应，用于文件下载
+     * @throws IOException 文件写入异常
+     */
     /** 导出 Excel */
     @GetMapping("/export")
     public void export(

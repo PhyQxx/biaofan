@@ -51,6 +51,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端注册页
+ * - 手机号 + 验证码注册
+ * - 跳转已有账号去登录
+ */
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

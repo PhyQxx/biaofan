@@ -135,6 +135,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端统计分析页
+ * - ECharts 图表：执行完成率、趋势图
+ * - 各 SOP 执行数据统计
+ */
 import { ref, reactive, onMounted, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { getDashboardStats, getTrend, type DashboardStats } from '@/api/stats'

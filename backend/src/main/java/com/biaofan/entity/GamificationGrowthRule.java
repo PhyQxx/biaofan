@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 成长规则实体类，定义用户等级成长相关的规则配置
+ */
 @Data
 @TableName("gamification_growth_rules")
 public class GamificationGrowthRule {

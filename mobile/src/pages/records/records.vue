@@ -73,6 +73,14 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端执行记录页
+ * - 三个筛选 Tab：全部 / 已完成 / 异常
+ * - 显示执行时间、时长、异常说明
+ * - 点击跳转到执行详情
+ */
 import api from '../../api'
 import { formatDateTime, getStatusText, getStatusTagClass } from '../../common/utils'
 

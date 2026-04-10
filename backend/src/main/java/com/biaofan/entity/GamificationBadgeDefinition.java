@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 徽章定义实体类，定义系统中所有可获得的徽章及其获取条件、奖励等信息
+ */
 @Data
 @TableName("gamification_badge_definition")
 public class GamificationBadgeDefinition {

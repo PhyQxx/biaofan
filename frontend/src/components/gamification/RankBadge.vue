@@ -6,6 +6,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 排名徽章组件
+ * - 显示数字排名（第1名金色等）
+ */
 import { computed } from 'vue'
 
 const props = defineProps<{

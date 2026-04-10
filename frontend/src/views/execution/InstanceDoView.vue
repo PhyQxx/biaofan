@@ -201,6 +201,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端周期实例执行页
+ * - 类似 ExecutionDoView，但针对周期实例
+ * - 激活实例 -> 逐步执行步骤 -> 完成
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

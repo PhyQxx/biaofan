@@ -77,6 +77,16 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端主布局组件
+ * - 顶部 Header：Logo、新建 SOP 按钮、通知铃铛、用户头像
+ * - 左侧 Sidebar：工作台 / 执行台 / 统计 / 通知 / 个人中心 / 排行榜
+ * - 主内容区：<RouterView />
+ * - 根据路由切换亮色/暗色主题（/admin、/profile、/leaderboard 走暗色）
+ * - 未读通知数量实时显示
+ */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

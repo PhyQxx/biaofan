@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 执行统计实体类
+ * 汇总SOP的执行统计数据，包括总执行次数、完成次数、平均耗时等
+ */
 @Data
 @TableName("execution_stat")
 public class ExecutionStat {

@@ -30,6 +30,13 @@
 
 <script setup lang="ts">
 
+
+
+/**
+ * 升级庆祝动画组件
+ * - 等级提升时弹出粒子庆祝效果
+ * - 显示新等级信息
+ */
 import RankBadge from './RankBadge.vue'
 
 const props = defineProps<{

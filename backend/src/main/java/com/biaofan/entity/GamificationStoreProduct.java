@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * 积分商城商品实体类，定义可使用积分兑换的商品信息
+ */
 @Data
 @TableName("gamification_store_product")
 public class GamificationStoreProduct {

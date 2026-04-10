@@ -1,5 +1,11 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * 仪表盘统计服务实现
+ * - 汇总用户总数、SOP总数、今日执行次数、异常数等
+ * - 提供管理后台首页数据支撑
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.dto.DashboardStatsDTO;
 import com.biaofan.entity.SopDispatch;
@@ -19,6 +25,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 仪表盘统计服务实现类
+ * 提供今日/总体执行数据、趋势图、排行榜等Dashboard数据
+ * 统计维度包括完成率、逾期数、活跃成员等
+ *
+ * @author biaofan
+ */
 @Service
 @RequiredArgsConstructor
 public class DashboardStatsServiceImpl implements DashboardStatsService {
@@ -28,6 +41,11 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
     private final SopMapper sopMapper;
     private final UserMapper userMapper;
 
+    /**
+     * 获取仪表盘统计数据
+     * @param userId 用户ID（可选，传null为全局统计）
+     * @return 包含今日数据、总体数据、趋势、排行榜等
+     */
     @Override
     public DashboardStatsDTO getDashboardStats(Long userId) {
         DashboardStatsDTO dto = new DashboardStatsDTO();
@@ -71,6 +89,11 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
         return dto;
     }
 
+    /**
+     * 获取执行完成率趋势
+     * @param days 统计天数
+     * @return 每日趋势数据点列表
+     */
     @Override
     public List<DashboardStatsDTO.TrendPoint> getTrend(int days) {
         List<Map<String, Object>> raw = executionMapper.getCompletionTrend(days);
@@ -105,6 +128,11 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
         return new ArrayList<>(pointMap.values());
     }
 
+    /**
+     * 获取成员排行榜
+     * @param limit 返回数量
+     * @return 成员统计数据列表
+     */
     @Override
     public List<DashboardStatsDTO.MemberStat> getLeaderboard(int limit) {
         List<Map<String, Object>> raw = executionMapper.getMemberLeaderboard();

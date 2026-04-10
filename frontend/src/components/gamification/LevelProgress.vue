@@ -46,6 +46,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 等级进度条组件
+ * - 当前等级、积分进度条
+ * - 距离下一等级还需多少积分
+ */
 import RankBadge from './RankBadge.vue'
 import RankDiagram from './RankDiagram.vue'
 

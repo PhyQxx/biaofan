@@ -41,6 +41,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 个人概览组件
+ * - 头像、昵称、等级、积分
+ * - 徽章墙入口
+ */
 import RankBadge from './RankBadge.vue'
 
 defineProps<{

@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * SOP版本实体类
+ * 记录SOP的版本历史，每次发布新版本时创建快照，用于版本管理和回溯
+ */
 @Data
 @TableName("sop_version")
 public class SopVersion {

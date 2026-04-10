@@ -159,6 +159,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 积分规则配置页
+ * - 配置各项行为的积分奖励规则
+ * - 保存规则
+ */
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {

@@ -1,5 +1,12 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * SOP 派发服务实现
+ * - 根据 SOP ID 和执行人 ID 创建执行单（SopExecution）
+ * - 支持批量派发
+ * - 记录派发人和派发时间
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopDispatch;
@@ -17,6 +24,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * SOP分发服务实现类
+ * 负责将已发布的SOP模板批量分发给指定的用户（被指派人）
+ * 分发时自动创建待执行的执行记录和分发记录
+ *
+ * @author biaofan
+ */
 @Service
 @RequiredArgsConstructor
 public class SopDispatchServiceImpl implements SopDispatchService {
@@ -26,6 +40,13 @@ public class SopDispatchServiceImpl implements SopDispatchService {
     private final SopExecutionMapper executionMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 批量分发SOP模板给指定用户
+     * @param dispatcherId 分发人ID
+     * @param templateIds SOP模板ID列表
+     * @param assigneeIds 被指派人ID列表
+     * @return 创建的分发记录列表
+     */
     @Override
     @Transactional
     public List<SopDispatch> batchDispatch(Long dispatcherId, List<Long> templateIds, List<Long> assigneeIds) {
@@ -74,6 +95,11 @@ public class SopDispatchServiceImpl implements SopDispatchService {
         return results;
     }
 
+    /**
+     * 查询当前用户的分发记录列表
+     * @param userId 用户ID（分发人）
+     * @return 分发记录列表
+     */
     @Override
     public List<SopDispatch> getMyDispatches(Long userId) {
         return dispatchMapper.selectList(

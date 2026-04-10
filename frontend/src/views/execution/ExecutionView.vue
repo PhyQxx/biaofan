@@ -52,6 +52,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端执行台列表页
+ * - 我的待执行 / 进行中 / 已完成的执行单列表
+ * - 支持状态筛选
+ * - 点击进入执行详情
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

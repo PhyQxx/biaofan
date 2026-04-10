@@ -81,6 +81,15 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端"我的"页面
+ * - 用户信息卡片（头像、昵称、手机号）
+ * - 待同步草稿入口（有未同步草稿时显示红点）
+ * - 通知开关、关于我们、帮助与反馈
+ * - 退出登录
+ */
 import { useAuthStore } from '../../store/auth'
 import { useDraftStore } from '../../store/draft'
 import api from '../../api'

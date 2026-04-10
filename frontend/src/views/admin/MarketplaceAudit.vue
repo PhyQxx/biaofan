@@ -131,6 +131,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 模板审核页
+ * - 待审核 / 已通过 / 已驳回 列表
+ * - 审核操作：通过 / 驳回（填写理由）
+ */
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {

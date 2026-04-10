@@ -91,6 +91,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * SOP 版本详情对比页
+ * - 展示指定版本的完整内容
+ * - 支持与当前版本对比
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

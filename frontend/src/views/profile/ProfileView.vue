@@ -241,6 +241,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端个人中心页
+ * - 用户信息展示
+ * - 游戏化数据：等级、积分、徽章墙
+ * - 近期活动记录
+ */
 import { ref, onMounted, computed, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'

@@ -11,6 +11,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 排行榜单条记录卡片
+ * - 排名、头像、昵称、积分
+ */
 import type { LeaderboardItem } from '@/api/gamification'
 defineProps<{ item: LeaderboardItem }>()
 </script>

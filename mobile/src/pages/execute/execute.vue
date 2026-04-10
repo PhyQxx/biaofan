@@ -145,6 +145,15 @@
 </template>
 
 <script>
+
+
+/**
+ * 移动端执行详情页
+ * - 支持两种模式：executionId（旧版执行单）/ instanceId（周期实例）
+ * - 步骤打卡：拍照 + 备注，支持离线草稿
+ * - 异常上报：拍照 + 描述
+ * - 完成执行：所有步骤完成后显示完成按钮
+ */
 import api from '../../api'
 import { useAuthStore } from '../../store/auth'
 import { useDraftStore } from '../../store/draft'

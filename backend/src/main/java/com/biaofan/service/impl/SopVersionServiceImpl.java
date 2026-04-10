@@ -11,6 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * SOP版本服务实现类
+ * 管理SOP的版本历史，支持版本查询和回滚操作
+ * 每次回滚会创建快照记录，确保版本可追溯
+ *
+ * @author biaofan
+ */
 @Service
 @RequiredArgsConstructor
 public class SopVersionServiceImpl implements SopVersionService {
@@ -19,6 +26,11 @@ public class SopVersionServiceImpl implements SopVersionService {
     private final SopMapper sopMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 获取SOP的所有历史版本
+     * @param sopId SOP ID
+     * @return 版本列表，按版本号倒序
+     */
     @Override
     public List<SopVersion> getVersions(Long sopId) {
         return versionMapper.selectList(
@@ -28,6 +40,12 @@ public class SopVersionServiceImpl implements SopVersionService {
         );
     }
 
+    /**
+     * 获取指定版本的详情
+     * @param sopId SOP ID
+     * @param version 版本号
+     * @return 版本详情
+     */
     @Override
     public SopVersion getVersion(Long sopId, Integer version) {
         SopVersion v = versionMapper.selectOne(
@@ -39,6 +57,13 @@ public class SopVersionServiceImpl implements SopVersionService {
         return v;
     }
 
+    /**
+     * 回滚SOP到指定版本
+     * 回滚前先快照当前版本，回滚后创建新版本记录
+     * @param sopId SOP ID
+     * @param userId 操作人用户ID
+     * @param targetVersion 目标版本号
+     */
     @Override
     @Transactional
     public void rollback(Long sopId, Long userId, Integer targetVersion) {
@@ -58,6 +83,12 @@ public class SopVersionServiceImpl implements SopVersionService {
         saveVersionSnapshot(sop, userId, "回滚至v" + targetVersion);
     }
 
+    /**
+     * 保存版本快照
+     * @param sop SOP实体
+     * @param userId 创建者ID
+     * @param summary 变更说明
+     */
     public void saveVersionSnapshot(Sop sop, Long userId, String summary) {
         // 清除旧当前版本标记
         versionMapper.update(null,

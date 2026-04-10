@@ -79,6 +79,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * SOP 版本历史页
+ * - 展示某 SOP 的所有版本
+ * - 版本号、创建时间、状态
+ * - 可切换查看不同版本
+ */
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

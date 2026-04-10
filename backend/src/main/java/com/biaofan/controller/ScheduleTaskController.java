@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 定时任务控制器
+ * 提供SOP定时任务的创建、查询、启用/停用、删除等功能
+ */
 @RestController
 @RequestMapping("/api/schedule/tasks")
 @RequiredArgsConstructor
@@ -18,6 +22,8 @@ public class ScheduleTaskController {
 
     /**
      * 获取当前用户的定时任务列表
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 定时任务列表
      */
     @GetMapping
     public Result<List<ScheduleTask>> list(@AuthenticationPrincipal Long userId) {
@@ -26,7 +32,10 @@ public class ScheduleTaskController {
     }
 
     /**
-     * 获取某个 SOP 的定时任务
+     * 获取指定SOP的定时任务
+     * @param sopId SOP ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 定时任务详情
      */
     @GetMapping("/{sopId}")
     public Result<ScheduleTask> getBySopId(
@@ -38,8 +47,9 @@ public class ScheduleTaskController {
 
     /**
      * 创建或更新定时任务
-     * POST /api/schedule/tasks
-     * body: { sopId, cronExpression }
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param req 请求体，包含sopId和cronExpression（ cron表达式）
+     * @return 操作结果
      */
     @PostMapping
     public Result<Void> save(
@@ -55,7 +65,9 @@ public class ScheduleTaskController {
 
     /**
      * 删除定时任务
-     * DELETE /api/schedule/tasks/{sopId}
+     * @param sopId SOP ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @return 操作结果
      */
     @DeleteMapping("/{sopId}")
     public Result<Void> delete(
@@ -67,8 +79,10 @@ public class ScheduleTaskController {
 
     /**
      * 启用/停用定时任务
-     * PUT /api/schedule/tasks/{id}/enable
-     * body: { enabled: 0|1 }
+     * @param id 定时任务ID
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param req 请求体，包含enabled（0-停用，1-启用）
+     * @return 操作结果
      */
     @PutMapping("/{id}/enable")
     public Result<Void> toggleEnable(
@@ -79,6 +93,9 @@ public class ScheduleTaskController {
         return Result.ok();
     }
 
+    /**
+     * 定时任务请求体
+     */
     public static class ScheduleTaskRequest {
         private Long sopId;
         private String cronExpression;
@@ -89,6 +106,9 @@ public class ScheduleTaskController {
         public void setCronExpression(String cronExpression) { this.cronExpression = cronExpression; }
     }
 
+    /**
+     * 启用/停用请求体
+     */
     public static class EnableRequest {
         private Integer enabled;
 

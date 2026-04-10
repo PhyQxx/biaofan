@@ -12,6 +12,20 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+/**
+ * 用户服务实现类
+ * 提供用户登录、注册、资料管理、密码及手机号修改等功能
+ * 密码使用BCrypt加密，短信验证码存储在Redis中
+ *
+ * @author biaofan
+ */
+
+/**
+ * 用户服务实现
+ * - 用户注册（手机号验证码）
+ * - 用户信息查询/更新
+ * - 管理员对用户角色的修改
+ */
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -24,6 +38,11 @@ public class UserServiceImpl implements UserService {
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
 
+    /**
+     * 用户登录
+     * @param req 包含手机号和密码的登录请求
+     * @return JWT token字符串
+     */
     @Override
     public String login(LoginRequest req) {
         User user = userMapper.selectOne(
@@ -38,6 +57,10 @@ public class UserServiceImpl implements UserService {
         return jwtUtil.generateToken(user.getId(), user.getUsername());
     }
 
+    /**
+     * 用户注册
+     * @param req 包含用户名、手机号、密码的注册请求
+     */
     @Override
     public void register(RegisterRequest req) {
         User exist = userMapper.selectOne(
@@ -53,11 +76,21 @@ public class UserServiceImpl implements UserService {
         userMapper.insert(user);
     }
 
+    /**
+     * 根据ID查询用户
+     * @param id 用户ID
+     * @return 用户实体，未找到返回null
+     */
     @Override
     public User getUserById(Long id) {
         return userMapper.selectById(id);
     }
 
+    /**
+     * 根据手机号查询用户
+     * @param phone 手机号
+     * @return 用户实体，未找到返回null
+     */
     @Override
     public User getUserByPhone(String phone) {
         return userMapper.selectOne(
@@ -65,6 +98,11 @@ public class UserServiceImpl implements UserService {
         );
     }
 
+    /**
+     * 更新用户昵称
+     * @param userId 用户ID
+     * @param username 新昵称，不能为空
+     */
     @Override
     public void updateProfile(Long userId, String username) {
         User user = userMapper.selectById(userId);
@@ -74,6 +112,12 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
     }
 
+    /**
+     * 修改密码
+     * @param userId 用户ID
+     * @param oldPassword 旧密码，需校验正确
+     * @param newPassword 新密码，至少6位
+     */
     @Override
     public void updatePassword(Long userId, String oldPassword, String newPassword) {
         User user = userMapper.selectById(userId);
@@ -84,6 +128,12 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
     }
 
+    /**
+     * 修改手机号（带验证码）
+     * @param userId 用户ID
+     * @param phone 新手机号
+     * @param code 短信验证码，从Redis中校验
+     */
     // H-13: updatePhone 增加验证码校验
     @Override
     public void updatePhone(Long userId, String phone, String code) {
@@ -102,6 +152,10 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
     }
 
+    /**
+     * 修改手机号（无验证码，已过时）
+     * @deprecated 使用带验证码的updatePhone方法
+     */
     // 保持旧签名兼容（无验证码），标记为过时
     @Override
     public void updatePhone(Long userId, String phone) {

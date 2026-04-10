@@ -139,6 +139,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 模板市场首页
+ * - 分类筛选 + 搜索
+ * - SOP 卡片列表（评分、销量、标签）
+ * - 排序（最新 / 最热 / 评分）
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

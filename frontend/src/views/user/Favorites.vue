@@ -65,6 +65,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端收藏页
+ * - 收藏的 SOP 模板列表
+ * - 取消收藏
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

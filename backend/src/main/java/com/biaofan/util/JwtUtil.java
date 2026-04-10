@@ -10,6 +10,13 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * JWT工具类，提供JWT令牌的生成、解析和验证功能。
+ * 依赖于配置文件中的jwt.secret和jwt.ttl属性。
+ *
+ * @author biaofan
+ * @see <a href="https://github.com/jwtk/jjwt">JJWT</a>
+ */
 @Slf4j
 @Component
 public class JwtUtil {
@@ -20,10 +27,22 @@ public class JwtUtil {
     @Value("${jwt.ttl}")
     private Long ttl;
 
+    /**
+     * 获取用于签名和验证的密钥对象。
+     *
+     * @return SecretKey 用于JWT签名验证的密钥
+     */
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * 生成JWT令牌。
+     *
+     * @param userId   用户的唯一标识ID
+     * @param username 用户名
+     * @return 生成的JWT令牌字符串
+     */
     public String generateToken(Long userId, String username) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
@@ -35,6 +54,12 @@ public class JwtUtil {
     }
 
     // H-14/M-13: getUserId() 不再吞异常，增加日志记录
+    /**
+     * 从JWT令牌中解析提取用户ID。
+     *
+     * @param token JWT令牌字符串
+     * @return 用户ID，若令牌过期或解析失败则返回null
+     */
     public Long getUserId(String token) {
         try {
             return Long.parseLong(Jwts.parser()
@@ -64,6 +89,12 @@ public class JwtUtil {
         }
     }
 
+    /**
+     * 验证JWT令牌的有效性。
+     *
+     * @param token JWT令牌字符串
+     * @return true表示令牌有效，false表示令牌无效或已过期
+     */
     public boolean validateToken(String token) {
         try {
             Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);

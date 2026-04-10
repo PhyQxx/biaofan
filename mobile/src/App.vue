@@ -3,6 +3,13 @@
 </template>
 
 <script>
+
+
+/**
+ * UniApp 应用根组件
+ * - createSSRApp 兼容 SSR 写法
+ * - 渲染 pages.json 中声明的页面
+ */
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useAuthStore } from './store/auth'
 import { useDraftStore } from './store/draft'

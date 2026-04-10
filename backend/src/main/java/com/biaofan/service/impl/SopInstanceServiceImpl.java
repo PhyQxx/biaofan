@@ -1,9 +1,17 @@
 package com.biaofan.service.impl;
 
+
+/**
+ * 周期实例服务实现
+ * - SopInstance 的创建、激活、完成
+ * - 步骤打卡（针对周期实例）
+ * - 定时任务 ScheduleTaskJob 调用本服务创建实例
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
+import com.biaofan.service.GamificationService;
 import com.biaofan.service.NotificationDispatcher;
 import com.biaofan.service.SopInstanceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +26,13 @@ import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
+/**
+ * SOP实例服务实现类
+ * 管理周期性SOP（每日/每周/每月/每年）的自动实例生成
+ * 支持实例激活、步骤完成、逾期标记等操作，完成后触发积分化
+ *
+ * @author biaofan
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -29,8 +44,15 @@ public class SopInstanceServiceImpl implements SopInstanceService {
     private final ExecutionStepRecordMapper stepRecordMapper;
     private final NotificationMapper notificationMapper;
     private final NotificationDispatcher notificationDispatcher;
+    private final GamificationService gamificationService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 查询当前用户的周期性实例列表
+     * @param userId 用户ID
+     * @param status 状态过滤（可选）
+     * @return 实例列表
+     */
     @Override
     public List<SopInstance> getMyInstances(Long userId, String status) {
         LambdaQueryWrapper<SopInstance> q = new LambdaQueryWrapper<SopInstance>()
@@ -42,6 +64,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         return instanceMapper.selectList(q);
     }
 
+    /**
+     * 获取实例详情
+     * @param instanceId 实例ID
+     * @return 实例实体
+     */
     @Override
     public SopInstance getInstance(Long instanceId) {
         SopInstance inst = instanceMapper.selectById(instanceId);
@@ -51,6 +78,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         return inst;
     }
 
+    /**
+     * 激活实例并创建执行记录
+     * @param userId 执行人ID
+     * @param instanceId 实例ID
+     */
     @Override
     @Transactional
     public void activateInstance(Long userId, Long instanceId) {
@@ -93,6 +125,15 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
     }
 
+    /**
+     * 完成实例中的步骤
+     * @param userId 执行人ID
+     * @param instanceId 实例ID
+     * @param stepIndex 步骤序号（从1开始）
+     * @param notes 步骤备注
+     * @param checkData 校验数据
+     * @return 是否全部完成
+     */
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes,
@@ -168,6 +209,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         return completed;
     }
 
+    /**
+     * 手动标记实例完成
+     * @param userId 执行人ID
+     * @param instanceId 实例ID
+     */
     @Override
     @Transactional
     public void finishInstance(Long userId, Long instanceId) {
@@ -192,8 +238,15 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         notif.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(notif);
         notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+
+        // Update gamification: points, exp, badges, streak
+        gamificationService.onExecutionCompleted(userId, inst.getSopId());
     }
 
+    /**
+     * 生成周期性实例（每日/每周/每月/每年）
+     * 根据SOP分类生成对应周期的实例，已存在则跳过
+     */
     @Override
     @Transactional
     public void generatePeriodicInstances() {
@@ -212,6 +265,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         }
     }
 
+    /**
+     * 为单个SOP生成实例
+     * @param sop SOP实体
+     * @param date 参考日期
+     */
     private void generateForSop(Sop sop, LocalDate date) {
         String category = sop.getCategory();
         LocalDateTime periodStart;
@@ -276,6 +334,10 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         log.info("生成实例: sopId={} category={} period={}~{}", sop.getId(), category, periodStart, periodEnd);
     }
 
+    /**
+     * 标记逾期实例
+     * 将periodEnd已过但状态仍为pending/in_progress的实例标记为overdue
+     */
     @Override
     @Transactional
     public void markOverdueInstances() {
@@ -308,6 +370,9 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         }
     }
 
+    /**
+     * 获取用户对指定SOP的最新执行记录
+     */
     private SopExecution getLatestExecution(Long userId, Long sopId) {
         return executionMapper.selectOne(
                 new LambdaQueryWrapper<SopExecution>()
@@ -317,6 +382,9 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                         .last("LIMIT 1"));
     }
 
+    /**
+     * 获取周期分类的中文标签
+     */
     private String categoryLabel(String category) {
         return switch (category) {
             case "daily" -> "日";
@@ -327,6 +395,9 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         };
     }
 
+    /**
+     * 解析JSON字符串
+     */
     private <T> T parseJson(String json, Class<T> clazz) {
         if (json == null || json.isBlank()) {
             return null;

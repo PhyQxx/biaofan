@@ -1,5 +1,14 @@
 package com.biaofan.job;
 
+
+/**
+ * 定时任务：SOP 周期实例生成
+ * - 每分钟执行一次（@Scheduled(fixedRate = 60000)）
+ * - 扫描所有 ScheduleTask（周期任务配置）
+ * - 判断当前时间是否到达周期开始时间
+ * - 如到达：创建 SopInstance（周期实例），并记录下次触发时间
+ * - 支持 Cron 表达式灵活配置触发时间
+ */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.Notification;
 import com.biaofan.entity.ScheduleTask;
@@ -17,6 +26,19 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
+/**
+ * 定时任务Job
+ * 处理SOP周期性实例生成、Cron任务触发、逾期检测等定时任务
+ */
+
+/**
+ * 定时任务：SOP 周期实例生成
+ * - 每分钟执行一次（@Scheduled(fixedRate = 60000)）
+ * - 扫描所有 ScheduleTask（周期任务配置）
+ * - 判断当前时间是否到达周期开始时间
+ * - 如到达：创建 SopInstance（周期实例），并记录下次触发时间
+ * - 支持 Cron 表达式灵活配置触发时间
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -29,6 +51,10 @@ public class ScheduleTaskJob {
     private final NotificationMapper notificationMapper;
     private final NotificationDispatcher notificationDispatcher;
 
+    /**
+     * 处理周期性SOP实例生成
+     * 每分钟执行一次，检查需要自动生成的周期性实例
+     */
     @Scheduled(fixedRate = 60000)
     public void processPeriodicInstances() {
         try {
@@ -38,7 +64,11 @@ public class ScheduleTaskJob {
         }
     }
 
-    /** 每分钟跑一次，消费 ScheduleTask 表中已到期的 cron 任务 */
+    /**
+     * 处理Cron定时任务
+     * 每分钟执行一次，消费ScheduleTask表中已到期的Cron任务
+     * 发送系统内部通知和外部通知（飞书/邮箱等），并更新下次触发时间
+     */
     @Scheduled(fixedRate = 60000)
     public void processCronTasks() {
         try {
@@ -55,6 +85,11 @@ public class ScheduleTaskJob {
         }
     }
 
+    /**
+     * 处理单个Cron任务
+     * 创建通知、发送外部通知、更新下次触发时间
+     * @param task 待处理的定时任务
+     */
     private void processCronTask(ScheduleTask task) {
         try {
             Sop sop = sopMapper.selectById(task.getSopId());
@@ -88,6 +123,10 @@ public class ScheduleTaskJob {
         }
     }
 
+    /**
+     * 检测逾期SOP实例
+     * 每5分钟执行一次，检查并标记超期的实例
+     */
     @Scheduled(fixedRate = 300000)
     public void checkOverdue() {
         try {

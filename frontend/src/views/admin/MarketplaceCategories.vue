@@ -80,6 +80,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 分类管理页
+ * - 模板市场分类增删改
+ */
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 

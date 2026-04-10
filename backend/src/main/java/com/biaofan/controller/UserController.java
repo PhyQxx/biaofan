@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * 用户信息控制器
+ * 提供用户个人资料的修改功能，包括用户名、密码、手机号更新
+ */
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
@@ -16,6 +20,12 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 更新用户名
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param body 请求体，包含新用户名username
+     * @return 操作结果
+     */
     @PutMapping("/profile")
     public Result<Void> updateProfile(
             @AuthenticationPrincipal Long userId,
@@ -28,6 +38,12 @@ public class UserController {
         }
     }
 
+    /**
+     * 修改密码
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param body 请求体，包含旧密码oldPassword和新密码newPassword
+     * @return 操作结果
+     */
     @PutMapping("/password")
     public Result<Void> updatePassword(
             @AuthenticationPrincipal Long userId,
@@ -40,6 +56,12 @@ public class UserController {
         }
     }
 
+    /**
+     * 更新手机号
+     * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param body 请求体，包含新手机号phone和验证码code
+     * @return 操作结果
+     */
     @PutMapping("/phone")
     public Result<Void> updatePhone(
             @AuthenticationPrincipal Long userId,

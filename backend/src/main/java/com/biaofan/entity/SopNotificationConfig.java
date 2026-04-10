@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * SOP通知配置实体类
+ * 配置SOP相关事件的第三方通知推送，支持飞书、钉钉等平台
+ */
 @Data
 @TableName("sop_notification_config")
 public class SopNotificationConfig {

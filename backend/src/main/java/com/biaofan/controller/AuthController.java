@@ -12,6 +12,14 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 认证控制器
+ * <p>提供用户注册、登录、短信验证码发送、当前用户信息查询等功能。</p>
+ *
+ * @RestController
+ * @RequestMapping("/api/auth")
+ * @RequiredArgsConstructor
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -26,6 +34,13 @@ public class AuthController {
     // H-02: 使用 SecureRandom 替代 new Random()
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    /**
+     * 用户注册
+     * <p>接收手机号和短信验证码，验证通过后创建用户账号。</p>
+     *
+     * @param req 注册请求体（包含手机号、验证码、密码等）
+     * @return 注册结果
+     */
     @PostMapping("/register")
     public Result<Void> register(@RequestBody RegisterRequest req) {
         try {
@@ -47,6 +62,13 @@ public class AuthController {
         }
     }
 
+    /**
+     * 用户登录
+     * <p>使用手机号和密码登录，验证通过后返回JWT Token。</p>
+     *
+     * @param req 登录请求体（包含手机号、密码）
+     * @return 登录结果，包含token
+     */
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody LoginRequest req) {
         try {
@@ -57,6 +79,14 @@ public class AuthController {
         }
     }
 
+    /**
+     * 发送短信验证码
+     * <p>向指定手机号发送6位数字验证码，验证码有效期5分钟。
+     * 同一手机号60秒内只能发送一次。</p>
+     *
+     * @param req 发送验证码请求体（包含手机号）
+     * @return 发送结果
+     */
     @PostMapping("/send-code")
     public Result<Void> sendCode(@RequestBody SendCodeRequest req) {
         String phone = req.getPhone();
@@ -90,6 +120,13 @@ public class AuthController {
         return Result.ok();
     }
 
+    /**
+     * 获取当前登录用户信息
+     * <p>通过Spring Security的@AuthenticationPrincipal获取当前用户ID并查询用户信息。</p>
+     *
+     * @param userId 当前登录用户的ID（从Token中解析）
+     * @return 用户信息（密码已置空）
+     */
     @GetMapping("/me")
     public Result<User> me(@AuthenticationPrincipal Long userId) {
         User user = userService.getUserById(userId);

@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * SOP异常记录实体类
+ * 记录SOP执行过程中出现的异常情况，包括异常类型、描述和处理状态
+ */
 @Data
 @TableName("sop_exception")
 public class SopException {

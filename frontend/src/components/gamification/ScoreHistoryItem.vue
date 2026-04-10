@@ -16,6 +16,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 积分历史单条记录
+ * - 行为描述、积分增减、时间
+ */
 import { computed } from 'vue'
 import type { ScoreHistory } from '@/api/gamification'
 

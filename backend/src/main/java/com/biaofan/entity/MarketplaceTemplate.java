@@ -7,6 +7,10 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 模板市场实体类
+ * 存储用户在模板市场上分享的SOP模板信息，包括审核状态、评分等
+ */
 @Data
 @TableName("marketplace_template")
 public class MarketplaceTemplate {

@@ -13,6 +13,13 @@
 <script setup lang="ts">
 
 
+
+
+/**
+ * 星级评分组件
+ * - 显示 1-5 星评分
+ * - 支持半星显示
+ */
 const props = withDefaults(defineProps<{
   value?: number
   max?: number

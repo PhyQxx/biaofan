@@ -38,6 +38,14 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * PC 端通知列表页
+ * - 全部 / 未读 筛选
+ * - 通知卡片（类型图标、标题、内容、时间）
+ * - 标为已读 / 全部已读
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'

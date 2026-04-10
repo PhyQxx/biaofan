@@ -52,6 +52,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台布局组件
+ * - 左侧管理菜单（游戏化配置 / 市场审核 / 分类管理）
+ * - 右侧内容区
+ */
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'

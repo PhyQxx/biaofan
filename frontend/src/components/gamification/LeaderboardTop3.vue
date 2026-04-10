@@ -12,6 +12,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 排行榜 Top3 特殊展示
+ * - 第1/2/3名特殊样式（奖牌图标）
+ * - 头像 + 昵称 + 积分
+ */
 import { computed } from 'vue'
 import type { LeaderboardItem } from '@/api/gamification'
 

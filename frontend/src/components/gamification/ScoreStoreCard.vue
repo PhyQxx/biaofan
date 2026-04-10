@@ -29,6 +29,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 积分商城商品卡片
+ * - 商品图、名称、所需积分
+ * - 兑换按钮
+ */
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { StoreProduct } from '@/api/gamification'

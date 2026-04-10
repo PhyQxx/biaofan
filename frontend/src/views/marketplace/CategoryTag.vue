@@ -3,6 +3,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 分类标签组件
+ * - 显示 SOP 分类名称标签
+ */
 import { computed } from 'vue'
 
 const props = defineProps<{ category: string }>()

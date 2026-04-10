@@ -35,6 +35,13 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 徽章墙组件
+ * - 网格展示用户已获得的全部徽章
+ * - 点击打开 BadgeModal
+ */
 import { ref, computed } from 'vue'
 import BadgeCard from './BadgeCard.vue'
 import type { Badge } from '@/api/gamification'

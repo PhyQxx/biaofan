@@ -53,6 +53,12 @@
 </template>
 
 <script setup lang="ts">
+
+
+/**
+ * 管理后台 - 市场管理布局
+ * - 子菜单：审核 / 分类
+ */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
