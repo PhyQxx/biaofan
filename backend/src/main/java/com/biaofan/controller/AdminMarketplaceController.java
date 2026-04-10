@@ -6,6 +6,7 @@ import com.biaofan.dto.Result;
 import com.biaofan.entity.MarketplaceTemplate;
 import com.biaofan.service.MarketplaceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -37,10 +38,11 @@ public class AdminMarketplaceController {
     @PutMapping("/templates/{templateId}/audit")
     public Result<?> auditTemplate(
             @PathVariable String templateId,
-            @RequestParam String auditorId,
+            @AuthenticationPrincipal Long userId,
             @RequestBody MarketplaceAuditRequest req) {
         try {
-            marketplaceService.auditTemplate(templateId, auditorId, req.getStatus(), req.getRejectReason());
+            // C-05: auditorId 从 @AuthenticationPrincipal 获取，而非 @RequestParam
+            marketplaceService.auditTemplate(templateId, String.valueOf(userId), req.getStatus(), req.getRejectReason());
             return Result.ok(Map.of("message", "审核完成"));
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());

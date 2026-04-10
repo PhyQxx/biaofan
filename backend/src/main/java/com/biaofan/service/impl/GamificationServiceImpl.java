@@ -215,19 +215,18 @@ public class GamificationServiceImpl implements GamificationService {
     public Map<String, Object> redeemProduct(Long userId, Long productId) {
         GamificationStoreProduct product = storeProductMapper.selectById(productId);
         if (product == null || !product.getActive()) throw new RuntimeException("商品不存在或已下架");
-        GamificationUserStats stats = getOrCreateStats(userId);
-        if (stats.getAvailableScore() < product.getPrice()) {
-            throw new RuntimeException("积分不足，当前可用 " + stats.getAvailableScore() + "，需要 " + product.getPrice());
-        }
+
         boolean already = userProductMapper.selectCount(
             new LambdaQueryWrapper<GamificationUserProduct>()
                 .eq(GamificationUserProduct::getUserId, userId)
                 .eq(GamificationUserProduct::getProductId, productId)) > 0;
         if (already) throw new RuntimeException("您已拥有此商品");
 
-        // Deduct score
-        stats.setAvailableScore(stats.getAvailableScore() - product.getPrice());
-        statsMapper.updateById(stats);
+        // H-10: 原子扣减积分，防止并发超额使用
+        int deducted = statsMapper.deductScore(userId, product.getPrice());
+        if (deducted == 0) {
+            throw new RuntimeException("积分不足");
+        }
 
         // Record history
         GamificationScoreHistory h = new GamificationScoreHistory();
@@ -242,9 +241,13 @@ public class GamificationServiceImpl implements GamificationService {
         up.setRedeemedAt(LocalDateTime.now());
         userProductMapper.insert(up);
 
+        // 重新获取最新积分
+        GamificationUserStats updatedStats = statsMapper.selectOne(
+            new LambdaQueryWrapper<GamificationUserStats>().eq(GamificationUserStats::getUserId, userId));
+
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("productId", productId); r.put("productName", product.getName());
-        r.put("spent", product.getPrice()); r.put("remainingScore", stats.getAvailableScore());
+        r.put("spent", product.getPrice()); r.put("remainingScore", updatedStats != null ? updatedStats.getAvailableScore() : 0);
         r.put("equipped", false);
         return r;
     }

@@ -6,14 +6,13 @@
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useAuthStore } from './store/auth'
 import { useDraftStore } from './store/draft'
+import api from './api'
 
 export default {
   onLaunch() {
     console.log('App Launch')
     // 初始化推送
     this.initPush()
-    // 同步离线草稿
-    this.syncDrafts()
   },
   onShow() {
     console.log('App Show')
@@ -21,7 +20,10 @@ export default {
     const auth = useAuthStore()
     if (!auth.isLoggedIn) {
       uni.reLaunch({ url: '/pages/login/login' })
+      return
     }
+    // 同步离线草稿（移到 onShow，确保 Pinia 已初始化）
+    this.syncDrafts()
   },
   onHide() {
     console.log('App Hide')
@@ -40,14 +42,11 @@ export default {
         // 获取客户端 cid
         push.getClientId((cid) => {
           console.log('Push CID:', cid)
-          // 将 CID 注册到后端
+          // 将 CID 注册到后端（使用统一 api 模块）
           const auth = useAuthStore()
           if (auth.token) {
-            uni.request({
-              url: `${auth.baseUrl}/api/push/register`,
-              method: 'POST',
-              header: { Authorization: `Bearer ${auth.token}` },
-              data: { clientId: cid }
+            api.push.registerCid(cid).catch((e) => {
+              console.error('CID 注册失败:', e)
             })
           }
         })

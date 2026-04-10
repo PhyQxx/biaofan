@@ -12,4 +12,5 @@ public interface UserService {
     void updateProfile(Long userId, String username);
     void updatePassword(Long userId, String oldPassword, String newPassword);
     void updatePhone(Long userId, String phone);
+    void updatePhone(Long userId, String phone, String code);
 }

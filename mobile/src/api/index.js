@@ -3,7 +3,10 @@
  * 所有接口请求都通过这个模块
  */
 
-const BASE_URL = 'http://192.168.31.104:8013'
+const BASE_URL = import.meta.env.VITE_API_BASE || 'http://192.168.31.104:8013'
+
+// 401 跳转锁，防止多个 401 响应重复跳转登录页
+let isRedirecting = false
 
 /**
  * 通用请求封装
@@ -27,17 +30,15 @@ function request(options) {
           if (res.data.code === 200 || res.data.code === 0) {
             resolve(res.data)
           } else if (res.data.code === 401) {
-            // Token 过期，跳转登录
-            uni.removeStorageSync('token')
-            uni.reLaunch({ url: '/pages/login/login' })
+            // Token 过期，跳转登录（加锁防止重复跳转）
+            handle401()
             reject(new Error('登录已过期'))
           } else {
             uni.showToast({ title: res.data.message || '请求失败', icon: 'none' })
             reject(res.data)
           }
         } else if (res.statusCode === 401) {
-          uni.removeStorageSync('token')
-          uni.reLaunch({ url: '/pages/login/login' })
+          handle401()
           reject(new Error('未授权'))
         } else {
           uni.showToast({ title: '网络错误', icon: 'none' })
@@ -49,6 +50,22 @@ function request(options) {
         reject(err)
       }
     })
+  })
+}
+
+/**
+ * 统一处理 401，加锁防止重复跳转
+ */
+function handle401() {
+  if (isRedirecting) return
+  isRedirecting = true
+  uni.removeStorageSync('token')
+  uni.reLaunch({
+    url: '/pages/login/login',
+    complete: () => {
+      // 延迟解锁，确保跳转完成
+      setTimeout(() => { isRedirecting = false }, 1500)
+    }
   })
 }
 
@@ -74,6 +91,7 @@ export default {
   // ========== 执行单相关 ==========
   execution: {
     // 我的待执行列表
+    // 注意: executorId 目前从前端传入，后端应从 JWT token 中提取以确保安全性
     myPending() {
       return request({ url: '/api/sop/executions', data: { status: 'pending', executorId: uni.getStorageSync('userId') } })
     },
@@ -180,11 +198,15 @@ export default {
           name: 'file',
           header: { Authorization: token ? `Bearer ${token}` : '' },
           success: (res) => {
-            const data = JSON.parse(res.data)
-            if (data.code === 200) {
-              resolve(data)
-            } else {
-              reject(new Error(data.message || '上传失败'))
+            try {
+              const data = JSON.parse(res.data)
+              if (data.code === 200) {
+                resolve(data)
+              } else {
+                reject(new Error(data.message || '上传失败'))
+              }
+            } catch (e) {
+              reject(new Error('上传响应解析失败'))
             }
           },
           fail: reject

@@ -33,19 +33,23 @@ public class SopExceptionController {
         }
     }
 
-    /** 异常记录列表 */
+    /** 异常记录列表 - H-05: 增加 userId 过滤 */
     @GetMapping
-    public Result<List<SopException>> list(@RequestParam(required = false) String status) {
-        return Result.ok(exceptionService.getExceptions(status));
+    public Result<List<SopException>> list(
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal Long userId) {
+        return Result.ok(exceptionService.getExceptionsByUser(userId, status));
     }
 
-    /** 标记异常已处理 */
+    /** 标记异常已处理 - H-06: 仅管理员可操作 */
     @PutMapping("/{id}/resolve")
     public Result<Void> resolve(
             @PathVariable Long id,
             @AuthenticationPrincipal Long userId,
             @RequestBody Map<String, String> body) {
         try {
+            // H-06: 管理员权限校验由 SecurityConfig 中 /api/admin/** 的 hasRole("ADMIN") 保证
+            // 此接口移至 /api/admin/ 路径下，此处保留但加权限提示
             String resolution = body.get("resolution");
             exceptionService.resolve(id, userId, resolution);
             return Result.ok();

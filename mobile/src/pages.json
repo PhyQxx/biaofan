@@ -49,6 +49,14 @@
         "navigationBarBackgroundColor": "#4A90E2",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/mine/drafts",
+      "style": {
+        "navigationBarTitleText": "离线草稿",
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {

@@ -3,6 +3,7 @@ package com.biaofan.controller;
 import com.biaofan.dto.Result;
 import com.biaofan.service.PushTokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
@@ -18,11 +19,13 @@ public class PushController {
      * 个推CID注册/更新
      */
     @PostMapping("/register")
-    public Result<Void> register(@RequestBody Map<String, Object> body) {
+    public Result<Void> register(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody Map<String, Object> body) {
         try {
-            Long userId = Long.valueOf(body.get("userId").toString());
+            // C-04: userId 从 @AuthenticationPrincipal 获取，而非请求体
             String clientId = body.get("clientId").toString();
-            String platform = body.get("platform").toString();
+            String platform = body.get("platform") != null ? body.get("platform").toString() : "unknown";
 
             pushTokenService.registerToken(userId, clientId, platform);
             return Result.ok();

@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +24,11 @@ public class UploadController {
 
     @Value("${spring.servlet.multipart.location:/www/sop-uploads}")
     private String uploadDir;
+
+    // H-08: 扩展名白名单校验
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"
+    );
 
     /**
      * POST /api/upload/image
@@ -56,8 +62,14 @@ public class UploadController {
             String originalFilename = file.getOriginalFilename();
             String ext = "";
             if (originalFilename != null && originalFilename.contains(".")) {
-                ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+                ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
             }
+
+            // H-08: 扩展名白名单校验
+            if (ext.isEmpty() || !ALLOWED_EXTENSIONS.contains(ext)) {
+                return Result.fail(400, "不支持的文件扩展名，仅支持: " + String.join(", ", ALLOWED_EXTENSIONS));
+            }
+
             String filename = UUID.randomUUID().toString().replace("-", "") + ext;
 
             // 保存文件

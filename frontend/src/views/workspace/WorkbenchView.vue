@@ -97,7 +97,9 @@ onMounted(async () => {
       const completed = insts.filter((e: any) => e.status === 'completed').length
       completedRate.value = insts.length ? Math.round((completed / insts.length) * 100) : 0
     }
-  } catch {}
+  } catch (e) {
+    console.error('[WorkbenchView] fetchStats failed:', e)
+  }
 })
 </script>
 

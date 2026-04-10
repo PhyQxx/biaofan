@@ -74,10 +74,12 @@ import {
   useTemplate as useTemplateApi,
   type Template
 } from '@/api/marketplace'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const PAGE_SIZE = 12
-const userId = computed(() => localStorage.getItem('bf_user_id') || '1')
+const userId = computed(() => authStore.getUserId())
 
 const favorites = ref<Template[]>([])
 const total = ref(0)

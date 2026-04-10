@@ -112,12 +112,21 @@ export default {
   
   onLoad() {
     this.checkNetworkStatus()
-    onNetworkChange((isConnected) => {
+    this._networkChangeCallback = (isConnected) => {
       this.isOffline = !isConnected
       if (isConnected && this.hasPendingDrafts) {
         this.syncDrafts()
       }
-    })
+    }
+    onNetworkChange(this._networkChangeCallback)
+  },
+  
+  onUnload() {
+    // 移除网络监听，防止重复注册
+    if (this._networkChangeCallback) {
+      uni.offNetworkStatusChange(this._networkChangeCallback)
+      this._networkChangeCallback = null
+    }
   },
   
   onShow() {

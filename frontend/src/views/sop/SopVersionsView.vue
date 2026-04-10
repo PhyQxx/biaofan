@@ -111,14 +111,20 @@ const rollback = async (v: any) => {
     } else {
       ElMessage.error(res.message || '回滚失败')
     }
-  } catch {}
+  } catch (e) {
+    if (e !== 'cancel' && e?.message !== 'cancel') {
+      console.error('[SopVersionsView] rollback failed:', e)
+    }
+  }
 }
 
 const loadVersions = async () => {
   try {
     const res: any = await request.get(`/sop/${sopId}`)
     if (res.code === 200) sopTitle.value = res.data.title
-  } catch {}
+  } catch (e) {
+    console.error('[SopVersionsView] loadSopTitle failed:', e)
+  }
   const res: any = await request.get(`/sop/${sopId}/versions`)
   if (res.code === 200) versions.value = res.data || []
 }

@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', name: 'Login', component: () => import('@/views/auth/LoginView.vue') },
-    { path: '/register', name: 'Register', component: () => import('@/views/auth/RegisterView.vue') },
+    { path: '/login', name: 'Login', component: () => import('@/views/auth/LoginView.vue'), meta: { guest: true } },
+    { path: '/register', name: 'Register', component: () => import('@/views/auth/RegisterView.vue'), meta: { guest: true } },
 
     // Standalone route: ExecutionDoView (fullscreen, no Layout)
     {
@@ -48,9 +49,29 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
   const token = localStorage.getItem('bf_token')
-  if (to.meta.requiresAuth && !token) return '/login'
+
+  // H-13: If token exists but userInfo not loaded, try fetchMe
+  if (token && !authStore.userInfo) {
+    await authStore.fetchMe()
+  }
+
+  // Redirect authenticated users away from guest pages (login/register)
+  if (to.meta.guest && authStore.token && authStore.userInfo) {
+    return '/'
+  }
+
+  // Require auth: check token + userInfo
+  if (to.meta.requiresAuth) {
+    if (!token) return '/login'
+    // If fetchMe failed (userInfo still null), token might be invalid
+    if (!authStore.userInfo) {
+      authStore.logout()
+      return '/login'
+    }
+  }
 })
 
 export default router

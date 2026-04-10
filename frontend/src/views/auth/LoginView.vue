@@ -61,8 +61,9 @@ const handleLogin = async () => {
     await authStore.login(form.phone, form.password)
     ElMessage.success('登录成功')
     router.push('/')
-  } catch (e: any) {
-    ElMessage.error(e.message || '登录失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '登录失败'
+    ElMessage.error(msg)
   } finally {
     loading.value = false
   }

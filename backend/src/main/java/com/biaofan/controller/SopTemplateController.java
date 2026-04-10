@@ -20,15 +20,15 @@ public class SopTemplateController {
     private final SopService sopService;
     private final SopMapper sopMapper;
 
-    /** 模板列表（支持分类/标签过滤） */
+    /** 模板列表（支持分类/标签过滤）- H-09: 公开接口强制只查 published 状态 */
     @GetMapping
     public Result<List<Sop>> list(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String tag,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String tag) {
         LambdaQueryWrapper<Sop> q = new LambdaQueryWrapper<Sop>();
         if (category != null && !category.isBlank()) q.eq(Sop::getCategory, category);
-        if (status != null && !status.isBlank()) q.eq(Sop::getStatus, status);
+        // H-09: 公开接口强制只展示已发布的模板，忽略客户端传入的 status 参数
+        q.eq(Sop::getStatus, "published");
         q.orderByDesc(Sop::getUpdatedAt);
         List<Sop> list = sopMapper.selectList(q);
         // Tag filtering done in memory (tags stored as JSON)

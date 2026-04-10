@@ -20,8 +20,9 @@ request.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('bf_token')
+      localStorage.removeItem('bf_user_id')
+      // M-24: Don't show ElMessage for 401 - the router guard or page will handle it
       router.push('/login')
-      ElMessage.error('登录已过期，请重新登录')
     } else {
       ElMessage.error(error.response?.data?.message || '请求失败')
     }

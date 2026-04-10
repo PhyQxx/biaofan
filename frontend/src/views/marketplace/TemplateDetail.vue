@@ -151,13 +151,15 @@ import {
   type TemplateStep,
   type Review
 } from '@/api/marketplace'
+import { useAuthStore } from '@/stores/auth'
 import StarRating from './StarRating.vue'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const templateId = computed(() => route.params.template_id as string)
-const userId = computed(() => localStorage.getItem('bf_user_id') || '1')
+const userId = computed(() => authStore.getUserId())
 
 const template = ref<Template | null>(null)
 const steps = ref<TemplateStep[]>([])
@@ -222,7 +224,7 @@ const fetchReviews = async () => {
       reviews.value = { total: res.data?.total || 0, reviews: res.data?.reviews || [] }
     }
   } catch (e) {
-    // ignore
+    console.error('[TemplateDetail] fetchReviews failed:', e)
   } finally {
     reviewsLoading.value = false
   }

@@ -89,7 +89,7 @@ export default {
     filteredList() {
       if (this.filterStatus === 'all') return this.recordsList
       if (this.filterStatus === 'completed') {
-        return this.recordsList.filter(r => r.status === 'completed')
+        return this.recordsList.filter(r => r.status === 'completed' && !r.hasException)
       }
       if (this.filterStatus === 'abnormal') {
         return this.recordsList.filter(r => r.status === 'abnormal' || r.hasException)
@@ -109,8 +109,32 @@ export default {
   methods: {
     async loadRecords() {
       try {
-        const res = await api.instance.myInstances('completed')
-        const records = res.data || []
+        // 获取已完成和异常记录
+        const [completedRes, abnormalRes] = await Promise.allSettled([
+          api.instance.myInstances('completed'),
+          api.instance.myInstances('abnormal')
+        ])
+        
+        let records = []
+        if (completedRes.status === 'fulfilled') {
+          records = records.concat(completedRes.value.data || [])
+        }
+        if (abnormalRes.status === 'fulfilled') {
+          const abnormalRecords = (abnormalRes.value.data || []).map(r => ({
+            ...r,
+            hasException: true,
+            exceptionNote: r.exceptionNote || r.exceptionDescription || '存在异常'
+          }))
+          records = records.concat(abnormalRecords)
+        }
+        
+        // 去重（以 id 为准）
+        const seen = new Set()
+        records = records.filter(r => {
+          if (seen.has(r.id)) return false
+          seen.add(r.id)
+          return true
+        })
         
         const sopIds = [...new Set(records.map(e => e.sopId))]
         const sopMap = {}

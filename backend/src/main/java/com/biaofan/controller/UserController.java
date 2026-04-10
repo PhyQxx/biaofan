@@ -45,7 +45,8 @@ public class UserController {
             @AuthenticationPrincipal Long userId,
             @RequestBody Map<String, String> body) {
         try {
-            userService.updatePhone(userId, body.get("phone"));
+            // H-13: updatePhone 需要验证码
+            userService.updatePhone(userId, body.get("phone"), body.get("code"));
             return Result.ok();
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());

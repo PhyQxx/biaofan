@@ -80,7 +80,9 @@ const fetchPendingCount = async () => {
   try {
     const res = await getAuditList({ status: 'pending' })
     if (res.success) pendingCount.value = res.data?.total || 0
-  } catch {}
+  } catch (e) {
+    console.error('[MarketplaceLayout] fetchPendingCount failed:', e)
+  }
 }
 
 onMounted(() => {

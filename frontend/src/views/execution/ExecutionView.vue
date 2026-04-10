@@ -114,7 +114,9 @@ onMounted(async () => {
         if (r.code === 200) {
           sopMap[sopId] = r.data
         }
-      } catch {}
+      } catch (e) {
+        console.error('[ExecutionView] fetchSop failed for sopId:', sopId, e)
+      }
     }
     for (const inst of instances.value) {
       const sop = sopMap[inst.sopId]

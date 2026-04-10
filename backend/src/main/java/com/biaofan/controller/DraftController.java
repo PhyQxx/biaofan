@@ -23,10 +23,13 @@ public class DraftController {
             @AuthenticationPrincipal Long userId,
             @RequestBody Map<String, Object> body) {
         try {
-            Long executorId = Long.valueOf(body.get("executorId").toString());
+            // C-04: executorId 从 @AuthenticationPrincipal 获取，而非请求体
+            Long executorId = userId;
             Long sopId = Long.valueOf(body.get("sopId").toString());
             String draftData = body.get("draftData") != null ? body.get("draftData").toString() : "{}";
-            Long clientUpdatedAt = Long.valueOf(body.get("clientUpdatedAt").toString());
+            Long clientUpdatedAt = body.get("clientUpdatedAt") != null
+                ? Long.valueOf(body.get("clientUpdatedAt").toString())
+                : System.currentTimeMillis();
 
             SopDraft draft = draftService.syncDraft(executorId, sopId, draftData, clientUpdatedAt);
 

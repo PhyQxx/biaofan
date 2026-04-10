@@ -86,6 +86,10 @@ public class ExecutionController {
             @AuthenticationPrincipal Long userId) {
         try {
             SopExecution e = executionService.getExecution(executionId);
+            // H-04: 校验 executorId == userId，防止越权访问
+            if (!e.getExecutorId().equals(userId)) {
+                return Result.fail(403, "无权访问该执行记录");
+            }
             return Result.ok(e);
         } catch (RuntimeException ex) {
             return Result.fail(404, ex.getMessage());
@@ -98,6 +102,10 @@ public class ExecutionController {
             @AuthenticationPrincipal Long userId) {
         try {
             SopExecution e = executionService.getExecution(executionId);
+            // H-04: 校验 executorId == userId
+            if (!e.getExecutorId().equals(userId)) {
+                return Result.fail(403, "无权访问该执行记录");
+            }
             Sop sop = executionService.getSopWithSteps(e.getSopId());
             return Result.ok(sop);
         } catch (RuntimeException ex) {
@@ -110,7 +118,11 @@ public class ExecutionController {
             @PathVariable Long executionId,
             @AuthenticationPrincipal Long userId) {
         try {
-            executionService.getExecution(executionId); // verify access
+            SopExecution e = executionService.getExecution(executionId);
+            // H-04: 校验 executorId == userId
+            if (!e.getExecutorId().equals(userId)) {
+                return Result.fail(403, "无权访问该执行记录");
+            }
             return Result.ok(executionService.getStepRecords(executionId));
         } catch (RuntimeException ex) {
             return Result.fail(404, ex.getMessage());

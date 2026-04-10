@@ -58,12 +58,22 @@ export default {
       phone: '',
       code: '',
       loading: false,
-      countdown: 0
+      countdown: 0,
+      countdownTimer: null
+    }
+  },
+  beforeUnmount() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+      this.countdownTimer = null
     }
   },
   methods: {
+    validatePhone(phone) {
+      return /^1[3-9]\d{9}$/.test(phone)
+    },
     async sendCode() {
-      if (!this.phone || this.phone.length !== 11) {
+      if (!this.phone || !this.validatePhone(this.phone)) {
         uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
         return
       }
@@ -73,10 +83,11 @@ export default {
         uni.showToast({ title: '验证码已发送', icon: 'success' })
         
         this.countdown = 60
-        const timer = setInterval(() => {
+        this.countdownTimer = setInterval(() => {
           this.countdown--
           if (this.countdown <= 0) {
-            clearInterval(timer)
+            clearInterval(this.countdownTimer)
+            this.countdownTimer = null
           }
         }, 1000)
       } catch (e) {
@@ -85,7 +96,7 @@ export default {
     },
     
     async handleLogin() {
-      if (!this.phone || this.phone.length !== 11) {
+      if (!this.phone || !this.validatePhone(this.phone)) {
         uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
         return
       }

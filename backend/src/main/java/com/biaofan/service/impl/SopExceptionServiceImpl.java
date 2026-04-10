@@ -55,6 +55,18 @@ public class SopExceptionServiceImpl implements SopExceptionService {
     }
 
     @Override
+    public List<SopException> getExceptionsByUser(Long userId, String status) {
+        // H-05: 通过 reporterId 过滤，只返回当前用户的异常记录
+        LambdaQueryWrapper<SopException> q = new LambdaQueryWrapper<SopException>()
+                .eq(SopException::getReporterId, userId)
+                .orderByDesc(SopException::getCreatedAt);
+        if (status != null && !status.isEmpty()) {
+            q.eq(SopException::getStatus, status);
+        }
+        return exceptionMapper.selectList(q);
+    }
+
+    @Override
     @Transactional
     public void resolve(Long id, Long resolvedBy, String resolution) {
         SopException ex = exceptionMapper.selectById(id);

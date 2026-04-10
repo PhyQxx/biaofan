@@ -1,4 +1,5 @@
 import request from './index'
+import type { ApiResponse } from '@/types'
 
 // ============ Types ============
 export interface Template {
@@ -46,15 +47,6 @@ export interface Review {
   createdAt?: string
 }
 
-// Full API response wrapper
-export interface ApiResponse<T = any> {
-  code: number
-  message: string
-  data: T
-  timestamp: number
-  success: boolean
-}
-
 export interface TemplateListData {
   total: number
   templates: Template[]
@@ -79,27 +71,27 @@ export const getTemplates = (params: {
   page?: number
   page_size?: number
 }) =>
-  request.get<any, ApiResponse<TemplateListData>>('/marketplace/templates', { params })
+  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates', { params })
 
 /** 模板详情（含步骤、收藏状态） */
 export const getTemplateDetail = (templateId: string) =>
-  request.get<any, ApiResponse<any>>(`/marketplace/templates/${templateId}`)
+  request.get<unknown, ApiResponse<{ template?: Template; steps?: TemplateStep[]; isFavorited?: boolean; hasReviewed?: boolean } & Template>>((`/marketplace/templates/${templateId}`))
 
 /** 使用模板（复制为用户 SOP） */
 export const useTemplate = (templateId: string, data: { user_id: string; sop_name?: string }) =>
-  request.post<any, ApiResponse<any>>(`/marketplace/templates/${templateId}/use`, data)
+  request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/use`, data)
 
 /** 收藏模板 */
 export const favoriteTemplate = (templateId: string, data: { user_id: string }) =>
-  request.post<any, ApiResponse<any>>(`/marketplace/templates/${templateId}/favorite`, data)
+  request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`, data)
 
 /** 取消收藏 */
 export const unfavoriteTemplate = (templateId: string, data: { user_id: string }) =>
-  request.delete<any, ApiResponse<any>>(`/marketplace/templates/${templateId}/favorite`, { data })
+  request.delete<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`, { data })
 
 /** 我的收藏列表 */
 export const getFavorites = (params: { user_id: string; page?: number; page_size?: number }) =>
-  request.get<any, ApiResponse<TemplateListData>>('/marketplace/templates/favorites', { params })
+  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates/favorites', { params })
 
 /** 提交模板审核 */
 export const submitTemplate = (data: {
@@ -109,26 +101,26 @@ export const submitTemplate = (data: {
   category: string
   sub_category?: string
 }) =>
-  request.post<any, ApiResponse<any>>('/marketplace/templates', data)
+  request.post<unknown, ApiResponse<unknown>>('/marketplace/templates', data)
 
 /** 获取评价列表 */
 export const getReviews = (templateId: string, params?: { page?: number; page_size?: number }) =>
-  request.get<any, ApiResponse<ReviewListData>>(`/marketplace/templates/${templateId}/reviews`, { params })
+  request.get<unknown, ApiResponse<ReviewListData>>(`/marketplace/templates/${templateId}/reviews`, { params })
 
 /** 提交评价 */
 export const submitReview = (templateId: string, data: { user_id: string; rating: number; comment?: string }) =>
-  request.post<any, ApiResponse<any>>(`/marketplace/templates/${templateId}/reviews`, data)
+  request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/reviews`, data)
 
 // ============ Admin APIs ============
 
 /** 审核列表 */
 export const getAuditList = (params?: { status?: string; page?: number; page_size?: number }) =>
-  request.get<any, ApiResponse<TemplateListData>>('/admin/marketplace/templates', { params })
+  request.get<unknown, ApiResponse<TemplateListData>>('/admin/marketplace/templates', { params })
 
 /** 审核操作（通过/驳回） */
 export const auditTemplate = (templateId: string, data: { status: string; reject_reason?: string }) =>
-  request.put<any, ApiResponse<any>>(`/admin/marketplace/templates/${templateId}/audit`, data)
+  request.put<unknown, ApiResponse<unknown>>(`/admin/marketplace/templates/${templateId}/audit`, data)
 
 /** 下架模板 */
 export const offlineTemplate = (templateId: string) =>
-  request.delete<any, ApiResponse<any>>(`/admin/marketplace/templates/${templateId}`)
+  request.delete<unknown, ApiResponse<unknown>>(`/admin/marketplace/templates/${templateId}`)

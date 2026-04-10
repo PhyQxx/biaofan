@@ -405,7 +405,9 @@ async function loadSettings() {
       settingsForm.username = userRes.data.username || ''
       settingsForm.phone = userRes.data.phone || ''
     }
-  } catch {}
+  } catch (e) {
+    console.error('[ProfileView] fetchProfile user info failed:', e)
+  }
   try {
     const notifRes: any = await request.get('/notification-config')
     if (notifRes.code === 200 && notifRes.data) {
@@ -418,7 +420,9 @@ async function loadSettings() {
       notifForm.email = c.email || ''
       notifForm.emailEnabled = !!c.enabled && !!c.email
     }
-  } catch {}
+  } catch (e) {
+    console.error('[ProfileView] fetchProfile notification config failed:', e)
+  }
 }
 
 async function saveProfile() {

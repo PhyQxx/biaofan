@@ -8,7 +8,12 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: uni.getStorageSync('token') || '',
     userId: uni.getStorageSync('userId') || '',
-    userInfo: uni.getStorageSync('userInfo') || null
+    userInfo: (() => {
+      try {
+        const raw = uni.getStorageSync('userInfo')
+        return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null
+      } catch { return null }
+    })()
   }),
   
   getters: {

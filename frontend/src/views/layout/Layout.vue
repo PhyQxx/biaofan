@@ -89,7 +89,7 @@ const notifStore = useNotificationStore()
 const showUserMenu = ref(false)
 
 const user = computed(() => authStore.userInfo)
-const isAdmin = computed(() => user.value?.username === 'admin')
+const isAdmin = computed(() => user.value?.role === 'admin')
 const userInitial = computed(() => user.value?.username?.charAt(0)?.toUpperCase() || 'U')
 const unreadNotif = computed(() => notifStore.unreadCount)
 const isDarkRoute = computed(() =>

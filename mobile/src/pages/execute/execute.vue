@@ -217,7 +217,7 @@ export default {
         })
         
         if (this.executionDetail.status === 'pending') {
-          await this.startExecution()
+          this.confirmStartExecution()
         }
       } catch (e) {
         console.error('加载执行详情失败:', e)
@@ -279,6 +279,18 @@ export default {
       }
     },
     
+    confirmStartExecution() {
+      uni.showModal({
+        title: '开始执行',
+        content: '确认开始执行此SOP？',
+        success: async (res) => {
+          if (res.confirm) {
+            await this.startExecution()
+          }
+        }
+      })
+    },
+    
     async handleCheckIn(step) {
       this.checkingIn = true
       const isOnline = await checkNetwork()
@@ -290,14 +302,23 @@ export default {
               notes: this.stepNote
             })
           } else {
-            let photoUrl = ''
-            if (this.stepPhotos[step.index]?.length > 0) {
-              const uploadRes = await api.upload.image(this.stepPhotos[step.index][0])
-              photoUrl = uploadRes.data?.url || ''
+            // 上传所有照片，而非仅第一张
+            let photoUrls = []
+            const photos = this.stepPhotos[step.index] || []
+            for (const photo of photos) {
+              try {
+                const uploadRes = await api.upload.image(photo)
+                if (uploadRes.data?.url) {
+                  photoUrls.push(uploadRes.data.url)
+                }
+              } catch (e) {
+                console.error('照片上传失败:', e)
+              }
             }
             await api.execution.completeStep(this.executionId, step.id || step.index, {
               note: this.stepNote,
-              photoUrl
+              photoUrl: photoUrls.join(','),
+              photoUrls: photoUrls
             })
           }
           uni.showToast({ title: '打卡成功', icon: 'success' })
@@ -313,9 +334,9 @@ export default {
           uni.showToast({ title: '已保存草稿，网络恢复后自动同步', icon: 'success' })
         }
         
-        // 更新本地状态
-        step.status = 'completed'
-        step.completedAt = new Date().toISOString()
+        // 更新本地状态：在线成功标completed，离线/失败标pending_sync
+        step.status = isOnline ? 'completed' : 'pending_sync'
+        step.completedAt = isOnline ? new Date().toISOString() : null
         step.note = this.stepNote
         
         // 清理当前步骤数据
@@ -328,7 +349,7 @@ export default {
         
       } catch (e) {
         console.error('打卡失败:', e)
-        // 即使在线失败，也保存草稿
+        // 在线打卡失败，保存草稿并标记为pending_sync
         const draftStore = useDraftStore()
         draftStore.addDraft(
           this.executionId,
@@ -336,7 +357,9 @@ export default {
           this.stepPhotos[step.index]?.[0] || '',
           this.stepNote
         )
-        uni.showToast({ title: '已保存草稿', icon: 'success' })
+        step.status = 'pending_sync'
+        step.note = this.stepNote
+        uni.showToast({ title: '打卡失败，已保存草稿', icon: 'none' })
       } finally {
         this.checkingIn = false
       }
@@ -373,7 +396,7 @@ export default {
         sourceType: ['camera'],
         success: (res) => {
           if (!this.stepPhotos[stepIndex]) {
-            this.$set(this.stepPhotos, stepIndex, [])
+            this.stepPhotos[stepIndex] = []
           }
           this.stepPhotos[stepIndex].push(res.tempFilePaths[0])
         }
@@ -409,16 +432,24 @@ export default {
       
       uni.showLoading({ title: '提交中...' })
       try {
-        let photoUrl = ''
-        if (this.exceptionPhotos.length > 0) {
-          const uploadRes = await api.upload.image(this.exceptionPhotos[0])
-          photoUrl = uploadRes.data?.url || ''
+        // 上传所有异常照片
+        let photoUrls = []
+        for (const photo of this.exceptionPhotos) {
+          try {
+            const uploadRes = await api.upload.image(photo)
+            if (uploadRes.data?.url) {
+              photoUrls.push(uploadRes.data.url)
+            }
+          } catch (e) {
+            console.error('异常照片上传失败:', e)
+          }
         }
         
         await api.execution.reportException(this.executionId, {
           stepId: this.exceptionStep?.id || this.exceptionStep?.index,
           description: this.exceptionDesc,
-          photoUrl
+          photoUrl: photoUrls.join(','),
+          photoUrls: photoUrls
         })
         
         uni.showToast({ title: '异常已上报', icon: 'success' })

@@ -53,38 +53,57 @@ export const useDraftStore = defineStore('draft', {
       // 逐个 executionId 同步
       for (const [executionId, steps] of Object.entries(grouped)) {
         try {
-          // 先上传图片，获取远程 URL
-          const stepsWithUrls = await Promise.all(steps.map(async (step) => {
+          // 先上传图片，获取远程 URL；图片上传失败的步骤跳过，保留重试
+          const uploadResults = await Promise.all(steps.map(async (step) => {
             let photoUrl = ''
+            let uploadFailed = false
             if (step.photoLocalPath) {
               try {
                 const uploadRes = await api.upload.image(step.photoLocalPath)
                 photoUrl = uploadRes.data.url
               } catch (e) {
                 console.error('图片上传失败:', e)
+                uploadFailed = true
               }
             }
-            return {
-              stepIndex: step.stepIndex,
-              photoUrl,
-              note: step.note,
-              localTimestamp: step.localTimestamp,
-              synced: true
-            }
+            return { step, photoUrl, uploadFailed }
           }))
           
-          // 调用同步接口
-          await api.draft.sync({
-            executionId: parseInt(executionId),
-            steps: stepsWithUrls
+          // 分离上传成功和失败的步骤
+          const successSteps = uploadResults.filter(r => !r.uploadFailed)
+          const failedSteps = uploadResults.filter(r => r.uploadFailed)
+          
+          // 只有上传成功的步骤才调用同步接口
+          if (successSteps.length > 0) {
+            const stepsWithUrls = successSteps.map(r => ({
+              stepIndex: r.step.stepIndex,
+              photoUrl: r.photoUrl,
+              note: r.step.note,
+              localTimestamp: r.step.localTimestamp
+            }))
+            
+            await api.draft.sync({
+              executionId: parseInt(executionId),
+              steps: stepsWithUrls
+            })
+            
+            // 标记上传成功的步骤为已同步
+            successSteps.forEach(r => {
+              r.step.synced = true
+            })
+          }
+          
+          // 图片上传失败的步骤增加重试计数，不标记synced，保留重试
+          failedSteps.forEach(r => {
+            r.step.retryCount = (r.step.retryCount || 0) + 1
           })
           
-          // 标记为已同步
-          steps.forEach(step => {
-            step.synced = true
-          })
-          
-          uni.showToast({ title: `已同步 ${steps.length} 条草稿`, icon: 'success' })
+          const syncedCount = successSteps.length
+          if (syncedCount > 0) {
+            uni.showToast({ title: `已同步 ${syncedCount} 条草稿`, icon: 'success' })
+          } else {
+            uni.showToast({ title: '图片上传失败，待重试', icon: 'none' })
+          }
         } catch (e) {
           console.error('草稿同步失败:', e)
           // 增加重试计数

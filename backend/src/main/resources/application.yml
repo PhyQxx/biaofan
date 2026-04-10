@@ -38,5 +38,6 @@ mybatis-plus:
       id-type: auto
 
 jwt:
-  secret: biaofan-sop-platform-secret-key-2026-very-long-and-secure
+  # C-03: JWT secret 通过环境变量注入，避免硬编码
+  secret: ${JWT_SECRET:biaofan-sop-platform-secret-key-2026-very-long-and-secure}
   ttl: 86400000

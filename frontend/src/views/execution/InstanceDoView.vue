@@ -205,18 +205,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
+import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const executionId = Number(route.params.id)
 const instanceId = Number(route.params.id)
 
-const execution = ref<any>(null)
-const sop = ref<any>(null)
-const steps = ref<any[]>([])
+const execution = ref<Execution | null>(null)
+const sop = ref<Sop | null>(null)
+const steps = ref<StepData[]>([])
 const currentStep = ref(1)
 const notes = ref('')
-const checkData = ref<Record<string, any>>({})
+const checkData = ref<Record<string, unknown>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
 const stepsLoaded = ref(false)
@@ -227,7 +228,7 @@ const progressPercent = computed(() => totalSteps.value ? Math.round((currentSte
 const isCompleted = computed(() => execution.value?.status === 'completed')
 
 const completedCheckCount = computed(() => {
-  return checkItems.value.filter((_: any, idx: number) => {
+  return checkItems.value.filter((_: CheckItem, idx: number) => {
     const val = checkData.value[String(idx)]
     if (val === true || (typeof val === 'string' && val.trim())) return true
     return false
@@ -290,27 +291,38 @@ const handleComplete = () => {
 const completeStep = async () => {
   isSubmitting.value = true
   try {
-    const dataMap: Record<string, any> = {}
+    const dataMap: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(checkData.value)) {
       dataMap[k] = { value: v }
     }
 
-    const res: any = await request.post(`/instance/${instanceId}/steps/${currentStep.value}/complete`, {
+    const res = await request.post<unknown, ApiResponse<{ completed?: boolean }>>(`/instance/${instanceId}/steps/${currentStep.value}/complete`, {
       notes: notes.value,
       checkData: dataMap,
     })
 
     if (res?.code === 200) {
-      const completed = res.data?.completed
+      // H-17: Re-fetch execution status from server after step submission
+      try {
+        const instRes = await request.get<unknown, ApiResponse<{ instance?: Execution }>>(`/instance/${instanceId}`)
+        if (instRes?.code === 200) {
+          const instData = instRes.data?.instance || instRes.data
+          if (instData) execution.value = instData
+        }
+      } catch (e) {
+        console.error('[InstanceDoView] re-fetch instance status failed:', e)
+      }
+
       // Flash animation
       justCompleted.value = true
       setTimeout(() => { justCompleted.value = false }, 600)
 
+      const completed = res.data?.completed || execution.value?.status === 'completed'
       if (completed || currentStep.value >= totalSteps.value) {
-        execution.value.status = 'completed'
+        if (execution.value) execution.value.status = 'completed'
         ElMessage.success('🎉 SOP 执行完成！')
       } else {
-        currentStep.value++
+        currentStep.value = execution.value?.currentStep || currentStep.value + 1
         notes.value = ''
         checkData.value = {}
         ElMessage({ message: '✓ 步骤完成，已自动进入下一步', type: 'success', duration: 2000 })
@@ -318,8 +330,9 @@ const completeStep = async () => {
     } else {
       ElMessage.error(res.message || '提交失败')
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '操作失败'
+    ElMessage.error(msg)
   } finally {
     isSubmitting.value = false
   }
@@ -327,29 +340,31 @@ const completeStep = async () => {
 
 onMounted(async () => {
   try {
-    const instRes: any = await request.get(`/instance/${instanceId}`)
+    const instRes = await request.get<unknown, ApiResponse<{ instance?: Execution } & Execution>>(`/instance/${instanceId}`)
 
     let sopId = 0
     if (instRes?.code === 200) {
       const instData = instRes.data?.instance || instRes.data
-      execution.value = instData
-      execution.value.sopTitle = ''
-      currentStep.value = instData.currentStep || 1
-      sopId = instData.sopId
+      if (instData) {
+        execution.value = instData
+        execution.value.sopTitle = ''
+        currentStep.value = instData.currentStep || 1
+        sopId = instData.sopId
 
-      if (instData.status === 'pending') {
-        await request.post(`/instance/${instanceId}/activate`)
-        execution.value.status = 'in_progress'
-        execution.value.currentStep = 1
-        currentStep.value = 1
+        if (instData.status === 'pending') {
+          await request.post(`/instance/${instanceId}/activate`)
+          execution.value.status = 'in_progress'
+          execution.value.currentStep = 1
+          currentStep.value = 1
+        }
       }
     }
 
     if (sopId) {
-      const sopDataRes: any = await request.get(`/sop/${sopId}`)
-      if (sopDataRes?.code === 200) {
+      const sopDataRes = await request.get<unknown, ApiResponse<Sop>>(`/sop/${sopId}`)
+      if (sopDataRes?.code === 200 && sopDataRes.data) {
         sop.value = sopDataRes.data
-        execution.value.sopTitle = sop.value.title
+        if (execution.value) execution.value.sopTitle = sop.value.title
         try {
           const raw = sop.value.content
           steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []

@@ -143,10 +143,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getTemplates, useTemplate as useTemplateApi, type Template } from '@/api/marketplace'
+import { useAuthStore } from '@/stores/auth'
 import StarRating from './StarRating.vue'
 import CategoryTag from './CategoryTag.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const PAGE_SIZE = 20
 
@@ -244,9 +246,14 @@ const useTemplate = (tpl: Template) => {
 
 const confirmUse = async () => {
   if (!selectedTemplate.value) return
+  const userId = authStore.requireUserId()
+  if (!userId) {
+    ElMessage.error('请先登录')
+    router.push('/login')
+    return
+  }
   using.value = true
   try {
-    const userId = localStorage.getItem('bf_user_id') || '1'
     const res = await useTemplateApi(selectedTemplate.value.templateId || String(selectedTemplate.value.id), {
       user_id: userId,
       sop_name: useForm.value.sop_name || selectedTemplate.value.title,
