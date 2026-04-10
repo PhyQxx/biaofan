@@ -6,12 +6,6 @@
       'badge-locked': !badge.unlockedAt,
       [`rarity-${badge.rarity}`]: badge.unlockedAt,
     }"
-
-/**
- * 徽章卡片组件
- * - 展示单个徽章（图标、名称、描述、是否已获得）
- * - 已获得 vs 未获得（灰色）样式区分
- */
     @click="$emit('click')"
   >
     <div class="badge-icon-wrap">
