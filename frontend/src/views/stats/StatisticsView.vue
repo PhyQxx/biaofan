@@ -182,7 +182,7 @@ const loadTrend = async () => {
 
 const loadSopStats = async () => {
   try {
-    const res = await request.get('/stats/global') as any
+    const res = await request.get('/stats/my') as any
     if (res.success && res.data) {
       sopStats.value = res.data
     }
