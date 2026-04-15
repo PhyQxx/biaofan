@@ -2,26 +2,26 @@
   <view class="container">
     <!-- 筛选 tabs -->
     <view class="filter-tabs">
-      <view 
-        class="tab" 
+      <view
+        class="tab"
         :class="{ active: filterStatus === 'all' }"
         @click="filterStatus = 'all'"
       >全部</view>
-      <view 
-        class="tab" 
+      <view
+        class="tab"
         :class="{ active: filterStatus === 'completed' }"
         @click="filterStatus = 'completed'"
       >已完成</view>
-      <view 
-        class="tab" 
+      <view
+        class="tab"
         :class="{ active: filterStatus === 'abnormal' }"
         @click="filterStatus = 'abnormal'"
       >异常</view>
     </view>
-    
+
     <!-- 记录列表 -->
-    <scroll-view 
-      scroll-y 
+    <scroll-view
+      scroll-y
       class="list-container"
       @refresherrefresh="onRefresh"
       :refresher-enabled="true"
@@ -31,10 +31,10 @@
         <text class="icon">📜</text>
         <text>暂无执行记录</text>
       </view>
-      
-      <view 
-        v-for="item in filteredList" 
-        :key="item.id" 
+
+      <view
+        v-for="item in filteredList"
+        :key="item.id"
         class="record-card"
         @click="viewDetail(item)"
       >
@@ -44,7 +44,7 @@
             {{ item.status === 'abnormal' ? '异常' : getStatusText(item.status) }}
           </text>
         </view>
-        
+
         <view class="card-body">
           <view class="info-row">
             <text class="label">执行时间：</text>
@@ -63,7 +63,7 @@
             <text class="value text-error">{{ item.exceptionNote }}</text>
           </view>
         </view>
-        
+
         <view class="card-footer">
           <text class="view-detail">查看详情 ></text>
         </view>
@@ -92,28 +92,30 @@ export default {
       refreshing: false
     }
   },
-  
+
   computed: {
     filteredList() {
       if (this.filterStatus === 'all') return this.recordsList
       if (this.filterStatus === 'completed') {
-        return this.recordsList.filter(r => r.status === 'completed' && !r.hasException)
+        // 已完成：status=completed 且没有异常标记
+        return this.recordsList.filter(r => r.status === 'completed' && r.hasException !== true)
       }
       if (this.filterStatus === 'abnormal') {
-        return this.recordsList.filter(r => r.status === 'abnormal' || r.hasException)
+        // 异常：status=abnormal 或 hasException=true（优先显示有异常备注的）
+        return this.recordsList.filter(r => r.status === 'abnormal' || r.hasException === true)
       }
       return this.recordsList
     }
   },
-  
+
   onShow() {
     this.loadRecords()
   },
-  
+
   onPullDownRefresh() {
     this.loadRecords()
   },
-  
+
   methods: {
     async loadRecords() {
       try {
@@ -122,7 +124,7 @@ export default {
           api.instance.myInstances('completed'),
           api.instance.myInstances('abnormal')
         ])
-        
+
         let records = []
         if (completedRes.status === 'fulfilled') {
           records = records.concat(completedRes.value.data || [])
@@ -135,7 +137,7 @@ export default {
           }))
           records = records.concat(abnormalRecords)
         }
-        
+
         // 去重（以 id 为准）
         const seen = new Set()
         records = records.filter(r => {
@@ -143,16 +145,19 @@ export default {
           seen.add(r.id)
           return true
         })
-        
+
         const sopIds = [...new Set(records.map(e => e.sopId))]
+        // 并发请求所有 SOP 详情
         const sopMap = {}
-        for (const sopId of sopIds) {
-          try {
-            const r = await api.sop.detail(sopId)
-            if (r.code === 200) sopMap[sopId] = r.data
-          } catch {}
-        }
-        
+        await Promise.all(
+          sopIds.map(async (sopId) => {
+            try {
+              const r = await api.sop.detail(sopId)
+              if (r.code === 200) sopMap[sopId] = r.data
+            } catch {}
+          })
+        )
+
         this.recordsList = records.map(r => {
           const sop = sopMap[r.sopId]
           return {
@@ -168,16 +173,16 @@ export default {
         this.refreshing = false
       }
     },
-    
+
     viewDetail(item) {
       uni.navigateTo({ url: `/pages/execute/execute?instanceId=${item.id}&sopId=${item.sopId}` })
     },
-    
+
     onRefresh() {
       this.refreshing = true
       this.loadRecords()
     },
-    
+
     getDuration(item) {
       if (!item.startedAt || !item.completedAt) return '-'
       const start = new Date(item.startedAt)
@@ -189,7 +194,7 @@ export default {
       const mins = diffMins % 60
       return `${hours}小时${mins}分钟`
     },
-    
+
     formatDateTime,
     getStatusText,
     getStatusTagClass

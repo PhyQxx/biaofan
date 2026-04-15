@@ -113,6 +113,33 @@ export const updateProduct = (id: number, data: Product) =>
 export const deleteProduct = (id: number) =>
   request.delete<any, any>(`/admin/gamification/products/${id}`)
 
+// ============ AI 模型配置 ============
+export interface AiModelConfig {
+  id?: number
+  userId?: number | null
+  modelType: string
+  apiUrl?: string
+  apiKey?: string
+  modelName?: string
+  systemPrompt?: string
+  enabled?: boolean
+  temperature?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export const getGlobalAiConfigs = () =>
+  request.get<any, { list: AiModelConfig[]; total: number }>('/admin/ai-config/global')
+
+export const getUserAiConfigs = () =>
+  request.get<any, { list: AiModelConfig[]; total: number }>('/admin/ai-config/users')
+
+export const saveGlobalAiConfig = (data: AiModelConfig) =>
+  request.post<any, any>('/admin/ai-config/global', data)
+
+export const deleteGlobalAiConfig = (id: number) =>
+  request.delete<any, any>(`/admin/ai-config/global/${id}`)
+
 // ============ 成长规则 ============
 /**
  * 等级规则

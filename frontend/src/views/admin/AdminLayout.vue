@@ -41,6 +41,15 @@
         >
           <span>📈</span><span>成长规则</span>
         </div>
+
+        <div class="sidebar-section-title" style="margin-top: 16px;">AI 配置</div>
+        <div
+          class="sidebar-item"
+          :class="{ active: activeMenu === 'ai-config' }"
+          @click="go('/admin/ai-config')"
+        >
+          <span>🤖</span><span>AI 模型配置</span>
+        </div>
       </div>
 
       <!-- Admin Content -->
@@ -72,6 +81,7 @@ const activeMenu = computed(() => {
   if (path.includes('/badges')) return 'badges'
   if (path.includes('/products')) return 'products'
   if (path.includes('/rules')) return 'rules'
+  if (path.includes('/ai-config')) return 'ai-config'
   return 'badges'
 })
 

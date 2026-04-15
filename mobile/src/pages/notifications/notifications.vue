@@ -4,10 +4,10 @@
     <view class="header-actions" v-if="notifications.length > 0">
       <text class="mark-all" @click="markAllRead">全部标为已读</text>
     </view>
-    
+
     <!-- 通知列表 -->
-    <scroll-view 
-      scroll-y 
+    <scroll-view
+      scroll-y
       class="list-container"
       @refresherrefresh="onRefresh"
       :refresher-enabled="true"
@@ -17,10 +17,10 @@
         <text class="icon">🔔</text>
         <text>暂无通知</text>
       </view>
-      
-      <view 
-        v-for="item in notifications" 
-        :key="item.id" 
+
+      <view
+        v-for="item in notifications"
+        :key="item.id"
         class="notification-card"
         :class="{ unread: !item.isRead }"
         @click="handleNotification(item)"
@@ -31,7 +31,7 @@
           <text v-else-if="getNotifIcon(item.type) === 'exception'" class="icon-text">⚠️</text>
           <text v-else class="icon-text">🔔</text>
         </view>
-        
+
         <view class="notif-content">
           <view class="notif-header">
             <text class="notif-title">{{ item.title }}</text>
@@ -42,7 +42,7 @@
             <text>点击查看 ></text>
           </view>
         </view>
-        
+
         <view class="unread-dot" v-if="!item.isRead"></view>
       </view>
     </scroll-view>
@@ -68,15 +68,15 @@ export default {
       refreshing: false
     }
   },
-  
+
   onShow() {
     this.loadNotifications()
   },
-  
+
   onPullDownRefresh() {
     this.loadNotifications()
   },
-  
+
   methods: {
     async loadNotifications() {
       try {
@@ -89,39 +89,50 @@ export default {
         this.refreshing = false
       }
     },
-    
+
     async handleNotification(item) {
       if (!item.isRead) {
         try {
           await api.notification.markRead(item.id)
-          item.isRead = 1
+          item.isRead = true
         } catch (e) {
           console.error('标记已读失败:', e)
         }
       }
-      
-      if (item.sourceType === 'execution' && item.sourceId) {
-        uni.navigateTo({ url: `/pages/execute/execute?id=${item.sourceId}` })
+
+      // item.instanceId 和 item.sopId 由后端通知数据填充
+      // 如果没有这两个字段，则用 sourceId 作为 instanceId尝试加载
+      if (item.sourceType === 'execution' || item.sourceType === 'instance') {
+        const instanceId = item.instanceId || item.sourceId
+        if (instanceId) {
+          if (item.sopId) {
+            uni.navigateTo({ url: `/pages/execute/execute?instanceId=${instanceId}&sopId=${item.sopId}` })
+          } else {
+            // 没有 sopId 时，先拉取实例详情获取 sopId，再跳转
+            uni.navigateTo({ url: `/pages/execute/execute?instanceId=${instanceId}` })
+          }
+          return
+        }
       }
     },
-    
+
     async markAllRead() {
       try {
         await api.notification.markAllRead()
         this.notifications.forEach(n => {
-          n.isRead = 1
+          n.isRead = true
         })
         uni.showToast({ title: '已全部标为已读', icon: 'success' })
       } catch (e) {
         uni.showToast({ title: '操作失败', icon: 'none' })
       }
     },
-    
+
     onRefresh() {
       this.refreshing = true
       this.loadNotifications()
     },
-    
+
     getNotifIcon(type) {
       const iconMap = {
         task: 'task',
@@ -131,7 +142,7 @@ export default {
       }
       return iconMap[type] || 'default'
     },
-    
+
     relativeTime
   }
 }

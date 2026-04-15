@@ -20,7 +20,7 @@ import router from '@/router'
 // 创建 axios 请求实例，配置基础路径和超时时间
 const request = axios.create({
   baseURL: '/api',  // API 请求的基础 URL
-  timeout: 10000,  // 请求超时时间：10秒
+  timeout: 100000,  // 请求超时时间：10秒
 })
 
 // 请求拦截器：在每个请求发送前执行

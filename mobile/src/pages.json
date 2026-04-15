@@ -8,6 +8,14 @@
       }
     },
     {
+      "path": "pages/register/register",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationBarBackgroundColor": "#4A90E2",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "我的待办",

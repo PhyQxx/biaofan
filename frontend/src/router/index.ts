@@ -89,6 +89,22 @@ const router = createRouter({
         { path: 'admin/marketplace', name: 'AdminMarketplace', component: () => import('@/views/admin/MarketplaceAudit.vue') },
         // 管理后台：市场分类管理
         { path: 'admin/marketplace/categories', name: 'AdminMarketplaceCategories', component: () => import('@/views/admin/MarketplaceCategories.vue') },
+        // 管理后台：AI 模型配置
+        { path: 'admin/ai-config', name: 'AdminAiConfig', component: () => import('@/views/admin/AdminAiConfig.vue') },
+      ]
+    },
+    // 管理后台独立路由（使用 AdminLayout）
+    {
+      path: '/admin',
+      component: () => import('@/views/admin/AdminLayout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        { path: 'badges', name: 'AdminBadges2', component: () => import('@/views/admin/AdminBadges.vue') },
+        { path: 'products', name: 'AdminProducts2', component: () => import('@/views/admin/AdminProducts.vue') },
+        { path: 'rules', name: 'AdminRules2', component: () => import('@/views/admin/AdminRules.vue') },
+        { path: 'marketplace', name: 'AdminMarketplace2', component: () => import('@/views/admin/MarketplaceAudit.vue') },
+        { path: 'marketplace/categories', name: 'AdminMarketplaceCategories2', component: () => import('@/views/admin/MarketplaceCategories.vue') },
+        { path: 'ai-config', name: 'AdminAiConfig2', component: () => import('@/views/admin/AdminAiConfig.vue') },
       ]
     },
   ],

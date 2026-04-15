@@ -19,14 +19,14 @@
         <text class="progress-text">{{ executionDetail.currentStep || 0 }} / {{ executionDetail.totalSteps || executionDetail.steps?.length }}</text>
       </view>
     </view>
-    
+
     <!-- 步骤列表 -->
     <view class="steps-section">
-      <view 
-        v-for="(step, index) in executionDetail.steps" 
+      <view
+        v-for="(step, index) in executionDetail.steps"
         :key="step.id || index"
         class="step-item"
-        :class="{ 
+        :class="{
           'step-completed': step.status === 'completed',
           'step-current': step.index === currentStepIndex,
           'step-overdue': step.index < currentStepIndex && step.status !== 'completed'
@@ -40,7 +40,7 @@
           </view>
           <view class="node-line" v-if="index < executionDetail.steps.length - 1"></view>
         </view>
-        
+
         <!-- 步骤内容 -->
         <view class="step-content">
           <view class="step-header">
@@ -50,22 +50,22 @@
             </text>
           </view>
           <view class="step-desc" v-if="step.description">{{ step.description }}</view>
-          
+
           <!-- 打卡操作 -->
           <view class="step-action" v-if="step.index === currentStepIndex && executionDetail.status !== 'completed'">
             <view class="action-card">
               <view class="action-title">📸 打卡备注（可选）</view>
-              <textarea 
-                class="note-input" 
-                v-model="stepNote" 
+              <textarea
+                class="note-input"
+                v-model="stepNote"
                 placeholder="可输入执行说明或备注..."
                 maxlength="200"
               />
-              
+
               <!-- 拍照上传 -->
               <view class="photo-row">
-                <view 
-                  v-for="(photo, pIndex) in stepPhotos[step.index]" 
+                <view
+                  v-for="(photo, pIndex) in stepPhotos[step.index]"
                   :key="pIndex"
                   class="photo-item"
                 >
@@ -77,23 +77,23 @@
                   <text class="add-text">拍照</text>
                 </view>
               </view>
-              
+
               <!-- 打卡按钮 -->
-              <button 
-                class="checkin-btn" 
+              <button
+                class="checkin-btn"
                 :disabled="checkingIn"
                 @click="handleCheckIn(step)"
               >
                 {{ checkingIn ? '打卡中...' : '确认打卡' }}
               </button>
             </view>
-            
+
             <!-- 异常上报按钮 -->
             <button class="exception-btn" @click="showExceptionModal(step)">
               ⚠️ 上报异常
             </button>
           </view>
-          
+
           <!-- 已完成标记 -->
           <view class="completed-tip" v-if="step.status === 'completed'">
             <text>✅ 已完成</text>
@@ -102,27 +102,27 @@
         </view>
       </view>
     </view>
-    
+
     <!-- 完成执行按钮 -->
     <view class="finish-section" v-if="canFinish">
       <button class="finish-btn" @click="handleFinish">完成执行</button>
     </view>
-    
+
     <!-- 异常上报弹窗 -->
     <view class="modal-mask" v-if="showException" @click="showException = false">
       <view class="modal-content" @click.stop>
         <view class="modal-title">上报异常</view>
         <view class="modal-body">
-          <textarea 
-            class="exception-input" 
-            v-model="exceptionDesc" 
+          <textarea
+            class="exception-input"
+            v-model="exceptionDesc"
             placeholder="请详细描述异常情况..."
             maxlength="500"
           />
-          
+
           <view class="photo-row">
-            <view 
-              v-for="(photo, pIndex) in exceptionPhotos" 
+            <view
+              v-for="(photo, pIndex) in exceptionPhotos"
               :key="pIndex"
               class="photo-item"
             >
@@ -157,12 +157,12 @@
 import api from '../../api'
 import { useAuthStore } from '../../store/auth'
 import { useDraftStore } from '../../store/draft'
-import { 
-  formatDateTime, 
-  getStatusText, 
-  getStatusTagClass, 
+import {
+  formatDateTime,
+  getStatusText,
+  getStatusTagClass,
   isOverdue,
-  checkNetwork 
+  checkNetwork
 } from '../../common/utils'
 
 export default {
@@ -179,13 +179,14 @@ export default {
       stepNote: '',
       stepPhotos: {},
       checkingIn: false,
+      activating: false, // 防重入锁
       showException: false,
       exceptionStep: null,
       exceptionDesc: '',
       exceptionPhotos: []
     }
   },
-  
+
   computed: {
     progressPercent() {
       if (!this.executionDetail.totalSteps && !this.executionDetail.steps?.length) return 0
@@ -197,7 +198,7 @@ export default {
       return this.executionDetail.steps?.every(s => s.status === 'completed')
     }
   },
-  
+
   onLoad(options) {
       if (options.instanceId) {
         this.instanceId = parseInt(options.instanceId)
@@ -209,22 +210,22 @@ export default {
         this.loadDetail()
       }
     },
-  
+
   methods: {
     async loadDetail() {
       uni.showLoading({ title: '加载中...' })
       try {
         const res = await api.execution.getSteps(this.executionId)
         this.executionDetail = res.data || res
-        
+
         const pendingStep = this.executionDetail.steps?.find(s => s.status === 'pending')
         this.currentStepIndex = pendingStep?.index || this.executionDetail.steps?.length || 1
-        
+
         this.stepPhotos = {}
         this.executionDetail.steps?.forEach(s => {
           this.stepPhotos[s.index] = []
         })
-        
+
         if (this.executionDetail.status === 'pending') {
           this.confirmStartExecution()
         }
@@ -235,23 +236,38 @@ export default {
         uni.hideLoading()
       }
     },
-    
+
     async loadInstanceDetail() {
       uni.showLoading({ title: '加载中...' })
       try {
         const instRes = await api.instance.detail(this.instanceId)
         const instData = instRes.data?.instance || instRes.data
         this.executionDetail = { steps: [], sopTitle: '' }
-        
-        if (instData.status === 'pending') {
-          await api.instance.activate(this.instanceId)
-          instData.status = 'in_progress'
-          instData.currentStep = 1
+
+        // 使用 sopId 字段（优先）或 instanceId 对应的 sopId
+        const effectiveSopId = this.sopId || instData.sopId
+        if (!effectiveSopId) {
+          uni.showToast({ title: '缺少 SOP 信息', icon: 'none' })
+          return
         }
-        
+
+        // pending 状态时激活，加防重入锁
+        if (instData.status === 'pending' && !this.activating) {
+          this.activating = true
+          try {
+            await api.instance.activate(this.instanceId)
+            instData.status = 'in_progress'
+            instData.currentStep = 1
+          } catch (e) {
+            console.error('激活失败:', e)
+          } finally {
+            this.activating = false
+          }
+        }
+
         this.currentStepIndex = instData.currentStep || 1
-        
-        const sopRes = await api.sop.detail(this.sopId)
+
+        const sopRes = await api.sop.detail(effectiveSopId)
         if (sopRes.code === 200 && sopRes.data) {
           this.executionDetail.sopTitle = sopRes.data.title
           let steps = []
@@ -259,14 +275,21 @@ export default {
             const raw = sopRes.data.content
             steps = (raw && raw !== 'null') ? JSON.parse(raw) : []
           } catch {}
-          this.executionDetail.steps = steps.map((s, i) => ({
-            ...s,
-            index: i + 1,
-            status: i + 1 < this.currentStepIndex ? 'completed' : (i + 1 === this.currentStepIndex ? 'pending' : 'pending')
-          }))
+          // 优先使用后端返回的步骤状态；若步骤本身没有 status 字段，
+          // 再按 currentStepIndex 推算（兼容旧数据）
+          const stepStatusFromBackend = instData.stepStatuses || {}
+          this.executionDetail.steps = steps.map((s, i) => {
+            const stepIndex = i + 1
+            const backendStatus = stepStatusFromBackend[stepIndex]
+            return {
+              ...s,
+              index: stepIndex,
+              status: backendStatus || (stepIndex < this.currentStepIndex ? 'completed' : 'pending')
+            }
+          })
           this.executionDetail.totalSteps = steps.length
         }
-        
+
         this.stepPhotos = {}
         this.executionDetail.steps?.forEach(s => {
           this.stepPhotos[s.index] = []
@@ -278,16 +301,17 @@ export default {
         uni.hideLoading()
       }
     },
-    
+
     async startExecution() {
       try {
         await api.execution.start(this.executionId)
         this.executionDetail.status = 'in_progress'
       } catch (e) {
         console.error('开始执行失败:', e)
+        uni.showToast({ title: '开始执行失败', icon: 'none' })
       }
     },
-    
+
     confirmStartExecution() {
       uni.showModal({
         title: '开始执行',
@@ -299,11 +323,11 @@ export default {
         }
       })
     },
-    
+
     async handleCheckIn(step) {
       this.checkingIn = true
       const isOnline = await checkNetwork()
-      
+
       try {
         if (isOnline) {
           if (this.isInstanceMode) {
@@ -342,20 +366,20 @@ export default {
           )
           uni.showToast({ title: '已保存草稿，网络恢复后自动同步', icon: 'success' })
         }
-        
+
         // 更新本地状态：在线成功标completed，离线/失败标pending_sync
         step.status = isOnline ? 'completed' : 'pending_sync'
         step.completedAt = isOnline ? new Date().toISOString() : null
         step.note = this.stepNote
-        
+
         // 清理当前步骤数据
         this.stepNote = ''
         this.stepPhotos[step.index] = []
-        
+
         // 更新当前步骤索引
         const nextStep = this.executionDetail.steps?.find(s => s.status === 'pending')
         this.currentStepIndex = nextStep?.index || this.executionDetail.steps?.length + 1
-        
+
       } catch (e) {
         console.error('打卡失败:', e)
         // 在线打卡失败，保存草稿并标记为pending_sync
@@ -373,10 +397,10 @@ export default {
         this.checkingIn = false
       }
     },
-    
+
     async handleFinish() {
       if (!this.canFinish) return
-      
+
       uni.showModal({
         title: '确认完成',
         content: '确认已完成所有步骤？',
@@ -398,7 +422,7 @@ export default {
         }
       })
     },
-    
+
     takePhoto(stepIndex) {
       uni.chooseImage({
         count: 1,
@@ -411,18 +435,18 @@ export default {
         }
       })
     },
-    
+
     removePhoto(stepIndex, pIndex) {
       this.stepPhotos[stepIndex].splice(pIndex, 1)
     },
-    
+
     showExceptionModal(step) {
       this.exceptionStep = step
       this.exceptionDesc = ''
       this.exceptionPhotos = []
       this.showException = true
     },
-    
+
     takeExceptionPhoto() {
       uni.chooseImage({
         count: 1,
@@ -432,13 +456,13 @@ export default {
         }
       })
     },
-    
+
     async submitException() {
       if (!this.exceptionDesc.trim()) {
         uni.showToast({ title: '请输入异常描述', icon: 'none' })
         return
       }
-      
+
       uni.showLoading({ title: '提交中...' })
       try {
         // 上传所有异常照片
@@ -453,14 +477,14 @@ export default {
             console.error('异常照片上传失败:', e)
           }
         }
-        
+
         await api.execution.reportException(this.executionId, {
           stepId: this.exceptionStep?.id || this.exceptionStep?.index,
           description: this.exceptionDesc,
           photoUrl: photoUrls.join(','),
           photoUrls: photoUrls
         })
-        
+
         uni.showToast({ title: '异常已上报', icon: 'success' })
         this.showException = false
       } catch (e) {
@@ -470,7 +494,7 @@ export default {
         uni.hideLoading()
       }
     },
-    
+
     formatDateTime,
     getStatusText,
     getStatusTagClass,

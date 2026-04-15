@@ -1,5 +1,6 @@
 package com.biaofan.service;
 
+import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopInstance;
 import java.util.List;
 
@@ -22,6 +23,13 @@ public interface SopInstanceService {
      * @return 实例实体
      */
     SopInstance getInstance(Long instanceId);
+
+    /**
+     * 根据实例ID获取关联的SOP信息
+     * @param instanceId 实例ID
+     * @return SOP实体
+     */
+    Sop getSopByInstanceId(Long instanceId);
 
     /**
      * 激活/重新开始一个SOP实例

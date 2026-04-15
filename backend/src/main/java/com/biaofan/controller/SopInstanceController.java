@@ -53,9 +53,10 @@ public class SopInstanceController {
             @AuthenticationPrincipal Long userId,
             @PathVariable Long id) {
         SopInstance inst = instanceService.getInstance(id);
+        Sop sop = instanceService.getSopByInstanceId(id);
         return Result.ok(Map.of(
                 "instance", inst,
-                "sop", Map.of()
+                "sop", sop
         ));
     }
 

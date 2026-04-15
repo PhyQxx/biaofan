@@ -79,6 +79,17 @@ public class SopInstanceServiceImpl implements SopInstanceService {
     }
 
     /**
+     * 根据实例ID获取关联的SOP信息
+     * @param instanceId 实例ID
+     * @return SOP实体
+     */
+    @Override
+    public Sop getSopByInstanceId(Long instanceId) {
+        SopInstance inst = getInstance(instanceId);
+        return sopMapper.selectById(inst.getSopId());
+    }
+
+    /**
      * 激活实例并创建执行记录
      * @param userId 执行人ID
      * @param instanceId 实例ID

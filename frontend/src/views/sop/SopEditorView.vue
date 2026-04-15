@@ -13,6 +13,7 @@
   </div>
 
   <div class="editor-body">
+      <div class="editor-main">
       <!-- Meta -->
       <div class="meta-row">
         <div class="meta-item">
@@ -156,6 +157,16 @@
           </div>
         </div>
       </div>
+
+      </div>
+
+      <!-- AI 助手面板 - 常驻显示 -->
+      <div class="ai-panel-wrapper">
+        <SopAiPanel
+          :sop-id="sopId"
+          @apply-sop="handleApplyAiSop"
+        />
+      </div>
     </div>
 </template>
 
@@ -174,6 +185,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSopStore } from '@/stores/sop'
+import SopAiPanel from '@/components/ai/SopAiPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -205,6 +217,29 @@ const scheduleForm = reactive({
 })
 
 const selectedPreset = ref('')
+
+// AI 助手面板
+const sopId = ref<number | undefined>(undefined)
+
+function handleApplyAiSop(jsonStr: string) {
+  try {
+    const parsed = JSON.parse(jsonStr)
+    if (parsed.title) form.title = parsed.title
+    if (parsed.description) form.description = parsed.description
+    if (parsed.category) form.category = parsed.category
+    if (parsed.tags) tagsInput.value = Array.isArray(parsed.tags) ? parsed.tags.join(',') : parsed.tags
+    if (Array.isArray(parsed.content)) {
+      form.content = parsed.content.map((s: any) => ({
+        title: s.title || '',
+        description: s.description || '',
+        duration: s.duration || 10,
+      }))
+    }
+    ElMessage.success('AI 生成的 SOP 已应用')
+  } catch {
+    ElMessage.error('JSON 解析失败，请手动复制粘贴')
+  }
+}
 
 const cronPresets = [
   { label: '每天早上8点', cron: '0 8 * * *' },
@@ -382,6 +417,7 @@ onMounted(async () => {
       form.category = sop.category || 'daily'
       form.content = (sop.content && sop.content !== 'null' && sop.content !== 'undefined') ? JSON.parse(sop.content) : []
       tagsInput.value = (sop.tags && sop.tags !== 'null' && sop.tags !== 'undefined') ? JSON.parse(sop.tags).join(',') : ''
+      sopId.value = sop.id
     }
     await loadSchedule()
   }
@@ -434,8 +470,27 @@ onMounted(async () => {
   border: 1.5px solid #FF4D4F; border-radius: 8px;
   font-size: 13px; font-weight: 500; cursor: pointer;
 }
-.btn-delete:hover { background: #FFF1F0; }
-.editor-body { max-width: 860px; margin: 24px auto; padding: 0 24px; }
+.btn-versions:hover { background: #E8ECFF; }
+.editor-body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin: 24px 24px;
+  padding: 0;
+}
+.editor-main {
+  flex: 1;
+  max-width: 860px;
+  min-width: 0;
+}
+.ai-panel-wrapper {
+  width: 380px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
 .meta-row { display: flex; gap: 16px; margin-bottom: 16px; }
 .meta-item { flex: 1; }
 .meta-item label, .form-group label { display: block; font-size: 13px; font-weight: 500; color: #666; margin-bottom: 6px; }

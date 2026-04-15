@@ -368,15 +368,28 @@ onMounted(async () => {
     }
 
     if (sopId) {
-      const sopDataRes = await request.get<unknown, ApiResponse<Sop>>(`/sop/${sopId}`)
-      if (sopDataRes?.code === 200 && sopDataRes.data) {
-        sop.value = sopDataRes.data
-        if (execution.value) execution.value.sopTitle = sop.value.title
+      // 优先使用 /instance/{id} 接口直接返回的 sop 数据，避免重复请求
+      const instSop = (instRes.data as any)?.sop
+      if (instSop && instSop.id) {
+        sop.value = instSop
+        if (execution.value) execution.value.sopTitle = sop.value.title || ''
         try {
           const raw = sop.value.content
           steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
         } catch { steps.value = [] }
         stepsLoaded.value = true
+      } else {
+        // 兜底：单独请求 SOP 详情
+        const sopDataRes = await request.get<unknown, ApiResponse<Sop>>(`/sop/${sopId}`)
+        if (sopDataRes?.code === 200 && sopDataRes.data) {
+          sop.value = sopDataRes.data
+          if (execution.value) execution.value.sopTitle = sop.value.title
+          try {
+            const raw = sop.value.content
+            steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
+          } catch { steps.value = [] }
+          stepsLoaded.value = true
+        }
       }
     }
   } catch (e) {

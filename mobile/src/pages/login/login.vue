@@ -4,44 +4,41 @@
       <view class="logo">标帆</view>
       <view class="subtitle">SOP 移动执行台</view>
     </view>
-    
+
     <view class="form-section">
       <view class="form-item">
         <view class="label">手机号</view>
-        <input 
-          class="input" 
-          type="number" 
-          v-model="phone" 
+        <input
+          class="input"
+          type="number"
+          v-model="phone"
           placeholder="请输入手机号"
           maxlength="11"
         />
       </view>
-      
+
       <view class="form-item">
-        <view class="label">验证码</view>
-        <view class="code-row">
-          <input 
-            class="input code-input" 
-            type="number" 
-            v-model="code" 
-            placeholder="请输入验证码"
-            maxlength="6"
-          />
-          <button 
-            class="code-btn" 
-            :disabled="countdown > 0"
-            @click="sendCode"
-          >
-            {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
-          </button>
+        <view class="label">密码</view>
+        <input
+          class="input"
+          :password="!showPassword"
+          v-model="password"
+          placeholder="请输入密码"
+        />
+        <view class="password-toggle" @click="showPassword = !showPassword">
+          {{ showPassword ? '🙈' : '👁️' }}
         </view>
       </view>
-      
+
       <button class="login-btn" :disabled="loading" @click="handleLogin">
         {{ loading ? '登录中...' : '登录' }}
       </button>
+
+      <view class="register-link" @click="goRegister">
+        还没有账号？<text class="link">立即注册</text>
+      </view>
     </view>
-    
+
     <view class="footer">
       登录即表示同意<text class="link">《用户协议》</text>和<text class="link">《隐私政策》</text>
     </view>
@@ -53,9 +50,8 @@
 
 /**
  * 移动端登录页面
- * - 手机号 + 验证码登录
- * - 60秒倒计时防重复获取验证码
- * - 登录成功后跳转到首页 TabBar
+ * - 手机号 + 密码登录
+ * - 与 PC 端保持一致
  */
 import api from '../../api'
 import { useAuthStore } from '../../store/auth'
@@ -64,59 +60,30 @@ export default {
   data() {
     return {
       phone: '',
-      code: '',
+      password: '',
       loading: false,
-      countdown: 0,
-      countdownTimer: null
-    }
-  },
-  beforeUnmount() {
-    if (this.countdownTimer) {
-      clearInterval(this.countdownTimer)
-      this.countdownTimer = null
+      showPassword: false
     }
   },
   methods: {
     validatePhone(phone) {
       return /^1[3-9]\d{9}$/.test(phone)
     },
-    async sendCode() {
-      if (!this.phone || !this.validatePhone(this.phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
-        return
-      }
-      
-      try {
-        await api.auth.sendCode(this.phone)
-        uni.showToast({ title: '验证码已发送', icon: 'success' })
-        
-        this.countdown = 60
-        this.countdownTimer = setInterval(() => {
-          this.countdown--
-          if (this.countdown <= 0) {
-            clearInterval(this.countdownTimer)
-            this.countdownTimer = null
-          }
-        }, 1000)
-      } catch (e) {
-        uni.showToast({ title: e.message || '发送失败', icon: 'none' })
-      }
-    },
-    
+
     async handleLogin() {
       if (!this.phone || !this.validatePhone(this.phone)) {
         uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
         return
       }
-      if (!this.code || this.code.length < 4) {
-        uni.showToast({ title: '请输入验证码', icon: 'none' })
+      if (!this.password || this.password.length < 6) {
+        uni.showToast({ title: '请输入密码（至少6位）', icon: 'none' })
         return
       }
-      
+
       this.loading = true
       try {
         const auth = useAuthStore()
-        await auth.login(this.phone, this.code)
+        await auth.login(this.phone, this.password)
         uni.showToast({ title: '登录成功', icon: 'success' })
         setTimeout(() => {
           uni.switchTab({ url: '/pages/index/index' })
@@ -126,6 +93,10 @@ export default {
       } finally {
         this.loading = false
       }
+    },
+
+    goRegister() {
+      uni.navigateTo({ url: '/pages/register/register' })
     }
   }
 }
@@ -164,6 +135,7 @@ export default {
 
 .form-item {
   margin-bottom: 40rpx;
+  position: relative;
 }
 
 .label {
@@ -181,32 +153,11 @@ export default {
   font-size: 28rpx;
 }
 
-.code-row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.code-input {
-  flex: 1;
-}
-
-.code-btn {
-  width: 220rpx;
-  height: 88rpx;
-  background: #4A90E2;
-  color: #FFFFFF;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  padding: 0;
-}
-
-.code-btn[disabled] {
-  background: #CCCCCC;
+.password-toggle {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  font-size: 36rpx;
 }
 
 .login-btn {
@@ -223,6 +174,17 @@ export default {
 
 .login-btn[disabled] {
   background: #CCCCCC;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 30rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.link {
+  color: #4A90E2;
 }
 
 .footer {

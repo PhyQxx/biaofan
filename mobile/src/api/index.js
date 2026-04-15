@@ -14,7 +14,7 @@ let isRedirecting = false
 function request(options) {
   return new Promise((resolve, reject) => {
     const token = uni.getStorageSync('token')
-    
+
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
@@ -71,7 +71,7 @@ function handle401() {
 
 export default {
   baseUrl: BASE_URL,
-  
+
   // ========== 认证相关 ==========
   auth: {
     login(data) {
@@ -113,10 +113,10 @@ export default {
     },
     // 步骤打卡
     completeStep(executionId, stepId, data) {
-      return request({ 
-        url: `/api/sop/executions/${executionId}/steps/${stepId}/complete`, 
-        method: 'POST', 
-        data 
+      return request({
+        url: `/api/sop/executions/${executionId}/steps/${stepId}/complete`,
+        method: 'POST',
+        data
       })
     },
     // 完成执行
@@ -230,6 +230,14 @@ export default {
     },
     detail(id) {
       return request({ url: `/api/sop/templates/${id}` })
+    }
+  },
+
+  // ========== AI 相关（简化支持） ==========
+  ai: {
+    // AI 执行指导
+    getExecuteGuidance(data) {
+      return request({ url: '/api/ai/sop/execute/guidance', method: 'POST', data })
     }
   }
 }
