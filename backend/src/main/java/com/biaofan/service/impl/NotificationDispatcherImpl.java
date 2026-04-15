@@ -8,14 +8,16 @@ package com.biaofan.service.impl;
  * - 异常发生时自动触发通知给 SOP 负责人
  */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.biaofan.entity.EmailConfig;
 import com.biaofan.entity.SopNotificationConfig;
+import com.biaofan.mapper.EmailConfigMapper;
 import com.biaofan.mapper.SopNotificationConfigMapper;
 import com.biaofan.service.NotificationDispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +27,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * 通知分发器实现类
@@ -39,7 +42,7 @@ import java.util.Map;
 public class NotificationDispatcherImpl implements NotificationDispatcher {
 
     private final SopNotificationConfigMapper configMapper;
-    private final JavaMailSender mailSender;
+    private final EmailConfigMapper emailConfigMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -113,19 +116,47 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
 
     /**
      * 发送邮件通知
+     * 从数据库读取邮件配置，动态构造 JavaMailSender
      */
     private void sendEmail(SopNotificationConfig config, String title, String content) {
         if (config.getEmail() == null || config.getEmail().isBlank()) {
             return;
         }
 
+        // 从数据库读取邮件配置
+        EmailConfig emailConfig = emailConfigMapper.selectOne(
+                new LambdaQueryWrapper<EmailConfig>().last("LIMIT 1")
+        );
+        if (emailConfig == null || !Boolean.TRUE.equals(emailConfig.getEnabled())) {
+            log.warn("[Email] 邮件服务未配置或未启用，跳过发送");
+            return;
+        }
+
         try {
+            JavaMailSenderImpl sender = new JavaMailSenderImpl();
+            sender.setHost(emailConfig.getHost());
+            sender.setPort(emailConfig.getPort());
+            sender.setUsername(emailConfig.getUsername());
+            sender.setPassword(emailConfig.getPassword());
+
+            Properties props = sender.getJavaMailProperties();
+            props.put("mail.transport.protocol", "smtp");
+            props.put("mail.smtp.auth", String.valueOf(Boolean.TRUE.equals(emailConfig.getSmtpAuth())));
+            props.put("mail.smtp.starttls.enable", String.valueOf(Boolean.TRUE.equals(emailConfig.getStarttlsEnable())));
+            props.put("mail.smtp.timeout", "5000");
+            props.put("mail.smtp.connectiontimeout", "5000");
+
+            String fromAddress = emailConfig.getFromAddress();
+            if (fromAddress == null || fromAddress.isBlank()) {
+                fromAddress = emailConfig.getUsername();
+            }
+
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("617594538@qq.com");
+            message.setFrom(fromAddress);
             message.setTo(config.getEmail());
             message.setSubject("【标帆SOP】" + title);
             message.setText(content);
-            mailSender.send(message);
+            sender.send(message);
             log.info("[Email] 发送成功 to={}", config.getEmail());
         } catch (Exception e) {
             log.error("[Email] 发送失败 to={} error={}", config.getEmail(), e.getMessage());

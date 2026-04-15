@@ -25,16 +25,6 @@ public class AiServiceImpl implements AiService {
     private final AiModelFactory aiModelFactory;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final AiModelConfig DEFAULT_GLOBAL_CONFIG;
-
-    static {
-        DEFAULT_GLOBAL_CONFIG = new AiModelConfig();
-        DEFAULT_GLOBAL_CONFIG.setModelType("deepseek");
-        DEFAULT_GLOBAL_CONFIG.setApiUrl("https://api.deepseek.com/chat/completions");
-        DEFAULT_GLOBAL_CONFIG.setModelName("deepseek-chat");
-        DEFAULT_GLOBAL_CONFIG.setTemperature(0.7f);
-    }
-
     @Override
     public AiModelConfig getEffectiveConfig(Long userId) {
         AiModelConfig userConfig = getUserConfig(userId);
@@ -45,7 +35,10 @@ public class AiServiceImpl implements AiService {
                 .isNull(AiModelConfig::getUserId)
                 .eq(AiModelConfig::getEnabled, true)
                 .last("LIMIT 1"));
-        return globalConfig != null ? globalConfig : DEFAULT_GLOBAL_CONFIG;
+        if (globalConfig == null) {
+            throw new RuntimeException("未配置全局 AI 模型，请前往管理员后台 → AI模型配置 进行设置");
+        }
+        return globalConfig;
     }
 
     @Override

@@ -58,6 +58,10 @@
             <span class="sidebar-icon">🤖</span>
             <span>AI配置</span>
           </div>
+          <div class="sidebar-item" :class="{ active: isActive('/admin/email-config') }" @click="router.push('/admin/email-config')">
+            <span class="sidebar-icon">📧</span>
+            <span>邮件配置</span>
+          </div>
           <div class="sidebar-divider"></div>
         </template>
 

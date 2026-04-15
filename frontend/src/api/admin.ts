@@ -203,3 +203,27 @@ export const getGrowthRules = () =>
  */
 export const updateGrowthRules = (data: GrowthRulesResp) =>
   request.put<any, any>('/admin/gamification/rules', data)
+
+// ============ 邮件配置 ============
+export interface EmailConfig {
+  id?: number
+  host: string
+  port: number
+  username: string
+  password?: string
+  fromAddress?: string
+  smtpAuth?: boolean
+  starttlsEnable?: boolean
+  enabled?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export const getEmailConfig = () =>
+  request.get<any, EmailConfig>('/admin/email-config')
+
+export const saveEmailConfig = (data: Partial<EmailConfig>) =>
+  request.post<any, any>('/admin/email-config', data)
+
+export const testEmailConfig = (to: string) =>
+  request.post<any, any>('/admin/email-config/test', { to })

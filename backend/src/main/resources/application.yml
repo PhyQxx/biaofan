@@ -14,15 +14,6 @@ spring:
       port: 6379
       database: 0
 
-  mail:
-    host: smtp.qq.com
-    port: 587
-    username: 
-    password: 
-    properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
-
   servlet:
     multipart:
       location: /www/sop-uploads
