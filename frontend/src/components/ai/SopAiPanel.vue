@@ -174,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   generateSopByAi,
   getExecuteGuidance,
@@ -182,14 +182,31 @@ import {
   type AiReviewResponse
 } from '@/api/ai'
 
-const props = defineProps<{ sopId?: number }>()
+const props = defineProps<{ sopId?: number; visibleTabs?: string[]; autoFillExecute?: { stepTitle: string; stepDescription: string; stepIndex: number; totalSteps: number } }>()
 
-const tabs = [
+// 默认显示所有 tab，可通过 visibleTabs 过滤
+const allTabs = [
   { key: 'create', label: '✨ AI 创建' },
   { key: 'execute', label: '💡 执行指导' },
   { key: 'review', label: '🔍 AI 审核' },
 ]
+const tabs = computed(() =>
+  props.visibleTabs ? allTabs.filter(t => props.visibleTabs!.includes(t.key)) : allTabs
+)
 const activeTab = ref('create')
+
+// 监听 autoFillExecute，自动切换到执行指导 tab 并填入数据
+watch(() => props.autoFillExecute, (val) => {
+  if (!val) return
+  activeTab.value = 'execute'
+  executeForm.value = {
+    stepTitle: val.stepTitle,
+    stepDescription: val.stepDescription,
+    stepIndex: val.stepIndex,
+    totalSteps: val.totalSteps,
+    notes: ''
+  }
+}, { immediate: true })
 
 // ========== AI 创建 ==========
 const createForm = ref({ goal: '', title: '', category: '', tags: '' })
@@ -333,6 +350,7 @@ const emit = defineEmits<{
 .form-row { display: flex; gap: 12px; }
 .form-row .form-group { flex: 1; }
 .ai-input, .ai-select, .ai-textarea {
+  width: 100%; box-sizing: border-box;
   border: 1px solid #dcdfe6; border-radius: 4px; padding: 6px 10px;
   font-size: 13px; color: #303133; background: #fff;
 }

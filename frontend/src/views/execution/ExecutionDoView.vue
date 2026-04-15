@@ -1,200 +1,214 @@
 <template>
   <div class="execution-do-page">
-    <!-- Topbar -->
-    <div class="exec-topbar">
-      <button class="exec-back" @click="handleBack">←</button>
-      <div class="exec-title">{{ execution?.sopTitle || 'SOP 执行' }}</div>
-      <div class="exec-steps-count" v-if="totalSteps">{{ currentStep }}/{{ totalSteps }}</div>
-    </div>
-
-    <!-- Step Dots Progress -->
-    <div class="step-progress-wrap" v-if="totalSteps">
-      <div class="step-dots-row">
-        <div
-          v-for="n in totalSteps"
-          :key="n"
-          class="step-dot"
-          :class="{
-            'done': n < currentStep,
-            'active': n === currentStep,
-            'future': n > currentStep
-          }"
-          @click="n < currentStep && (currentStep = n)"
-        >
-          <span class="dot-inner" v-if="n < currentStep">✓</span>
-          <span class="dot-num" v-else>{{ n }}</span>
+    <div class="exec-layout">
+      <div class="exec-main">
+        <!-- Topbar -->
+        <div class="exec-topbar">
+          <button class="exec-back" @click="handleBack">←</button>
+          <div class="exec-title">{{ execution?.sopTitle || 'SOP 执行' }}</div>
+          <div class="exec-steps-count" v-if="totalSteps">{{ currentStep }}/{{ totalSteps }}</div>
+          <button v-if="stepsLoaded && sop" class="btn-ai" @click="showAi = !showAi">🤖 AI</button>
         </div>
-      </div>
-      <div class="step-progress-bar">
-        <div class="step-progress-fill" :style="{ width: progressPercent + '%' }"></div>
-      </div>
-      <div class="step-progress-meta">
-        <span class="progress-percent">{{ progressPercent }}%</span>
-        <span class="progress-remaining" v-if="currentStep < totalSteps">剩余 {{ totalSteps - currentStep }} 步</span>
-        <span class="progress-remaining success" v-else>即将完成</span>
-      </div>
-    </div>
 
-    <!-- Loading -->
-    <div class="loading-state" v-if="!stepsLoaded">
-      <div class="loading-spinner"></div>
-      <p>加载中...</p>
-    </div>
-
-    <!-- Step Content -->
-    <div class="exec-content" v-else-if="currentStepData && !isCompleted">
-
-      <!-- Current Step Card -->
-      <div class="step-main-card" :class="{ 'just-completed': justCompleted }">
-        <div class="step-header-row">
-          <span class="step-badge">步骤 {{ currentStep }}</span>
-          <span class="step-duration" v-if="currentStepData.duration">⏱️ {{ currentStepData.duration }} 分钟</span>
-        </div>
-        <h2 class="step-title">{{ currentStepData.title }}</h2>
-        <p class="step-desc" v-if="currentStepData.description">{{ currentStepData.description }}</p>
-      </div>
-
-      <!-- Next Step Preview -->
-      <div class="next-step-preview" v-if="currentStep < totalSteps && steps[currentStep]">
-        <div class="next-label">
-          <span class="next-arrow">↑</span>
-          下一步预览
-        </div>
-        <div class="next-title">{{ steps[currentStep].title }}</div>
-      </div>
-
-      <!-- Check Items -->
-      <div class="check-section" v-if="checkItems.length">
-        <div class="check-section-header">
-          <span class="check-section-title">📋 检查项</span>
-          <span class="check-progress-tag">
-            {{ completedCheckCount }}/{{ checkItems.length }} 已完成
-          </span>
-        </div>
-        <div v-for="(item, idx) in checkItems" :key="idx" class="check-item">
-          <!-- Checkbox type -->
-          <div v-if="item.itemType === 'checkbox' || !item.itemType" class="check-row">
-            <label class="check-label" :class="{ 'is-done': checkData[String(idx)] }">
-              <div class="custom-checkbox" :class="{ checked: checkData[String(idx)] }">
-                <span v-if="checkData[String(idx)]">✓</span>
-              </div>
-              <span class="check-text">{{ item.label }}</span>
-              <span class="required-dot" v-if="item.isRequired">*</span>
-            </label>
-          </div>
-          <!-- Text type -->
-          <div v-else-if="item.itemType === 'text'" class="check-text-row">
-            <div class="check-label-row">
-              {{ item.label }}
-              <span class="required-dot" v-if="item.isRequired">*</span>
+        <!-- Step Dots Progress -->
+        <div class="step-progress-wrap" v-if="totalSteps">
+          <div class="step-dots-row">
+            <div
+              v-for="n in totalSteps"
+              :key="n"
+              class="step-dot"
+              :class="{
+                'done': n < currentStep,
+                'active': n === currentStep,
+                'future': n > currentStep
+              }"
+              @click="n < currentStep && (currentStep = n)"
+            >
+              <span class="dot-inner" v-if="n < currentStep">✓</span>
+              <span class="dot-num" v-else>{{ n }}</span>
             </div>
+          </div>
+          <div class="step-progress-bar">
+            <div class="step-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+          </div>
+          <div class="step-progress-meta">
+            <span class="progress-percent">{{ progressPercent }}%</span>
+            <span class="progress-remaining" v-if="currentStep < totalSteps">剩余 {{ totalSteps - currentStep }} 步</span>
+            <span class="progress-remaining success" v-else>即将完成</span>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-state" v-if="!stepsLoaded">
+          <div class="loading-spinner"></div>
+          <p>加载中...</p>
+        </div>
+
+        <!-- Step Content -->
+        <div class="exec-content" v-else-if="currentStepData && !isCompleted">
+
+          <!-- Current Step Card -->
+          <div class="step-main-card" :class="{ 'just-completed': justCompleted }">
+            <div class="step-header-row">
+              <span class="step-badge">步骤 {{ currentStep }}</span>
+              <span class="step-duration" v-if="currentStepData.duration">⏱️ {{ currentStepData.duration }} 分钟</span>
+            </div>
+            <h2 class="step-title">{{ currentStepData.title }}</h2>
+            <p class="step-desc" v-if="currentStepData.description">{{ currentStepData.description }}</p>
+          </div>
+
+          <!-- Next Step Preview -->
+          <div class="next-step-preview" v-if="currentStep < totalSteps && steps[currentStep]">
+            <div class="next-label">
+              <span class="next-arrow">↑</span>
+              下一步预览
+            </div>
+            <div class="next-title">{{ steps[currentStep].title }}</div>
+          </div>
+
+          <!-- Check Items -->
+          <div class="check-section" v-if="checkItems.length">
+            <div class="check-section-header">
+              <span class="check-section-title">📋 检查项</span>
+              <span class="check-progress-tag">
+                {{ completedCheckCount }}/{{ checkItems.length }} 已完成
+              </span>
+            </div>
+            <div v-for="(item, idx) in checkItems" :key="idx" class="check-item">
+              <!-- Checkbox type -->
+              <div v-if="item.itemType === 'checkbox' || !item.itemType" class="check-row">
+                <label class="check-label" :class="{ 'is-done': checkData[String(idx)] }">
+                  <div class="custom-checkbox" :class="{ checked: checkData[String(idx)] }">
+                    <span v-if="checkData[String(idx)]">✓</span>
+                  </div>
+                  <span class="check-text">{{ item.label }}</span>
+                  <span class="required-dot" v-if="item.isRequired">*</span>
+                </label>
+              </div>
+              <!-- Text type -->
+              <div v-else-if="item.itemType === 'text'" class="check-text-row">
+                <div class="check-label-row">
+                  {{ item.label }}
+                  <span class="required-dot" v-if="item.isRequired">*</span>
+                </div>
+                <textarea
+                  v-model="checkData[String(idx)]"
+                  class="check-text-input"
+                  :class="{ 'has-value': checkData[String(idx)] }"
+                  :placeholder="item.placeholder || '请输入...'"
+                  rows="2"
+                ></textarea>
+              </div>
+              <!-- Number type -->
+              <div v-else-if="item.itemType === 'number'" class="check-text-row">
+                <div class="check-label-row">
+                  {{ item.label }}
+                  <span class="required-dot" v-if="item.isRequired">*</span>
+                </div>
+                <input
+                  type="number"
+                  v-model="checkData[String(idx)]"
+                  class="check-num-input"
+                  :class="{ 'has-value': checkData[String(idx)] !== undefined && checkData[String(idx)] !== '' }"
+                  :placeholder="item.placeholder || '请输入数字'"
+                />
+              </div>
+              <!-- Date type -->
+              <div v-else-if="item.itemType === 'date'" class="check-text-row">
+                <div class="check-label-row">
+                  {{ item.label }}
+                  <span class="required-dot" v-if="item.isRequired">*</span>
+                </div>
+                <input type="date" v-model="checkData[String(idx)]" class="check-text-input" :class="{ 'has-value': checkData[String(idx)] }" />
+              </div>
+              <!-- Select type -->
+              <div v-else-if="item.itemType === 'select'" class="check-text-row">
+                <div class="check-label-row">
+                  {{ item.label }}
+                  <span class="required-dot" v-if="item.isRequired">*</span>
+                </div>
+                <select v-model="checkData[String(idx)]" class="check-select-input" :class="{ 'has-value': checkData[String(idx)] }">
+                  <option value="">请选择...</option>
+                  <option v-for="opt in (item.options || [])" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- No check items hint -->
+          <div class="no-check-hint" v-else>
+            <span>此步骤无检查项，可直接提交</span>
+          </div>
+
+          <!-- Notes -->
+          <div class="notes-section">
+            <div class="notes-label">📝 执行笔记 <span class="optional-hint">（选填）</span></div>
             <textarea
-              v-model="checkData[String(idx)]"
-              class="check-text-input"
-              :class="{ 'has-value': checkData[String(idx)] }"
-              :placeholder="item.placeholder || '请输入...'"
-              rows="2"
+              v-model="notes"
+              class="notes-input"
+              :class="{ 'has-value': notes }"
+              placeholder="记录执行过程中的备注、问题或心得..."
             ></textarea>
           </div>
-          <!-- Number type -->
-          <div v-else-if="item.itemType === 'number'" class="check-text-row">
-            <div class="check-label-row">
-              {{ item.label }}
-              <span class="required-dot" v-if="item.isRequired">*</span>
-            </div>
-            <input
-              type="number"
-              v-model="checkData[String(idx)]"
-              class="check-num-input"
-              :class="{ 'has-value': checkData[String(idx)] !== undefined && checkData[String(idx)] !== '' }"
-              :placeholder="item.placeholder || '请输入数字'"
-            />
-          </div>
-          <!-- Date type -->
-          <div v-else-if="item.itemType === 'date'" class="check-text-row">
-            <div class="check-label-row">
-              {{ item.label }}
-              <span class="required-dot" v-if="item.isRequired">*</span>
-            </div>
-            <input type="date" v-model="checkData[String(idx)]" class="check-text-input" :class="{ 'has-value': checkData[String(idx)] }" />
-          </div>
-          <!-- Select type -->
-          <div v-else-if="item.itemType === 'select'" class="check-text-row">
-            <div class="check-label-row">
-              {{ item.label }}
-              <span class="required-dot" v-if="item.isRequired">*</span>
-            </div>
-            <select v-model="checkData[String(idx)]" class="check-select-input" :class="{ 'has-value': checkData[String(idx)] }">
-              <option value="">请选择...</option>
-              <option v-for="opt in (item.options || [])" :key="opt" :value="opt">{{ opt }}</option>
-            </select>
+
+          <!-- Action Buttons -->
+          <div class="step-actions">
+            <button v-if="currentStep > 1" class="btn-secondary" @click="prevStep">
+              ← 上一步
+            </button>
+            <button
+              class="btn-primary flex-1"
+              @click="handleComplete"
+              :disabled="isSubmitting"
+              :class="{ 'is-submitting': isSubmitting }"
+            >
+              <span v-if="isSubmitting" class="btn-spinner"></span>
+              <span v-else>{{ currentStep >= totalSteps ? '✓ 完成 SOP' : '完成本步 →' }}</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- No check items hint -->
-      <div class="no-check-hint" v-else>
-        <span>此步骤无检查项，可直接提交</span>
-      </div>
-
-      <!-- Notes -->
-      <div class="notes-section">
-        <div class="notes-label">📝 执行笔记 <span class="optional-hint">（选填）</span></div>
-        <textarea
-          v-model="notes"
-          class="notes-input"
-          :class="{ 'has-value': notes }"
-          placeholder="记录执行过程中的备注、问题或心得..."
-        ></textarea>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="step-actions">
-        <button v-if="currentStep > 1" class="btn-secondary" @click="prevStep">
-          ← 上一步
-        </button>
-        <button
-          class="btn-primary flex-1"
-          @click="handleComplete"
-          :disabled="isSubmitting"
-          :class="{ 'is-submitting': isSubmitting }"
-        >
-          <span v-if="isSubmitting" class="btn-spinner"></span>
-          <span v-else>{{ currentStep >= totalSteps ? '✓ 完成 SOP' : '完成本步 →' }}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Empty SOP State -->
-    <div class="empty-state" v-else-if="stepsLoaded && totalSteps === 0">
-      <div class="empty-icon">📋</div>
-      <h2>暂无步骤</h2>
-      <p>当前 SOP 还没有添加步骤，请先编辑 SOP 添加执行步骤</p>
-      <button class="btn-primary" @click="router.push(`/sop/${route.params.id}/edit`)">去编辑 SOP</button>
-    </div>
-
-    <!-- Completed State -->
-    <div class="complete-state" v-else-if="isCompleted">
-      <div class="complete-icon">🎉</div>
-      <h2>执行完成！</h2>
-      <p>恭喜你完成了本次 SOP 执行</p>
-      <div class="complete-stats">
-        <div class="complete-stat">
-          <div class="cs-num">{{ totalSteps }}</div>
-          <div class="cs-label">总步骤</div>
+        <!-- Empty SOP State -->
+        <div class="empty-state" v-else-if="stepsLoaded && totalSteps === 0">
+          <div class="empty-icon">📋</div>
+          <h2>暂无步骤</h2>
+          <p>当前 SOP 还没有添加步骤，请先编辑 SOP 添加执行步骤</p>
+          <button class="btn-primary" @click="router.push(`/sop/${route.params.id}/edit`)">去编辑 SOP</button>
         </div>
-        <div class="complete-stat">
-          <div class="cs-num success">{{ totalSteps }}</div>
-          <div class="cs-label">已完成</div>
-        </div>
-        <div class="complete-stat">
-          <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt ?? '').getTime()) / 60000) }}</div>
-          <div class="cs-label">用时(分钟)</div>
+
+        <!-- Completed State -->
+        <div class="complete-state" v-else-if="isCompleted">
+          <div class="complete-icon">🎉</div>
+          <h2>执行完成！</h2>
+          <p>恭喜你完成了本次 SOP 执行</p>
+          <div class="complete-stats">
+            <div class="complete-stat">
+              <div class="cs-num">{{ totalSteps }}</div>
+              <div class="cs-label">总步骤</div>
+            </div>
+            <div class="complete-stat">
+              <div class="cs-num success">{{ totalSteps }}</div>
+              <div class="cs-label">已完成</div>
+            </div>
+            <div class="complete-stat">
+              <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt ?? '').getTime()) / 60000) }}</div>
+              <div class="cs-label">用时(分钟)</div>
+            </div>
+          </div>
+          <div class="complete-actions">
+            <button class="btn-secondary" @click="router.push('/')">返回首页</button>
+            <button class="btn-primary" @click="router.push('/execution')">继续其他 SOP</button>
+          </div>
         </div>
       </div>
-      <div class="complete-actions">
-        <button class="btn-secondary" @click="router.push('/')">返回首页</button>
-        <button class="btn-primary" @click="router.push('/execution')">继续其他 SOP</button>
+
+      <!-- AI 助手面板 - 执行指导 -->
+      <div v-if="showAi" class="ai-panel-wrapper">
+        <SopAiPanel
+          :sop-id="sopId"
+          :visible-tabs="['execute']"
+          :auto-fill-execute="aiAutoFill"
+        />
       </div>
     </div>
   </div>
@@ -219,6 +233,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
 import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
+import SopAiPanel from '@/components/ai/SopAiPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -234,6 +249,18 @@ const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
 const stepsLoaded = ref(false)
+const showAi = ref(false)
+
+const sopId = computed(() => execution.value?.sopId)
+const aiAutoFill = computed(() => {
+  if (!currentStepData.value) return undefined
+  return {
+    stepTitle: currentStepData.value.title || '',
+    stepDescription: currentStepData.value.description || '',
+    stepIndex: currentStep.value,
+    totalSteps: totalSteps.value,
+  }
+})
 
 const totalSteps = computed(() => steps.value.length || 0)
 const currentStepData = computed(() => steps.value[currentStep.value - 1])
@@ -611,4 +638,38 @@ onMounted(async () => {
 .cs-num.primary { color: #5B7FFF; }
 .cs-label { font-size: 12px; color: #999; margin-top: 4px; }
 .complete-actions { display: flex; gap: 12px; justify-content: center; }
+
+/* AI 助手布局 */
+.exec-layout {
+  display: flex;
+  gap: 0;
+  min-height: 100vh;
+}
+.exec-main {
+  flex: 1;
+  min-width: 0;
+}
+.ai-panel-wrapper {
+  width: 380px;
+  flex-shrink: 0;
+  border-left: 1px solid #E8E8E8;
+  background: #fff;
+  max-height: 100vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+}
+.btn-ai {
+  margin-left: auto;
+  height: 32px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
 </style>

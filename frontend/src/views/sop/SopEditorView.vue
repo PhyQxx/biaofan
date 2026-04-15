@@ -164,6 +164,7 @@
       <div class="ai-panel-wrapper">
         <SopAiPanel
           :sop-id="sopId"
+          :visible-tabs="['create', 'review']"
           @apply-sop="handleApplyAiSop"
         />
       </div>
@@ -427,17 +428,22 @@ onMounted(async () => {
 <style scoped>
 .editor-page { min-height: 100vh; background: #F5F7FA; }
 .editor-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 24px; background: #fff;
   border-bottom: 1px solid #E8E8E8; gap: 16px;
 }
-.topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; }
-.topbar-right { display: flex; gap: 8px; }
-.btn-back {
-  background: none; border: none; font-size: 14px; color: #666;
-  cursor: pointer; padding: 6px 12px; border-radius: 6px;
+.editor-body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin: 72px 24px 24px;
+  padding: 0;
 }
-.btn-back:hover { background: #F5F7FA; }
 .title-input {
   flex: 1; font-size: 18px; font-weight: 600; border: none; outline: none;
   background: transparent; color: #212121;
@@ -471,18 +477,18 @@ onMounted(async () => {
   font-size: 13px; font-weight: 500; cursor: pointer;
 }
 .btn-versions:hover { background: #E8ECFF; }
-.editor-body {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  margin: 24px 24px;
-  padding: 0;
-}
 .editor-main {
   flex: 1;
   max-width: 860px;
   min-width: 0;
 }
+.topbar-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+.topbar-right { display: flex; gap: 8px; }
+.btn-back {
+  background: none; border: none; font-size: 14px; color: #666;
+  cursor: pointer; padding: 6px 12px; border-radius: 6px;
+}
+.btn-back:hover { background: #F5F7FA; }
 .ai-panel-wrapper {
   width: 380px;
   flex-shrink: 0;
