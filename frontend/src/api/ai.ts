@@ -2,6 +2,7 @@
  * AI 模块接口
  * 策略模式多模型支持：DeepSeek / GLM(智谱) / MiniMax
  */
+import type { ApiResponse } from '@/types'
 import request from './index'
 
 // ========== AI 配置 ==========
@@ -18,12 +19,12 @@ export interface AiModelConfig {
   temperature?: number
 }
 
-export const getAiConfig = () => request.get<AiModelConfig>('/ai/config')
+export const getAiConfig = () => request.get<any, ApiResponse<AiModelConfig>>('/ai/config')
 
 export const saveAiConfig = (config: AiModelConfig) =>
-  request.post('/ai/config', config)
+  request.post<any, ApiResponse<any>>('/ai/config', config)
 
-export const deleteAiConfig = () => request.delete('/ai/config')
+export const deleteAiConfig = () => request.delete<any, ApiResponse<any>>('/ai/config')
 
 // ========== SOP AI 三大功能 ==========
 
@@ -36,7 +37,7 @@ export interface AiGenerateSopRequest {
   modelType?: string
 }
 export const generateSopByAi = (data: AiGenerateSopRequest) =>
-  request.post<string>('/ai/sop/generate', data)
+  request.post<any, ApiResponse<string>>('/ai/sop/generate', data)
 
 /** AI 执行指导 */
 export interface AiExecuteGuidanceRequest {
@@ -49,7 +50,7 @@ export interface AiExecuteGuidanceRequest {
   modelType?: string
 }
 export const getExecuteGuidance = (data: AiExecuteGuidanceRequest) =>
-  request.post<string>('/ai/sop/execute/guidance', data)
+  request.post<any, ApiResponse<string>>('/ai/sop/execute/guidance', data)
 
 /** AI 发布审核 */
 export interface AiReviewRequest {
@@ -70,7 +71,7 @@ export interface AiReviewResponse {
   createdAt: string
 }
 export const reviewSopByAi = (data: AiReviewRequest) =>
-  request.post<AiReviewResponse>('/ai/sop/review', data)
+  request.post<any, ApiResponse<AiReviewResponse>>('/ai/sop/review', data)
 
 // ========== 通用对话 ==========
 
@@ -84,4 +85,4 @@ export interface AiChatRequest {
   temperature?: number
 }
 export const aiChat = (data: AiChatRequest) =>
-  request.post<string>('/ai/chat', data)
+  request.post<any, ApiResponse<string>>('/ai/chat', data)

@@ -394,9 +394,9 @@ onMounted(async () => {
       const instSop = (instRes.data as any)?.sop
       if (instSop && instSop.id) {
         sop.value = instSop
-        if (execution.value) execution.value.sopTitle = sop.value.title || ''
+        if (execution.value) execution.value.sopTitle = sop.value!.title || ''
         try {
-          const raw = sop.value.content
+          const raw = sop.value!.content
           steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
         } catch { steps.value = [] }
         stepsLoaded.value = true

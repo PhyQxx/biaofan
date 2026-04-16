@@ -1,3 +1,4 @@
+import type { ApiResponse } from '@/types'
 import request from './index'
 
 // ============ 徽章管理 ============
@@ -129,16 +130,16 @@ export interface AiModelConfig {
 }
 
 export const getGlobalAiConfigs = () =>
-  request.get<any, { list: AiModelConfig[]; total: number }>('/admin/ai-config/global')
+  request.get<any, ApiResponse<{ list: AiModelConfig[]; total: number }>>('/admin/ai-config/global')
 
 export const getUserAiConfigs = () =>
-  request.get<any, { list: AiModelConfig[]; total: number }>('/admin/ai-config/users')
+  request.get<any, ApiResponse<{ list: AiModelConfig[]; total: number }>>('/admin/ai-config/users')
 
 export const saveGlobalAiConfig = (data: AiModelConfig) =>
-  request.post<any, any>('/admin/ai-config/global', data)
+  request.post<any, ApiResponse<any>>('/admin/ai-config/global', data)
 
 export const deleteGlobalAiConfig = (id: number) =>
-  request.delete<any, any>(`/admin/ai-config/global/${id}`)
+  request.delete<any, ApiResponse<any>>(`/admin/ai-config/global/${id}`)
 
 // ============ 成长规则 ============
 /**
@@ -220,10 +221,10 @@ export interface EmailConfig {
 }
 
 export const getEmailConfig = () =>
-  request.get<any, EmailConfig>('/admin/email-config')
+  request.get<any, ApiResponse<EmailConfig>>('/admin/email-config')
 
 export const saveEmailConfig = (data: Partial<EmailConfig>) =>
-  request.post<any, any>('/admin/email-config', data)
+  request.post<any, ApiResponse<any>>('/admin/email-config', data)
 
 export const testEmailConfig = (to: string) =>
-  request.post<any, any>('/admin/email-config/test', { to })
+  request.post<any, ApiResponse<any>>('/admin/email-config/test', { to })
