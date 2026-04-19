@@ -8,7 +8,6 @@ import com.biaofan.service.SopInstanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,9 +33,7 @@ public class SopInstanceController {
      * 从SecurityContext获取当前登录用户ID
      */
     private Long getCurrentUserId() {
-        return Long.valueOf(
-                ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername()
-        );
+        return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     /**
