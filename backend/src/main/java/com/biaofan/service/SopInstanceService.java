@@ -48,9 +48,18 @@ public interface SopInstanceService {
      * @param stepIndex 步骤索引（从0开始）
      * @param notes 步骤备注
      * @param checkData 步骤检查数据
+     * @param guidance AI 指导结果（可选）
      * @return 是否成功完成
      */
-    boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes, java.util.Map<String, Object> checkData);
+    boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes, java.util.Map<String, Object> checkData, String guidance);
+
+    /**
+     * 撤销实例的上一步（删除最后一条 step record）
+     * @param userId 用户ID
+     * @param instanceId 实例ID
+     * @return 被撤销的 stepIndex，0 表示没有可撤销的步骤
+     */
+    int undoLastStep(Long userId, Long instanceId);
 
     /**
      * 结束SOP实例

@@ -109,6 +109,9 @@
       <div v-if="guidanceResult" class="guidance-result">
         <div class="result-label">AI 指导：</div>
         <div class="guidance-text">{{ guidanceResult }}</div>
+        <div class="result-actions">
+          <button class="btn-regenerate" @click="handleGuidance">🔄 重新生成</button>
+        </div>
       </div>
       <div v-if="guidanceError" class="ai-error">{{ guidanceError }}</div>
 
@@ -246,7 +249,6 @@ const guidanceError = ref('')
 async function handleGuidance() {
   guidanceLoading.value = true
   guidanceError.value = ''
-  guidanceResult.value = ''
   try {
     const res = await getExecuteGuidance({
       ...executeForm.value,
@@ -254,6 +256,9 @@ async function handleGuidance() {
     })
     if (res.code === 200) {
       guidanceResult.value = res.data
+      const keyPoints = stripThinking(res.data)
+      emit('guidance-ready', res.data)
+      emit('notes-ready', keyPoints)
     } else {
       guidanceError.value = res.message || '指导失败'
     }
@@ -262,6 +267,16 @@ async function handleGuidance() {
   } finally {
     guidanceLoading.value = false
   }
+}
+
+function stripThinking(content: string): string {
+  if (!content) return "";
+
+  // 正则匹配  开头 到  结尾，支持任意字符（含换行）
+  const thinkRegex = /[\s\S]*?<\/think>/g;
+
+  // 替换为空字符串，并清理首尾多余空白
+  return content.replace(thinkRegex, "").trim();
 }
 
 // ========== AI 审核 ==========
@@ -304,6 +319,8 @@ async function handleReview() {
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'apply-sop', json: string): void
+  (e: 'guidance-ready', guidance: string): void
+  (e: 'notes-ready', notes: string): void
 }>()
 </script>
 
@@ -390,6 +407,10 @@ const emit = defineEmits<{
 .btn-ai-primary:disabled { background: #a0cfff; cursor: not-allowed; }
 .btn-apply {
   background: #67c23a; color: #fff; border: none; border-radius: 4px;
+  padding: 6px 12px; cursor: pointer; font-size: 12px;
+}
+.btn-regenerate {
+  background: #909399; color: #fff; border: none; border-radius: 4px;
   padding: 6px 12px; cursor: pointer; font-size: 12px;
 }
 </style>

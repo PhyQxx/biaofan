@@ -28,10 +28,19 @@ public interface SopExecutionService {
      * @param stepIndex 步骤索引（从0开始）
      * @param notes 步骤备注/说明
      * @param checkData 步骤检查数据（如表单数据）
+     * @param guidance AI 指导结果（可选）
      * @return 是否成功完成
      */
     boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
-                         Map<String, Object> checkData);
+                         Map<String, Object> checkData, String guidance);
+
+    /**
+     * 撤销上一步（删除最后一条 step record）
+     * @param userId 执行者用户ID
+     * @param executionId 执行记录ID
+     * @return 被撤销的 stepIndex，0 表示没有上一步
+     */
+    int undoLastStep(Long userId, Long executionId);
 
     /**
      * 结束SOP执行

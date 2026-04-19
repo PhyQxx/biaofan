@@ -128,8 +128,34 @@ public class SopInstanceController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                     ? (Map<String, Object>) body.get("checkData") : null;
-            boolean completed = instanceService.completeStep(userId, id, stepIndex, notes, checkData);
+            String guidance = body != null && body.get("guidance") != null ? body.get("guidance").toString() : null;
+            boolean completed = instanceService.completeStep(userId, id, stepIndex, notes, checkData, guidance);
             return Result.ok(Map.of("completed", completed));
+        } catch (RuntimeException e) {
+            return Result.fail(400, e.getMessage());
+        }
+    }
+
+    /**
+     * 撤销实例的上一步
+     * <p>删除最后一条步骤记录，currentStep 回退一步。</p>
+     *
+     * @param userId 当前登录用户ID
+     * @param id     实例ID
+     * @return 被撤销的 stepIndex
+     */
+    @PostMapping("/{id}/undo")
+    public Result<Integer> undo(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long id) {
+        Long currentUserId = getCurrentUserId();
+        SopInstance inst = instanceService.getInstance(id);
+        if (!inst.getExecutorId().equals(currentUserId)) {
+            return Result.fail(403, "无权操作该实例");
+        }
+        try {
+            int undone = instanceService.undoLastStep(userId, id);
+            return Result.ok(undone);
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());
         }

@@ -22,4 +22,6 @@ public class SopAiAssistRequest {
     private String notes;
     /** 模型类型 */
     private String modelType;
+    /** AI 指导结果（步骤完成时关联保存） */
+    private String guidance;
 }

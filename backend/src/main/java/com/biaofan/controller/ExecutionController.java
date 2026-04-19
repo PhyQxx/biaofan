@@ -69,8 +69,29 @@ public class ExecutionController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
-            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData);
+            String guidance = body != null && body.get("guidance") != null ? (String) body.get("guidance") : null;
+            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData, guidance);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(executionId) ? stepIndex : stepIndex + 1));
+        } catch (RuntimeException ex) {
+            return Result.fail(400, ex.getMessage());
+        }
+    }
+
+    /**
+     * 撤销上一步
+     * <p>删除最后一条步骤记录，currentStep 回退一步，支持重新生成 AI 指导。</p>
+     *
+     * @param executionId 执行记录ID
+     * @param userId      当前登录用户ID
+     * @return 被撤销的 stepIndex
+     */
+    @PostMapping("/{executionId}/undo")
+    public Result<Integer> undoStep(
+            @PathVariable Long executionId,
+            @AuthenticationPrincipal Long userId) {
+        try {
+            int undone = executionService.undoLastStep(userId, executionId);
+            return Result.ok(undone);
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
         }

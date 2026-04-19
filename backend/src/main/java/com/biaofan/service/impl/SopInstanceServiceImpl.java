@@ -148,12 +148,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
      * @param stepIndex 步骤序号（从1开始）
      * @param notes 步骤备注
      * @param checkData 校验数据
+     * @param guidance AI 指导结果（可选）
      * @return 是否全部完成
      */
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes,
-                                 Map<String, Object> checkData) {
+                                 Map<String, Object> checkData, String guidance) {
         SopInstance inst = getInstance(instanceId);
         if (!inst.getExecutorId().equals(userId)) {
             throw new RuntimeException("无权操作");
@@ -201,6 +202,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             }
             record.setCompletedAt(LocalDateTime.now());
             record.setNotes(notes);
+            record.setGuidance(guidance);
             if (checkData != null) {
                 try {
                     record.setCheckData(objectMapper.writeValueAsString(checkData));
@@ -286,6 +288,56 @@ public class SopInstanceServiceImpl implements SopInstanceService {
 
         // Update gamification: points, exp, badges, streak
         gamificationService.onExecutionCompleted(userId, inst.getSopId());
+    }
+
+    /**
+     * 撤销实例的上一步
+     * @param userId 执行人ID
+     * @param instanceId 实例ID
+     * @return 被撤销的 stepIndex，0 表示没有可撤销的步骤
+     */
+    @Override
+    @Transactional
+    public int undoLastStep(Long userId, Long instanceId) {
+        SopInstance inst = getInstance(instanceId);
+        if (!inst.getExecutorId().equals(userId)) {
+            throw new RuntimeException("无权操作");
+        }
+        if (!"in_progress".equals(inst.getStatus())) {
+            throw new RuntimeException("当前状态不允许撤销");
+        }
+
+        SopExecution latestExec = getLatestExecution(userId, inst.getSopId());
+        if (latestExec == null) {
+            return 0;
+        }
+
+        ExecutionStepRecord lastRecord = stepRecordMapper.selectOne(
+            new LambdaQueryWrapper<ExecutionStepRecord>()
+                .eq(ExecutionStepRecord::getExecutionId, latestExec.getId())
+                .orderByDesc(ExecutionStepRecord::getStepIndex)
+                .last("LIMIT 1")
+        );
+
+        if (lastRecord == null) {
+            return 0;
+        }
+
+        int undoneStepIndex = lastRecord.getStepIndex();
+        stepRecordMapper.deleteById(lastRecord.getId());
+        int newStep = undoneStepIndex - 1;
+        if (newStep < 1) {
+            newStep = 1;
+        }
+        inst.setCurrentStep(newStep);
+        inst.setUpdatedAt(LocalDateTime.now());
+        instanceMapper.updateById(inst);
+
+        latestExec.setCurrentStep(newStep);
+        latestExec.setUpdatedAt(LocalDateTime.now());
+        executionMapper.updateById(latestExec);
+
+        return undoneStepIndex;
     }
 
     /**

@@ -93,7 +93,8 @@ public class SopExecutionController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
-            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData);
+            String guidance = body != null && body.get("guidance") != null ? (String) body.get("guidance") : null;
+            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData, guidance);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(execId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());

@@ -14,8 +14,7 @@ import java.util.*;
 
 /**
  * MiniMax 模型实现
- * API 格式：https://api.minimax.chat/v1/text/chatcompletion_v2
- * 必填：group_id（通过 config.groupId 设置）
+ * 使用标准 OpenAI 兼容格式：/v1/chat/completions
  */
 @Component
 public class MiniMaxModel implements AiModel {
@@ -35,16 +34,12 @@ public class MiniMaxModel implements AiModel {
         if (config.getApiKey() == null || config.getApiKey().isBlank()) {
             return AiResult.error("MiniMax API Key 未配置");
         }
-        if (config.getGroupId() == null || config.getGroupId().isBlank()) {
-            return AiResult.error("MiniMax group_id 未配置，请联系管理员设置");
-        }
 
-        String url = buildUrl(config.getApiUrl(), "https://api.minimax.chat/v1/text/chatcompletion_v2", "/text/chatcompletion_v2");
+        String url = buildUrl(config.getApiUrl(), "https://api.minimax.chat/v1/chat/completions", "/v1/chat/completions");
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", config.getModelName() != null ? config.getModelName() : "abab6.5s-chat");
         requestBody.put("messages", messages);
-        requestBody.put("group_id", config.getGroupId());
         if (config.getTemperature() != null) {
             requestBody.put("temperature", config.getTemperature());
         }
@@ -101,7 +96,7 @@ public class MiniMaxModel implements AiModel {
             return defaultUrl;
         }
         String trimmed = configuredUrl.replaceAll("/+$", "");
-        if (!trimmed.contains("/text/chatcompletion")) {
+        if (!trimmed.contains("/chat/completions")) {
             return trimmed + suffix;
         }
         return trimmed;

@@ -1,6 +1,6 @@
 <template>
   <div class="execution-do-page">
-    <!-- 顶部：顶栏 + 进度条（通栏 sticky） -->
+      <!-- 顶部：顶栏 + 进度条（通栏 sticky） -->
     <div class="exec-header">
       <div class="exec-topbar">
         <button class="exec-back" @click="handleBack">←</button>
@@ -18,7 +18,7 @@
               'active': n === currentStep,
               'future': n > currentStep
             }"
-            @click="n < currentStep && (currentStep = n)"
+            @click="n < currentStep && navigateToStep(n)"
           >
             <span class="dot-inner" v-if="n < currentStep">✓</span>
             <span class="dot-num" v-else>{{ n }}</span>
@@ -139,13 +139,30 @@
 
         <!-- Notes -->
         <div class="notes-section">
-          <div class="notes-label">📝 执行笔记 <span class="optional-hint">（选填）</span></div>
+          <div class="notes-label">📝 执行笔记 <span class="optional-hint">（选填）</span>
+            <span v-if="currentGuidance" class="guidance-badge">✓ 含AI指导</span>
+          </div>
           <textarea
+            v-if="notesEditing"
             v-model="notes"
             class="notes-input"
             :class="{ 'has-value': notes }"
             placeholder="记录执行过程中的备注、问题或心得..."
+            @blur="notesEditing = false"
+            ref="notesTextareaRef"
           ></textarea>
+          <div
+            v-else
+            class="notes-preview"
+            :class="{ 'has-value': notes, 'empty': !notes }"
+            @click="notesEditing = true"
+          >
+            <span v-if="notes" v-html="marked.parse(notes)"></span>
+            <span v-else class="placeholder">记录执行过程中的备注、问题或心得...</span>
+          </div>
+          <div v-if="currentGuidance" class="guidance-history-hint">
+              📋 本步AI指导：{{ currentGuidance.substring(0, 60) }}{{ currentGuidance.length > 60 ? '...' : '' }}
+          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -204,6 +221,8 @@
           :sop-id="sopId"
           :visible-tabs="['execute']"
           :auto-fill-execute="aiAutoFill"
+          @guidance-ready="onGuidanceReady"
+          @notes-ready="onNotesReady"
         />
       </div>
     </div>
@@ -218,9 +237,10 @@
  * - 类似 ExecutionDoView，但针对周期实例
  * - 激活实例 -> 逐步执行步骤 -> 完成
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { marked } from 'marked'
 import request from '@/api'
 import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'
@@ -234,12 +254,23 @@ const sop = ref<Sop | null>(null)
 const steps = ref<StepData[]>([])
 const currentStep = ref(1)
 const notes = ref('')
+const notesEditing = ref(false)
+const notesTextareaRef = ref<HTMLTextAreaElement | null>(null)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
 const completionTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const stepsLoaded = ref(false)
+const currentGuidance = ref('')
+const stepGuidanceHistory = ref<Record<number, any>>({})
+
+// 自动聚焦 notes textarea
+watch(notesEditing, (editing) => {
+  if (editing) {
+    nextTick(() => notesTextareaRef.value?.focus())
+  }
+})
 
 const sopId = computed(() => execution.value?.sopId)
 const aiAutoFill = computed(() => {
@@ -274,7 +305,26 @@ const checkItems = computed(() => {
 })
 
 const prevStep = () => {
-  if (currentStep.value > 1) currentStep.value--
+  if (currentStep.value > 1) navigateToStep(currentStep.value - 1)
+}
+
+function navigateToStep(n: number) {
+  if (n >= currentStep.value) return
+  if (currentGuidance.value) {
+    stepGuidanceHistory.value[currentStep.value] = currentGuidance.value
+  }
+  currentGuidance.value = ''
+  notes.value = ''
+  checkData.value = {}
+  currentStep.value = n
+  if (stepGuidanceHistory.value[n]) {
+    currentGuidance.value = stepGuidanceHistory.value[n]
+  }
+}
+
+function onGuidanceReady(guidance: string) {
+  currentGuidance.value = guidance
+  stepGuidanceHistory.value[currentStep.value] = guidance
 }
 
 const handleBack = () => {
@@ -329,6 +379,7 @@ const completeStep = async () => {
     const res = await request.post<unknown, ApiResponse<{ completed?: boolean }>>(`/instance/${instanceId}/steps/${currentStep.value}/complete`, {
       notes: notes.value,
       checkData: dataMap,
+      guidance: currentGuidance.value || null,
     })
 
     if (res?.code === 200) {
@@ -356,6 +407,10 @@ const completeStep = async () => {
         if (execution.value) execution.value.status = 'completed'
         ElMessage.success('🎉 SOP 执行完成！')
       } else {
+        if (currentGuidance.value) {
+          stepGuidanceHistory.value[currentStep.value] = currentGuidance.value
+        }
+        currentGuidance.value = ''
         currentStep.value = execution.value?.currentStep || currentStep.value + 1
         notes.value = ''
         checkData.value = {}
@@ -370,6 +425,10 @@ const completeStep = async () => {
   } finally {
     isSubmitting.value = false
   }
+}
+
+const onNotesReady = (note: string) => {
+  notes.value = note
 }
 
 onBeforeUnmount(() => {
@@ -425,6 +484,30 @@ onMounted(async () => {
           stepsLoaded.value = true
         }
       }
+    }
+
+    // 加载历史 guidance
+    try {
+      const latestExec = execution.value
+      if (latestExec?.id) {
+        const recordsRes = await request.get<unknown, ApiResponse<any[]>>(`/execution/${latestExec.id}/records`)
+        if (recordsRes?.code === 200 && recordsRes.data) {
+          for (const rec of recordsRes.data) {
+            if (rec.guidance) {
+              stepGuidanceHistory.value[rec.stepIndex] = rec.guidance
+            }
+          }
+          if (stepGuidanceHistory.value[currentStep.value]) {
+            currentGuidance.value = stepGuidanceHistory.value[currentStep.value]
+          }
+          const currentRec = recordsRes.data.find((r: any) => r.stepIndex === currentStep.value)
+          if (currentRec?.notes) {
+            notes.value = currentRec.notes
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[InstanceDoView] load records failed:', e)
     }
   } catch (e) {
     ElMessage.error('加载失败')
@@ -525,6 +608,22 @@ onMounted(async () => {
 .notes-input { width: 100%; min-height: 90px; padding: 10px 12px; border: 1.5px solid #E8E8E8; border-radius: 10px; font-size: 14px; resize: vertical; outline: none; box-sizing: border-box; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; }
 .notes-input:focus { border-color: #5B7FFF; box-shadow: 0 0 0 3px rgba(91,127,255,0.12); }
 .notes-input.has-value { border-color: #B7D0FF; background: #F9FBFF; }
+.notes-preview {
+  width: 100%; min-height: 90px; padding: 10px 12px;
+  border: 1.5px solid #E8E8E8; border-radius: 10px;
+  font-size: 14px; box-sizing: border-box; background: #fff;
+  cursor: text; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.notes-preview.has-value { border-color: #B7D0FF; background: #F9FBFF; }
+.notes-preview.empty { color: #999; }
+.notes-preview .placeholder { color: #bbb; }
+.notes-preview :deep(p) { margin: 0 0 6px 0; }
+.notes-preview :deep(p:last-child) { margin-bottom: 0; }
+.notes-preview :deep(ul), .notes-preview :deep(ol) { margin: 4px 0; padding-left: 18px; }
+.notes-preview :deep(li) { margin: 2px 0; }
+.notes-preview :deep(strong) { color: #333; }
+.guidance-badge { font-size: 11px; background: #e7f3ff; color: #409eff; padding: 2px 8px; border-radius: 10px; font-weight: 400; margin-left: 8px; }
+.guidance-history-hint { margin-top: 8px; font-size: 12px; color: #409eff; padding: 6px 10px; background: #f0f7ff; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Action Buttons */
 .step-actions { display: flex; gap: 10px; margin-top: 8px; }

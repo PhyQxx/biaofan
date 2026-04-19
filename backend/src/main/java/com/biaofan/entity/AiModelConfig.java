@@ -31,8 +31,6 @@ public class AiModelConfig {
     private Boolean enabled;
     /** 温度参数 */
     private Float temperature;
-    /** MiniMax group_id（仅 minimax 模型需要） */
-    private String groupId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

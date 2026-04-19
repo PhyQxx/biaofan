@@ -23,4 +23,6 @@ public class ExecutionStepRecord {
     private String checkData;
     private LocalDateTime completedAt;
     private String notes;
+    /** AI 指导结果 */
+    private String guidance;
 }
