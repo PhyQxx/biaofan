@@ -5,6 +5,7 @@ import com.biaofan.dto.Result;
 import com.biaofan.dto.SopRequest;
 import com.biaofan.entity.Sop;
 import com.biaofan.service.SopService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -68,10 +69,10 @@ public class SopController {
     @PostMapping
     public Result<Sop> create(
             @AuthenticationPrincipal Long userId,
-            @RequestBody SopRequest req) {
+            @Valid @RequestBody SopRequest req) {
         try {
             Sop sop = sopService.create(userId, req);
-            return Result.ok(sop);
+            return Result.created(sop);
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());
         }
@@ -89,7 +90,7 @@ public class SopController {
     public Result<Void> update(
             @PathVariable Long id,
             @AuthenticationPrincipal Long userId,
-            @RequestBody SopRequest req) {
+            @Valid @RequestBody SopRequest req) {
         try {
             sopService.update(id, userId, req);
             return Result.ok();

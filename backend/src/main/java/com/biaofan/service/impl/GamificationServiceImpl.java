@@ -22,9 +22,12 @@ import com.biaofan.mapper.GamificationLeaderboardCacheMapper;
 import com.biaofan.mapper.UserMapper;
 import com.biaofan.service.GamificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -35,6 +38,7 @@ import java.util.*;
  *
  * @author biaofan
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GamificationServiceImpl implements GamificationService {
@@ -52,6 +56,7 @@ public class GamificationServiceImpl implements GamificationService {
      * 计算指定等级所需的经验值
      */
     // === EXP / Level helpers ===
+    private static final int MAX_LEVEL = 999;
     private int expForLevel(int level) { return level * 100; }
     
     /**
@@ -105,6 +110,7 @@ public class GamificationServiceImpl implements GamificationService {
      * @return 包含等级、积分、段位、徽章等信息
      */
     @Override
+    @Cacheable(value = "gamificationProfile", key = "#userId")
     public Map<String, Object> getProfile(Long userId) {
         GamificationUserStats s = getOrCreateStats(userId);
         Map<String, Object> p = buildStats(s);
@@ -130,10 +136,13 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     public List<Map<String, Object>> getBadges(Long userId) {
         List<GamificationBadgeDefinition> all = badgeDefMapper.selectList(null);
-        Set<Long> unlocked = new HashSet<>();
-        userBadgeMapper.selectList(new LambdaQueryWrapper<GamificationUserBadge>()
-            .eq(GamificationUserBadge::getUserId, userId))
-            .forEach(b -> unlocked.add(b.getBadgeId()));
+        // 预抓取该用户所有已解锁徽章，一次查询替代循环内查询
+        List<GamificationUserBadge> unlockedBadges = userBadgeMapper.selectList(
+            new LambdaQueryWrapper<GamificationUserBadge>()
+                .eq(GamificationUserBadge::getUserId, userId));
+        // 构建badgeId -> unlockedAt 的Map用于快速查找
+        java.util.Map<Long, GamificationUserBadge> unlockedMap = unlockedBadges.stream()
+            .collect(java.util.stream.Collectors.toMap(GamificationUserBadge::getBadgeId, b -> b));
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (GamificationBadgeDefinition def : all) {
@@ -147,14 +156,10 @@ public class GamificationServiceImpl implements GamificationService {
             m.put("condition", def.getCondition());
             m.put("rewardExp", def.getRewardExp());
             m.put("rewardScore", def.getRewardScore());
-            m.put("unlocked", unlocked.contains(def.getId()));
-            if (unlocked.contains(def.getId())) {
-                GamificationUserBadge ub = userBadgeMapper.selectList(
-                    new LambdaQueryWrapper<GamificationUserBadge>()
-                        .eq(GamificationUserBadge::getUserId, userId)
-                        .eq(GamificationUserBadge::getBadgeId, def.getId())
-                        .last("LIMIT 1")
-                ).stream().findFirst().orElse(null);
+            boolean isUnlocked = unlockedMap.containsKey(def.getId());
+            m.put("unlocked", isUnlocked);
+            if (isUnlocked) {
+                GamificationUserBadge ub = unlockedMap.get(def.getId());
                 m.put("unlockedAt", ub != null ? ub.getUnlockedAt() : null);
             }
             result.add(m);
@@ -199,19 +204,22 @@ public class GamificationServiceImpl implements GamificationService {
             new LambdaQueryWrapper<GamificationUserStats>()
                 .orderByDesc(GamificationUserStats::getTotalScore)
                 .last("LIMIT 20"));
+        if (top.isEmpty()) return Collections.emptyList();
+
+        // 批量获取用户信息，一次查询替代循环内N次查询
+        List<Long> userIds = top.stream().map(GamificationUserStats::getUserId).toList();
+        java.util.Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
+            .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+
         List<Map<String, Object>> r = new ArrayList<>();
         int rank = 1;
         for (GamificationUserStats s : top) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("userId", s.getUserId());
-            // Try to get real username from user table
-            String username = "用户" + s.getUserId();
-            try {
-                var user = userMapper.selectById(s.getUserId());
-                if (user != null && user.getUsername() != null) {
-                    username = user.getUsername();
-                }
-            } catch (Exception ignored) {}
+            // 从预加载的Map中获取用户名
+            User user = userMap.get(s.getUserId());
+            String username = user != null && user.getUsername() != null
+                ? user.getUsername() : "用户" + s.getUserId();
             m.put("username", username);
             m.put("score", s.getTotalScore());
             m.put("rank", rank++);
@@ -264,7 +272,6 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     public List<Map<String, Object>> getScoreHistory(Long userId, int page, int size) {
         Page<GamificationScoreHistory> p = new Page<>(page, size);
-        userBadgeMapper.selectList(new LambdaQueryWrapper<GamificationUserBadge>()); // init
         List<GamificationScoreHistory> records = scoreHistoryMapper.selectPage(p,
             new LambdaQueryWrapper<GamificationScoreHistory>()
                 .eq(GamificationScoreHistory::getUserId, userId)
@@ -331,23 +338,32 @@ public class GamificationServiceImpl implements GamificationService {
 
     /**
      * 获取积分商城商品列表
-     * @return 上架商品列表
+     * @param page 页码
+     * @param size 每页数量
+     * @return 上架商品分页列表
      */
     @Override
-    public List<Map<String, Object>> getStore() {
-        List<GamificationStoreProduct> products = storeProductMapper.selectList(
+    public Map<String, Object> getStore(int page, int size) {
+        Page<GamificationStoreProduct> p = new Page<>(page, size);
+        Page<GamificationStoreProduct> resultPage = storeProductMapper.selectPage(p,
             new LambdaQueryWrapper<GamificationStoreProduct>()
                 .eq(GamificationStoreProduct::getActive, true)
                 .orderByAsc(GamificationStoreProduct::getPrice));
         List<Map<String, Object>> r = new ArrayList<>();
-        for (GamificationStoreProduct p : products) {
+        for (GamificationStoreProduct prod : resultPage.getRecords()) {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", p.getId()); m.put("name", p.getName()); m.put("icon", p.getIcon());
-            m.put("description", p.getDescription()); m.put("price", p.getPrice());
-            m.put("stock", p.getStock()); m.put("active", p.getActive());
+            m.put("id", prod.getId()); m.put("name", prod.getName()); m.put("icon", prod.getIcon());
+            m.put("description", prod.getDescription()); m.put("price", prod.getPrice());
+            m.put("stock", prod.getStock()); m.put("active", prod.getActive());
             r.add(m);
         }
-        return r;
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("records", r);
+        result.put("total", resultPage.getTotal());
+        result.put("pages", resultPage.getPages());
+        result.put("current", resultPage.getCurrent());
+        result.put("size", resultPage.getSize());
+        return result;
     }
 
     /**
@@ -411,15 +427,36 @@ public class GamificationServiceImpl implements GamificationService {
         s.setExp(s.getExp() + 10);
         s.setTotalScore(s.getTotalScore() + 5);
         s.setAvailableScore(s.getAvailableScore() + 5);
-        s.setLastActiveAt(LocalDateTime.now());
 
-        // Level up check
-        int needed = expForLevel(s.getLevel() + 1);
-        while (s.getExp() >= needed) {
-            s.setExp(s.getExp() - needed);
-            s.setLevel(s.getLevel() + 1);
-            s.setRank(rankForLevel(s.getLevel()));
-            needed = expForLevel(s.getLevel() + 1);
+        // === FIX: Update streak days ===
+        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = now.toLocalDate();
+        LocalDate lastActive = s.getLastActiveAt() != null ? s.getLastActiveAt().toLocalDate() : null;
+
+        if (lastActive == null) {
+            // First activity ever
+            s.setStreakDays(1);
+        } else if (lastActive.equals(today.minusDays(1))) {
+            // Consecutive day — increment streak
+            s.setStreakDays(s.getStreakDays() + 1);
+        } else if (!lastActive.equals(today)) {
+            // Missed a day or same day — reset streak to 1 (same day doesn't increment)
+            s.setStreakDays(1);
+        }
+        // If lastActive equals today, don't change streak (already counted today)
+
+        s.setLastActiveAt(now);
+        // ================================
+
+        // Level up check (capped at MAX_LEVEL)
+        if (s.getLevel() < MAX_LEVEL) {
+            int needed = expForLevel(s.getLevel() + 1);
+            while (s.getExp() >= needed && s.getLevel() < MAX_LEVEL) {
+                s.setExp(s.getExp() - needed);
+                s.setLevel(s.getLevel() + 1);
+                s.setRank(rankForLevel(s.getLevel()));
+                needed = expForLevel(s.getLevel() + 1);
+            }
         }
         s.setUpdatedAt(LocalDateTime.now());
         statsMapper.updateById(s);
@@ -444,15 +481,14 @@ public class GamificationServiceImpl implements GamificationService {
                 .eq(GamificationBadgeDefinition::getBadgeKey, badgeKey)
         ).stream().findFirst().orElse(null);
         if (def == null) return;
-        boolean has = userBadgeMapper.selectCount(
-            new LambdaQueryWrapper<GamificationUserBadge>()
-                .eq(GamificationUserBadge::getUserId, userId)
-                .eq(GamificationUserBadge::getBadgeId, def.getId())) > 0;
-        if (!has) {
-            GamificationUserBadge ub = new GamificationUserBadge();
-            ub.setUserId(userId); ub.setBadgeId(def.getId());
-            ub.setUnlockedAt(LocalDateTime.now());
-            userBadgeMapper.insert(ub);
+        
+        // Use INSERT IGNORE to prevent race condition duplicates
+        GamificationUserBadge ub = new GamificationUserBadge();
+        ub.setUserId(userId); ub.setBadgeId(def.getId());
+        ub.setUnlockedAt(LocalDateTime.now());
+        int inserted = userBadgeMapper.insertIgnore(ub);
+        if (inserted > 0) {
+            log.info("解锁徽章: userId={}, badgeId={}", userId, def.getId());
         }
     }
 
@@ -466,15 +502,15 @@ public class GamificationServiceImpl implements GamificationService {
                 .eq(GamificationBadgeDefinition::getBadgeKey, "streak_7")
         ).stream().findFirst().orElse(null);
         if (def == null) return;
-        boolean has = userBadgeMapper.selectCount(
-            new LambdaQueryWrapper<GamificationUserBadge>()
-                .eq(GamificationUserBadge::getUserId, userId)
-                .eq(GamificationUserBadge::getBadgeId, def.getId())) > 0;
-        if (!has && s.getStreakDays() >= 7) {
+        if (s.getStreakDays() >= 7) {
+            // Use INSERT IGNORE to prevent race condition duplicates
             GamificationUserBadge ub = new GamificationUserBadge();
             ub.setUserId(userId); ub.setBadgeId(def.getId());
             ub.setUnlockedAt(LocalDateTime.now());
-            userBadgeMapper.insert(ub);
+            int inserted = userBadgeMapper.insertIgnore(ub);
+            if (inserted > 0) {
+                log.info("解锁连续签到徽章: userId={}, badgeId={}", userId, def.getId());
+            }
         }
     }
 

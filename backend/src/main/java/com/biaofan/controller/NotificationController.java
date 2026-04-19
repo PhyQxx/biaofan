@@ -1,5 +1,6 @@
 package com.biaofan.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.Notification;
 import com.biaofan.service.NotificationService;
@@ -24,11 +25,16 @@ public class NotificationController {
     /**
      * 获取当前用户的通知列表
      * @param userId 当前登录用户ID（从@AuthenticationPrincipal获取）
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认20）
      * @return 通知列表
      */
     @GetMapping
-    public Result<List<Notification>> list(@AuthenticationPrincipal Long userId) {
-        return Result.ok(notificationService.getMyNotifications(userId));
+    public Result<Page<Notification>> list(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.ok(notificationService.getMyNotifications(userId, page, pageSize));
     }
 
     /**

@@ -1,12 +1,15 @@
 package com.biaofan.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.dto.SopRequest;
 import com.biaofan.entity.Sop;
 import com.biaofan.mapper.SopMapper;
 import com.biaofan.service.SopService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,22 +42,23 @@ public class SopTemplateController {
      */
     /** 模板列表（支持分类/标签过滤）- H-09: 公开接口强制只查 published 状态 */
     @GetMapping
-    public Result<List<Sop>> list(
+    public Result<Page<Sop>> list(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String tag) {
+            @RequestParam(required = false) String tag,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
         LambdaQueryWrapper<Sop> q = new LambdaQueryWrapper<Sop>();
         if (category != null && !category.isBlank()) q.eq(Sop::getCategory, category);
         // H-09: 公开接口强制只展示已发布的模板，忽略客户端传入的 status 参数
         q.eq(Sop::getStatus, "published");
-        q.orderByDesc(Sop::getUpdatedAt);
-        List<Sop> list = sopMapper.selectList(q);
-        // Tag filtering done in memory (tags stored as JSON)
+        // Tag filtering in SQL using LIKE (tags stored as JSON array string)
         if (tag != null && !tag.isBlank()) {
-            list = list.stream()
-                .filter(s -> s.getTags() != null && s.getTags().contains(tag))
-                .toList();
+            q.apply("JSON_CONTAINS(tags, {0})", "\"" + tag.replace("\\", "\\\\").replace("\"", "\\\"") + "\"");
         }
-        return Result.ok(list);
+        q.orderByDesc(Sop::getUpdatedAt);
+        Page<Sop> p = new Page<>(page, pageSize);
+        Page<Sop> resultPage = sopMapper.selectPage(p, q);
+        return Result.ok(resultPage);
     }
 
     /**
@@ -66,9 +70,10 @@ public class SopTemplateController {
      */
     /** 创建模板 */
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public Result<Void> create(
             @AuthenticationPrincipal Long userId,
-            @RequestBody SopRequest req) {
+            @Valid @RequestBody SopRequest req) {
         try {
             sopService.create(userId, req);
             return Result.ok();
@@ -90,7 +95,7 @@ public class SopTemplateController {
     public Result<Void> update(
             @PathVariable Long id,
             @AuthenticationPrincipal Long userId,
-            @RequestBody SopRequest req) {
+            @Valid @RequestBody SopRequest req) {
         try {
             sopService.update(id, userId, req);
             return Result.ok();

@@ -69,9 +69,11 @@ public interface GamificationService {
 
     /**
      * 获取积分商城商品列表
-     * @return 商品列表
+     * @param page 页码
+     * @param size 每页数量
+     * @return 商品列表及分页信息
      */
-    List<Map<String, Object>> getStore();
+    Map<String, Object> getStore(int page, int size);
 
     /**
      * 获取用户成长进度

@@ -202,8 +202,15 @@ export default {
   onLoad(options) {
       if (options.instanceId) {
         this.instanceId = parseInt(options.instanceId)
-        this.sopId = parseInt(options.sopId)
+        this.sopId = options.sopId ? parseInt(options.sopId) : null
         this.isInstanceMode = true
+        /*
+         * [安全注意 - Issue 36] instanceId 和 sopId 通过 URL 参数传递。
+         * 风险：这些 URL 可以被书签保存或分享，敏感 ID 暴露在地址栏。
+         * 当前缓解：UniApp 不支持 noHistory 标记，无法阻止页面被收藏。
+         * 完整修复方案：需要后端提供一次性执行令牌（one-time execution token），
+         * 每次执行访问使用唯一令牌而非真实业务 ID，当前为已知架构限制。
+         */
         this.loadInstanceDetail()
       } else if (options.id) {
         this.executionId = parseInt(options.id)
@@ -325,51 +332,57 @@ export default {
     },
 
     async handleCheckIn(step) {
+      if (this.checkingIn) return
       this.checkingIn = true
       const isOnline = await checkNetwork()
 
-      try {
-        if (isOnline) {
-          if (this.isInstanceMode) {
-            await api.instance.completeStep(this.instanceId, step.index, {
-              notes: this.stepNote
-            })
-          } else {
-            // 上传所有照片，而非仅第一张
-            let photoUrls = []
-            const photos = this.stepPhotos[step.index] || []
-            for (const photo of photos) {
-              try {
-                const uploadRes = await api.upload.image(photo)
-                if (uploadRes.data?.url) {
-                  photoUrls.push(uploadRes.data.url)
-                }
-              } catch (e) {
-                console.error('照片上传失败:', e)
-              }
+      if (!isOnline) {
+        uni.showModal({
+          title: '当前离线',
+          content: '当前网络不可用，数据将在网络恢复后自动同步。确认离线打卡？',
+          confirmText: '确认离线',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              this.saveOfflineAndContinue(step)
+            } else {
+              this.checkingIn = false
             }
-            await api.execution.completeStep(this.executionId, step.id || step.index, {
-              note: this.stepNote,
-              photoUrl: photoUrls.join(','),
-              photoUrls: photoUrls
-            })
           }
-          uni.showToast({ title: '打卡成功', icon: 'success' })
-        } else {
-          // 离线：保存到本地草稿
-          const draftStore = useDraftStore()
-          draftStore.addDraft(
-            this.executionId,
-            step.index,
-            this.stepPhotos[step.index]?.[0] || '',
-            this.stepNote
-          )
-          uni.showToast({ title: '已保存草稿，网络恢复后自动同步', icon: 'success' })
-        }
+        })
+        return
+      }
 
-        // 更新本地状态：在线成功标completed，离线/失败标pending_sync
-        step.status = isOnline ? 'completed' : 'pending_sync'
-        step.completedAt = isOnline ? new Date().toISOString() : null
+      try {
+        if (this.isInstanceMode) {
+          await api.instance.completeStep(this.instanceId, step.index, {
+            notes: this.stepNote
+          })
+        } else {
+          // 上传所有照片，而非仅第一张
+          let photoUrls = []
+          const photos = this.stepPhotos[step.index] || []
+          for (const photo of photos) {
+            try {
+              const uploadRes = await api.upload.image(photo)
+              if (uploadRes.data?.url) {
+                photoUrls.push(uploadRes.data.url)
+              }
+            } catch (e) {
+              console.error('照片上传失败:', e)
+            }
+          }
+          await api.execution.completeStep(this.executionId, step.id || step.index, {
+            note: this.stepNote,
+            photoUrl: photoUrls.join(','),
+            photoUrls: photoUrls
+          })
+        }
+        uni.showToast({ title: '打卡成功', icon: 'success' })
+
+        // 更新本地状态：在线成功标completed
+        step.status = 'completed'
+        step.completedAt = new Date().toISOString()
         step.note = this.stepNote
 
         // 清理当前步骤数据
@@ -396,6 +409,33 @@ export default {
       } finally {
         this.checkingIn = false
       }
+    },
+
+    saveOfflineAndContinue(step) {
+      // 离线：保存到本地草稿
+      const draftStore = useDraftStore()
+      draftStore.addDraft(
+        this.executionId,
+        step.index,
+        this.stepPhotos[step.index]?.[0] || '',
+        this.stepNote
+      )
+      uni.showToast({ title: '已保存草稿，网络恢复后自动同步', icon: 'success' })
+
+      // 更新本地状态：离线标pending_sync
+      step.status = 'pending_sync'
+      step.completedAt = null
+      step.note = this.stepNote
+
+      // 清理当前步骤数据
+      this.stepNote = ''
+      this.stepPhotos[step.index] = []
+
+      // 更新当前步骤索引
+      const nextStep = this.executionDetail.steps?.find(s => s.status === 'pending')
+      this.currentStepIndex = nextStep?.index || this.executionDetail.steps?.length + 1
+
+      this.checkingIn = false
     },
 
     async handleFinish() {

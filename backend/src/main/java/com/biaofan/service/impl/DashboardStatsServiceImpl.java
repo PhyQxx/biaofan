@@ -137,21 +137,31 @@ public class DashboardStatsServiceImpl implements DashboardStatsService {
     public List<DashboardStatsDTO.MemberStat> getLeaderboard(int limit) {
         List<Map<String, Object>> raw = executionMapper.getMemberLeaderboard();
         List<DashboardStatsDTO.MemberStat> result = new ArrayList<>();
-        int rank = 1;
-        for (Map<String, Object> row : raw) {
-            DashboardStatsDTO.MemberStat s = new DashboardStatsDTO.MemberStat();
-            Long userId = ((Number) row.get("executor_id")).longValue();
-            s.setUserId(userId);
-            s.setCompletedCount(((Number) row.get("completed_count")).intValue());
-            s.setOverdueCount(((Number) row.get("overdue_count")).intValue());
-            s.setRank(rank++);
-            // Fetch username
-            User user = userMapper.selectById(userId);
-            s.setUsername(user != null ? user.getUsername() : "用户" + userId);
-            int total = s.getCompletedCount() + s.getOverdueCount();
-            s.setCompletionRate(total > 0
-                ? Math.round((double) s.getCompletedCount() / total * 1000) / 10.0 : 0.0);
-            result.add(s);
+
+        if (!raw.isEmpty()) {
+            // 批量获取用户信息，一次查询替代循环内N次查询
+            List<Long> userIds = raw.stream()
+                .map(row -> ((Number) row.get("executor_id")).longValue())
+                .toList();
+            java.util.Map<Long, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+
+            int rank = 1;
+            for (Map<String, Object> row : raw) {
+                DashboardStatsDTO.MemberStat s = new DashboardStatsDTO.MemberStat();
+                Long userId = ((Number) row.get("executor_id")).longValue();
+                s.setUserId(userId);
+                s.setCompletedCount(((Number) row.get("completed_count")).intValue());
+                s.setOverdueCount(((Number) row.get("overdue_count")).intValue());
+                s.setRank(rank++);
+                // 从预加载的Map中获取用户名
+                User user = userMap.get(userId);
+                s.setUsername(user != null ? user.getUsername() : "用户" + userId);
+                int total = s.getCompletedCount() + s.getOverdueCount();
+                s.setCompletionRate(total > 0
+                    ? Math.round((double) s.getCompletedCount() / total * 1000) / 10.0 : 0.0);
+                result.add(s);
+            }
         }
         return result;
     }

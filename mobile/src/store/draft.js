@@ -4,6 +4,7 @@
  */
 import { defineStore } from 'pinia'
 import api from '../api'
+import { checkNetwork } from '../common/utils'
 
 export const useDraftStore = defineStore('draft', {
   state: () => ({
@@ -39,7 +40,14 @@ export const useDraftStore = defineStore('draft', {
      */
     async syncAll() {
       const pendingDrafts = this.drafts.filter(d => !d.synced)
-      if (pendingDrafts.length === 0) return
+      if (pendingDrafts.length === 0) return { success: 0, failed: 0, skipped: 0 }
+
+      // Check network before starting sync loop
+      const isOnline = await checkNetwork()
+      if (!isOnline) {
+        console.log('[Draft] 离线状态，跳过同步')
+        return { success: 0, failed: 0, skipped: pendingDrafts.length }
+      }
       
       // 按 executionId 分组
       const grouped = {}
@@ -51,7 +59,14 @@ export const useDraftStore = defineStore('draft', {
       })
       
       // 逐个 executionId 同步
+      let success = 0
+      let failed = 0
       for (const [executionId, steps] of Object.entries(grouped)) {
+        // Check network before each sync call
+        if (!await checkNetwork()) {
+          failed += steps.length
+          continue
+        }
         try {
           // 先上传图片，获取远程 URL；图片上传失败的步骤跳过，保留重试
           const uploadResults = await Promise.all(steps.map(async (step) => {
@@ -99,6 +114,7 @@ export const useDraftStore = defineStore('draft', {
           })
           
           const syncedCount = successSteps.length
+          success += syncedCount
           if (syncedCount > 0) {
             uni.showToast({ title: `已同步 ${syncedCount} 条草稿`, icon: 'success' })
           } else {
@@ -106,14 +122,16 @@ export const useDraftStore = defineStore('draft', {
           }
         } catch (e) {
           console.error('草稿同步失败:', e)
+          failed += steps.length
           // 增加重试计数
           steps.forEach(step => {
             step.retryCount = (step.retryCount || 0) + 1
           })
         }
       }
-      
+
       this.save()
+      return { success, failed, skipped: 0 }
     },
     
     /**

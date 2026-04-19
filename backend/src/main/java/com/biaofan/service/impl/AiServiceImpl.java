@@ -3,29 +3,45 @@ package com.biaofan.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.ai.AiModel;
 import com.biaofan.ai.AiModelFactory;
+import com.biaofan.ai.AiResult;
 import com.biaofan.entity.AiModelConfig;
 import com.biaofan.mapper.AiModelConfigMapper;
 import com.biaofan.service.AiService;
 import com.biaofan.dto.ai.AiChatRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
 /**
  * AI 服务实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiServiceImpl implements AiService {
 
     private final AiModelConfigMapper configMapper;
     private final AiModelFactory aiModelFactory;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    private static final int MAX_AI_CALLS_PER_HOUR = 20;
+    private static final Duration RATE_LIMIT_WINDOW = Duration.ofHours(1);
 
     @Override
+    @Cacheable(value = "aiConfig", key = "#userId")
     public AiModelConfig getEffectiveConfig(Long userId) {
         AiModelConfig userConfig = getUserConfig(userId);
         if (userConfig != null) return userConfig;
@@ -79,6 +95,16 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public String chat(Long userId, AiChatRequest request) {
+        // Rate limit check
+        String key = "ai_rate:" + userId;
+        Long calls = redisTemplate.opsForValue().increment(key);
+        if (calls != null && calls == 1) {
+            redisTemplate.expire(key, RATE_LIMIT_WINDOW);
+        }
+        if (calls != null && calls > MAX_AI_CALLS_PER_HOUR) {
+            throw new RuntimeException("AI调用次数已达上限，请稍后再试");
+        }
+
         AiModelConfig config = getEffectiveConfig(userId);
 
         // 请求级覆盖
@@ -97,6 +123,11 @@ public class AiServiceImpl implements AiService {
         messages.add(Map.of("role", "system", "content", systemPrompt));
         messages.add(Map.of("role", "user", "content", request.getContent()));
 
-        return aiModelFactory.chat(messages, config);
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            log.warn("AI调用失败 userId={} error={}", userId, result.getError());
+            return "AI服务暂时繁忙，请稍后重试。如需紧急处理，请联系管理员。";
+        }
+        return result.getContent();
     }
 }

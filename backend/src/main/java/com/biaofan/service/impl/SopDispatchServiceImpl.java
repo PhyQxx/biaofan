@@ -11,12 +11,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopDispatch;
 import com.biaofan.entity.SopExecution;
+import com.biaofan.entity.User;
 import com.biaofan.mapper.SopDispatchMapper;
 import com.biaofan.mapper.SopExecutionMapper;
 import com.biaofan.mapper.SopMapper;
+import com.biaofan.mapper.UserMapper;
 import com.biaofan.service.SopDispatchService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ import java.util.List;
  *
  * @author biaofan
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SopDispatchServiceImpl implements SopDispatchService {
@@ -38,7 +42,8 @@ public class SopDispatchServiceImpl implements SopDispatchService {
     private final SopDispatchMapper dispatchMapper;
     private final SopMapper sopMapper;
     private final SopExecutionMapper executionMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final UserMapper userMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * 批量分发SOP模板给指定用户
@@ -65,6 +70,13 @@ public class SopDispatchServiceImpl implements SopDispatchService {
             if (!"published".equals(sop.getStatus())) continue;
 
             for (Long assigneeId : assigneeIds) {
+                // Validate assignee exists
+                User user = userMapper.selectById(assigneeId);
+                if (user == null) {
+                    log.warn("跳过无效分配人: userId={}", assigneeId);
+                    continue;
+                }
+
                 // 创建执行记录
                 SopExecution exec = new SopExecution();
                 exec.setSopId(sopId);
@@ -85,8 +97,8 @@ public class SopDispatchServiceImpl implements SopDispatchService {
                 dispatch.setCreatedAt(LocalDateTime.now());
                 dispatch.setUpdatedAt(LocalDateTime.now());
                 try {
-                    dispatch.setTemplateIds(objectMapper.writeValueAsString(templateIds));
-                    dispatch.setAssigneeIds(objectMapper.writeValueAsString(assigneeIds));
+                    dispatch.setTemplateIds(objectMapper.writeValueAsString(List.of(sopId)));
+                    dispatch.setAssigneeIds(objectMapper.writeValueAsString(List.of(assigneeId)));
                 } catch (Exception e) { /* ignore */ }
                 dispatchMapper.insert(dispatch);
                 results.add(dispatch);

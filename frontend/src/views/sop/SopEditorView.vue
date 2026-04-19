@@ -87,7 +87,7 @@
             </div>
             <div class="schedule-info-row">
               <span class="info-label">下次触发：</span>
-              <span class="next-fire">{{ formatDateTime(scheduleTask.current.nextFireTime) }}</span>
+              <span class="next-fire">{{ formatDateTime(scheduleTask.current.nextFireTime || '') }}</span>
               <span class="status-badge" :class="scheduleTask.current.enabled ? 'active' : 'inactive'">
                 {{ scheduleTask.current.enabled ? '运行中' : '已停用' }}
               </span>
@@ -186,7 +186,23 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSopStore } from '@/stores/sop'
+import type { ApiResponse } from '@/types'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'
+
+/** 定时任务信息 */
+interface ScheduleTaskInfo {
+  id: number
+  cronExpression: string
+  nextFireTime?: string
+  enabled: number
+}
+
+/** SOP 步骤内容（AI 生成） */
+interface AiStepContent {
+  title?: string
+  description?: string
+  duration?: number
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -205,7 +221,7 @@ const form = reactive({
 
 // 定时任务状态
 const scheduleTask = reactive({
-  current: null as any,
+  current: null as ScheduleTaskInfo | null,
   enabled: false,
   loaded: false,
 })
@@ -230,7 +246,7 @@ function handleApplyAiSop(jsonStr: string) {
     if (parsed.category) form.category = parsed.category
     if (parsed.tags) tagsInput.value = Array.isArray(parsed.tags) ? parsed.tags.join(',') : parsed.tags
     if (Array.isArray(parsed.content)) {
-      form.content = parsed.content.map((s: any) => ({
+      form.content = parsed.content.map((s: AiStepContent) => ({
         title: s.title || '',
         description: s.description || '',
         duration: s.duration || 10,
@@ -257,7 +273,7 @@ const buildCron = () => {
   return ''
 }
 
-const applyPreset = (preset: any) => {
+const applyPreset = (preset: { label: string; cron: string }) => {
   selectedPreset.value = preset.label
   const parts = preset.cron.split(' ')
   const [mm, hh, , , dow] = parts
@@ -295,7 +311,7 @@ const formatDateTime = (dt: string) => {
 const loadSchedule = async () => {
   if (!isEdit) return
   try {
-    const res: any = await sopStore.getScheduleTask(Number(route.params.id))
+    const res = await sopStore.getScheduleTask(Number(route.params.id)) as unknown as ApiResponse<ScheduleTaskInfo | null>
     scheduleTask.loaded = true
     if (res.code === 200 && res.data) {
       scheduleTask.current = res.data
@@ -388,7 +404,7 @@ const handleSave = async (status: string) => {
     if (isEdit) {
       await sopStore.updateSop(sopId, data)
     } else {
-      const createRes: any = await sopStore.createSop(data)
+      const createRes = await sopStore.createSop(data) as unknown as ApiResponse<{ id?: number }>
       if (createRes?.code === 200 && createRes.data?.id) {
         sopId = createRes.data.id
       } else if (createRes?.data) {
@@ -410,9 +426,9 @@ const handleSave = async (status: string) => {
 
 onMounted(async () => {
   if (isEdit) {
-    const res: any = await sopStore.getSopById(Number(route.params.id))
+    const res = await sopStore.getSopById(Number(route.params.id)) as unknown as ApiResponse
     if (res.code === 200) {
-      const sop = res.data
+      const sop = res.data as { title: string; description?: string; category?: string; content?: string; tags?: string; id?: number }
       form.title = sop.title
       form.description = sop.description || ''
       form.category = sop.category || 'daily'

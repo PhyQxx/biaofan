@@ -18,6 +18,7 @@ import com.biaofan.mapper.GamificationStoreProductMapper;
 import com.biaofan.service.AdminGamificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -199,6 +200,7 @@ public class AdminGamificationServiceImpl implements AdminGamificationService {
      * @param rules 成长规则列表
      */
     @Override
+    @Transactional
     public void updateGrowthRules(List<GamificationGrowthRule> rules) {
         for (GamificationGrowthRule rule : rules) {
             if (rule.getId() != null) {

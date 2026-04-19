@@ -2,6 +2,7 @@ package com.biaofan.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.biaofan.entity.GamificationUserBadge;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
@@ -14,4 +15,12 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface GamificationUserBadgeMapper extends BaseMapper<GamificationUserBadge> {
+    
+    /**
+     * 插入用户徽章（如果已存在唯一冲突则忽略）
+     * 用于防止徽章重复解锁
+     */
+    @Insert("INSERT IGNORE INTO gamification_user_badge (user_id, badge_id, unlocked_at) " +
+            "VALUES (#{userId}, #{badgeId}, #{unlockedAt})")
+    int insertIgnore(GamificationUserBadge badge);
 }

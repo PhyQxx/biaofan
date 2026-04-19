@@ -95,18 +95,35 @@ public class JwtUtil {
     }
 
     /**
-     * 验证JWT令牌的签名有效性。
-     * 注意：对于已过期但签名有效的JWT同样返回true（用于无感续期）。
+     * 验证JWT令牌的签名有效性。已过期的token将被拒绝。
      *
      * @param token JWT令牌字符串
-     * @return true表示签名有效（包含已过期），false表示签名无效或格式错误
+     * @return true表示签名有效且未过期，false表示签名无效、格式错误或已过期
      */
     public boolean validateToken(String token) {
         try {
             Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            // 过期但签名有效，允许通过（用于无感续期）
+            log.debug("JWT token 已过期: {}", e.getMessage());
+            return false;
+        } catch (JwtException e) {
+            log.warn("JWT token 验证失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 验证JWT令牌的签名有效性，允许已过期的token（用于refresh token场景）。
+     *
+     * @param token JWT令牌字符串
+     * @return true表示签名有效（包含已过期），false表示签名无效或格式错误
+     */
+    public boolean validateTokenWithoutExpiry(String token) {
+        try {
+            Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);
+            return true;
+        } catch (ExpiredJwtException e) {
             log.debug("JWT token 已过期但签名有效: {}", e.getMessage());
             return true;
         } catch (JwtException e) {

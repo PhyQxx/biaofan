@@ -1,15 +1,19 @@
 package com.biaofan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.GamificationService;
-import com.biaofan.service.SopExecutionService;
 import com.biaofan.service.NotificationDispatcher;
+import com.biaofan.service.SopExecutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -29,8 +33,12 @@ import java.util.*;
  * - 完成执行单（所有步骤完成后）
  * - 步骤完成时自动触发积分奖励
  */
+@Slf4j
 @Service
 public class SopExecutionServiceImpl implements SopExecutionService {
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     private final SopExecutionMapper executionMapper;
     private final SopMapper sopMapper;
@@ -66,6 +74,20 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Override
     @Transactional
     public SopExecution startExecution(Long userId, Long sopId) {
+        // Idempotency: prevent duplicate start calls within 5 seconds
+        String idempotencyKey = "exec_start:" + userId + ":" + sopId;
+        Boolean started = redisTemplate.opsForValue().setIfAbsent(idempotencyKey, "1", Duration.ofSeconds(5));
+        if (Boolean.FALSE.equals(started)) {
+            // Another request just started — query existing execution instead of creating new
+            SopExecution existing = executionMapper.selectOne(
+                new LambdaQueryWrapper<SopExecution>()
+                    .eq(SopExecution::getExecutorId, userId)
+                    .eq(SopExecution::getSopId, sopId)
+                    .in(SopExecution::getStatus, "pending", "in_progress")
+            );
+            if (existing != null) return existing;
+        }
+
         Sop sop = sopMapper.selectById(sopId);
         if (sop == null) {
             throw new RuntimeException("SOP不存在");
@@ -138,14 +160,27 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             steps = Collections.emptyList();
         }
 
+        if (stepIndex < 1 || stepIndex > steps.size()) {
+            throw new RuntimeException("步骤序号无效: " + stepIndex);
+        }
+
+        // Idempotency check: skip if step already completed
+        ExecutionStepRecord existing = stepRecordMapper.selectOne(
+            new LambdaQueryWrapper<ExecutionStepRecord>()
+                .eq(ExecutionStepRecord::getExecutionId, executionId)
+                .eq(ExecutionStepRecord::getStepIndex, stepIndex)
+        );
+        if (existing != null) {
+            log.info("步骤已完成，跳过重复记录 executionId={}, stepIndex={}", executionId, stepIndex);
+            return stepIndex >= steps.size();
+        }
+
         ExecutionStepRecord record = new ExecutionStepRecord();
         record.setExecutionId(executionId);
         record.setStepIndex(stepIndex);
 
-        if (steps.size() >= stepIndex) {
-            Map<?, ?> step = (Map<?, ?>) steps.get(stepIndex - 1);
-            record.setStepTitle((String) step.get("title"));
-        }
+        Map<?, ?> step = (Map<?, ?>) steps.get(stepIndex - 1);
+        record.setStepTitle((String) step.get("title"));
         record.setCompletedAt(LocalDateTime.now());
         record.setNotes(notes);
         if (checkData != null) {
@@ -227,12 +262,18 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         if (!exec.getExecutorId().equals(userId)) {
             throw new RuntimeException("无权操作");
         }
+
+        // Check if SOP version has changed since execution was created
+        Sop sop = sopMapper.selectById(exec.getSopId());
+        if (sop != null && exec.getSopVersion() != null && !exec.getSopVersion().equals(sop.getVersion())) {
+            log.warn("SOP version mismatch: execution {} has version {} but SOP is now version {}",
+                executionId, exec.getSopVersion(), sop.getVersion());
+        }
+
         exec.setStatus("completed");
         exec.setCompletedAt(LocalDateTime.now());
         exec.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(exec);
-
-        Sop sop = sopMapper.selectById(exec.getSopId());
         Notification notif = new Notification();
         notif.setUserId(userId);
         notif.setType("execution_completed");
@@ -253,17 +294,20 @@ public class SopExecutionServiceImpl implements SopExecutionService {
      * 查询当前用户的执行记录列表
      * @param userId 用户ID
      * @param status 状态过滤（可选，如pending/in_progress/completed）
-     * @return 执行记录列表
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 执行记录分页列表
      */
     @Override
-    public List<SopExecution> getMyExecutions(Long userId, String status) {
+    public Page<SopExecution> getMyExecutions(Long userId, String status, int page, int pageSize) {
         LambdaQueryWrapper<SopExecution> q = new LambdaQueryWrapper<SopExecution>()
                 .eq(SopExecution::getExecutorId, userId)
                 .orderByDesc(SopExecution::getCreatedAt);
         if (status != null && !status.isEmpty()) {
             q.eq(SopExecution::getStatus, status);
         }
-        return executionMapper.selectList(q);
+        Page<SopExecution> p = new Page<>(page, pageSize);
+        return executionMapper.selectPage(p, q);
     }
 
     /**

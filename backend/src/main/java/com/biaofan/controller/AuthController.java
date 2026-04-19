@@ -1,14 +1,23 @@
 package com.biaofan.controller;
 
-import com.biaofan.dto.*;
+import com.biaofan.dto.Result;
+import com.biaofan.dto.RefreshTokenRequest;
+import com.biaofan.dto.LoginRequest;
+import com.biaofan.dto.RegisterRequest;
+import com.biaofan.dto.SendCodeRequest;
 import com.biaofan.entity.User;
 import com.biaofan.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -20,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @RequestMapping("/api/auth")
  * @RequiredArgsConstructor
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -30,6 +40,9 @@ public class AuthController {
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
     private static final String SMS_RATE_PREFIX = "sms:rate:";
+    private static final String LOGIN_RATE_KEY = "login_rate:";
+    private static final int LOGIN_RATE_LIMIT = 10; // per minute
+    private static final Duration LOGIN_RATE_WINDOW = Duration.ofMinutes(1);
     private static final int CODE_VALID_MINUTES = 5;
     // H-02: 使用 SecureRandom 替代 new Random()
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -42,7 +55,7 @@ public class AuthController {
      * @return 注册结果
      */
     @PostMapping("/register")
-    public Result<Void> register(@RequestBody RegisterRequest req) {
+    public Result<Void> register(@Valid @RequestBody RegisterRequest req) {
         try {
             // H-12: 注册接口增加验证码校验
             if (req.getPhone() == null || req.getCode() == null) {
@@ -70,10 +83,68 @@ public class AuthController {
      * @return 登录结果，包含token
      */
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(@RequestBody LoginRequest req) {
+    public Result<Map<String, Object>> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpRequest) {
+        String ip = getClientIp(httpRequest);
+        String rateKey = LOGIN_RATE_KEY + ip;
+
+        try {
+            Long attempts = redisTemplate.opsForValue().increment(rateKey);
+            if (attempts != null && attempts == 1) {
+                redisTemplate.expire(rateKey, LOGIN_RATE_WINDOW);
+            }
+            if (attempts != null && attempts > LOGIN_RATE_LIMIT) {
+                return Result.fail(429, "请求过于频繁，请稍后再试");
+            }
+        } catch (Exception e) {
+            // Redis down — allow request to proceed
+            log.warn("Rate limit check failed, allowing request", e);
+        }
+
         try {
             String token = userService.login(req);
             return Result.ok(Map.of("token", token));
+        } catch (RuntimeException e) {
+            return Result.fail(401, e.getMessage());
+        }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(xff)) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    /**
+     * 用户登录（带刷新令牌）
+     * <p>使用手机号和密码登录，验证通过后返回JWT Token和刷新令牌。</p>
+     *
+     * @param req 登录请求体（包含手机号、密码）
+     * @return 登录结果，包含token、refreshToken和expiresIn
+     */
+    @PostMapping("/login-with-refresh")
+    public Result<Map<String, Object>> loginWithRefresh(@Valid @RequestBody LoginRequest req) {
+        try {
+            Map<String, Object> result = userService.loginWithRefreshToken(req);
+            return Result.ok(result);
+        } catch (RuntimeException e) {
+            return Result.fail(401, e.getMessage());
+        }
+    }
+
+    /**
+     * 刷新访问令牌
+     * <p>使用刷新令牌获取新的访问令牌和刷新令牌（旋转机制）。</p>
+     *
+     * @param req 刷新令牌请求体（包含refreshToken）
+     * @return 新的token、refreshToken和expiresIn
+     */
+    @PostMapping("/refresh")
+    public Result<Map<String, Object>> refresh(@Valid @RequestBody RefreshTokenRequest req) {
+        try {
+            Map<String, Object> result = userService.refreshToken(req.getRefreshToken());
+            return Result.ok(result);
         } catch (RuntimeException e) {
             return Result.fail(401, e.getMessage());
         }
@@ -88,7 +159,7 @@ public class AuthController {
      * @return 发送结果
      */
     @PostMapping("/send-code")
-    public Result<Void> sendCode(@RequestBody SendCodeRequest req) {
+    public Result<Void> sendCode(@Valid @RequestBody SendCodeRequest req) {
         String phone = req.getPhone();
         
         // 手机号格式校验 - 中国大陆 11 位
@@ -115,7 +186,7 @@ public class AuthController {
         // TODO: 实际生产环境应调用短信网关发送验证码
         // H-01: 仅打印脱敏手机号，不打印验证码明文
         String maskedPhone = phone.substring(0, 3) + "****" + phone.substring(7);
-        System.out.println("[SMS] 发送验证码 to " + maskedPhone);
+        log.info("[SMS] 发送验证码 to {}", maskedPhone);
         
         return Result.ok();
     }

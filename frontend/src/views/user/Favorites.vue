@@ -14,7 +14,7 @@
           class="fav-card"
         >
           <div class="card-cover" @click="goDetail(item)">
-            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" />
+            <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" />
             <div v-else class="cover-placeholder">📋</div>
             <div class="card-overlay">
               <button class="btn-primary btn-sm">查看详情</button>

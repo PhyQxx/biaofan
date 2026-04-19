@@ -8,6 +8,7 @@ package com.biaofan.service.impl;
  * - 发布 SOP（状态变更）
  * - 分页搜索
  */
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -18,6 +19,7 @@ import com.biaofan.service.SopService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ import java.util.List;
  *
  * @author biaofan
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SopServiceImpl implements SopService {
@@ -179,18 +182,22 @@ public class SopServiceImpl implements SopService {
      */
     private void createVersionSnapshot(Sop sop, Long userId, String summary) {
         // Mark all existing versions as non-current
-        versionMapper.selectList(
-            new LambdaQueryWrapper<SopVersion>()
+        versionMapper.update(null, new LambdaUpdateWrapper<SopVersion>()
                 .eq(SopVersion::getSopId, sop.getId())
-                .eq(SopVersion::getIsCurrent, 1)
-        ).forEach(v -> { v.setIsCurrent(0); versionMapper.updateById(v); });
+                .set(SopVersion::getIsCurrent, 0));
 
         // Create new version snapshot
         SopVersion nv = new SopVersion();
         nv.setSopId(sop.getId());
         nv.setVersion(sop.getVersion());
         nv.setChangeSummary(summary);
-        nv.setContent(sop.getContent());
+        // Validate content size before insert
+        String content = sop.getContent();
+        if (content != null && content.length() > 60_000) {
+            log.warn("SOP内容过大 ({} bytes)，截断保存 sopId={}", content.length(), sop.getId());
+            content = content.substring(0, 60_000);
+        }
+        nv.setContent(content);
         nv.setIsCurrent(1);
         nv.setCreatorId(userId);
         nv.setCreatedAt(LocalDateTime.now());

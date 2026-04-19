@@ -23,7 +23,9 @@ import com.biaofan.entity.MarketplaceTemplate;
 import com.biaofan.entity.User;
 import com.biaofan.service.MarketplaceService;
 import com.biaofan.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -129,10 +131,11 @@ public class MarketplaceController {
      */
     // ========== 2.4.3 POST /api/marketplace/templates/:template_id/use — 使用模板 ==========
     @PostMapping("/templates/{templateId}/use")
+    @ResponseStatus(HttpStatus.CREATED)
     public Result<?> useTemplate(
             @PathVariable String templateId,
             @AuthenticationPrincipal Long userId,
-            @RequestBody MarketplaceTemplateUseRequest req) {
+            @Valid @RequestBody MarketplaceTemplateUseRequest req) {
         try {
             // C-04: userId 从 @AuthenticationPrincipal 获取，而非 request body
             Long sopId = marketplaceService.useTemplate(templateId, String.valueOf(userId), req.getSopName());
@@ -210,9 +213,10 @@ public class MarketplaceController {
      */
     // ========== 2.4.6 POST /api/marketplace/templates — 提交模板审核 ==========
     @PostMapping("/templates")
+    @ResponseStatus(HttpStatus.CREATED)
     public Result<?> submitTemplate(
             @AuthenticationPrincipal Long userId,
-            @RequestBody MarketplaceTemplateSubmitRequest req) {
+            @Valid @RequestBody MarketplaceTemplateSubmitRequest req) {
         try {
             // C-04: userId 从 @AuthenticationPrincipal 获取
             User user = userService.getUserById(userId);
@@ -260,10 +264,11 @@ public class MarketplaceController {
      */
     // ========== 2.4.8 POST /api/marketplace/templates/:template_id/reviews — 提交评价 ==========
     @PostMapping("/templates/{templateId}/reviews")
+    @ResponseStatus(HttpStatus.CREATED)
     public Result<?> addReview(
             @PathVariable String templateId,
             @AuthenticationPrincipal Long userId,
-            @RequestBody MarketplaceReviewRequest req) {
+            @Valid @RequestBody MarketplaceReviewRequest req) {
         try {
             // C-04: userId 从 @AuthenticationPrincipal 获取
             String userName = "未知用户";

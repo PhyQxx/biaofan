@@ -1,5 +1,8 @@
 package com.biaofan.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +26,17 @@ public class AppConfig {
      */
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);  // strength 12 (2^12 iterations)
+    }
+
+    /**
+     * Shared ObjectMapper bean for JSON serialization/deserialization
+     * Configured with Java 8 time module support
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 }

@@ -131,9 +131,18 @@ export function checkNetwork() {
 
 /**
  * 监听网络状态变化
+ * UniApp's onNetworkStatusChange cannot be unregistered, so we use a module-level
+ * flag to ensure only one listener is ever registered (replaces previous callback).
  */
+let _networkListenerRegistered = false
+let _networkCallback = null
+
 export function onNetworkChange(callback) {
-  uni.onNetworkStatusChange((res) => {
-    callback(res.isConnected)
-  })
+  _networkCallback = callback
+  if (!_networkListenerRegistered) {
+    uni.onNetworkStatusChange((res) => {
+      if (_networkCallback) _networkCallback(res.isConnected)
+    })
+    _networkListenerRegistered = true
+  }
 }

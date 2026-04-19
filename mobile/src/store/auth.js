@@ -6,11 +6,12 @@ import api from '../api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: uni.getStorageSync('token') || '',
-    userId: uni.getStorageSync('userId') || '',
+    token: uni.getStorageSync('bf_token') || '',
+    userId: uni.getStorageSync('bf_userId') || '',
     userInfo: (() => {
       try {
-        const raw = uni.getStorageSync('userInfo')
+        // Load safe minimal user info only — never expose sensitive fields
+        const raw = uni.getStorageSync('bf_safeUserInfo')
         return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null
       } catch { return null }
     })()
@@ -29,9 +30,15 @@ export const useAuthStore = defineStore('auth', {
           this.userId = res.data.userId || res.data.id
           this.userInfo = res.data.userInfo || {}
 
-          uni.setStorageSync('token', this.token)
-          uni.setStorageSync('userId', this.userId)
-          uni.setStorageSync('userInfo', JSON.stringify(this.userInfo))
+          uni.setStorageSync('bf_token', this.token)
+          uni.setStorageSync('bf_userId', this.userId)
+          // Store only minimal safe info (id, nickname, avatar) — NOT email/phone/sensitive fields
+          const safeInfo = {
+            id: this.userInfo?.id,
+            nickname: this.userInfo?.nickname,
+            avatar: this.userInfo?.avatar,
+          }
+          uni.setStorageSync('bf_safeUserInfo', JSON.stringify(safeInfo))
 
           return res
         }
@@ -50,11 +57,12 @@ export const useAuthStore = defineStore('auth', {
       this.userId = ''
       this.userInfo = null
 
-      uni.removeStorageSync('token')
-      uni.removeStorageSync('userId')
-      uni.removeStorageSync('userInfo')
+      uni.removeStorageSync('bf_token')
+      uni.removeStorageSync('bf_userId')
+      uni.removeStorageSync('bf_safeUserInfo')
+      uni.removeStorageSync('bf_userInfo')
 
-      // 调用后端登出
+      // 调用后端登出（忽略错误——登出是非关键操作）
       api.auth.logout().catch(() => {})
 
       uni.reLaunch({ url: '/pages/login/login' })

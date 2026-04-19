@@ -2,6 +2,7 @@ package com.biaofan.service;
 
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopInstance;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 
 /**
@@ -13,9 +14,11 @@ public interface SopInstanceService {
      * 获取当前用户的SOP实例列表
      * @param userId 用户ID
      * @param status 实例状态（可为空，查全部）
-     * @return 实例列表
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 实例分页列表
      */
-    List<SopInstance> getMyInstances(Long userId, String status);
+    Page<SopInstance> getMyInstances(Long userId, String status, int page, int pageSize);
 
     /**
      * 获取SOP实例详情

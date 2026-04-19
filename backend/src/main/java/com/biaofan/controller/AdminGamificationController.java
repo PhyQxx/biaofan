@@ -6,6 +6,7 @@ import com.biaofan.entity.GamificationGrowthRule;
 import com.biaofan.entity.GamificationStoreProduct;
 import com.biaofan.service.AdminGamificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/gamification")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminGamificationController {
 
     private final AdminGamificationService adminGamificationService;
@@ -30,10 +32,8 @@ public class AdminGamificationController {
      */
     @GetMapping("/badges")
     public Result<Map<String, Object>> listBadges() {
-        return Result.ok(Map.of(
-            "list", adminGamificationService.listBadges(),
-            "total", adminGamificationService.listBadges().size()
-        ));
+        var badges = adminGamificationService.listBadges();
+        return Result.ok(Map.of("list", badges, "total", badges.size()));
     }
 
     /**

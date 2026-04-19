@@ -93,7 +93,7 @@ const formatDate = (d: string) => {
 const loadNotifications = async () => {
   const res: any = await request.get('/notifications')
   if (res.code === 200) {
-    notifications.value = res.data || []
+    notifications.value = Array.isArray(res.data) ? res.data : []
   }
 }
 

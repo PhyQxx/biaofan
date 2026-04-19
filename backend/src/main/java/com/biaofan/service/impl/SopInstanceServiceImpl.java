@@ -9,6 +9,7 @@ package com.biaofan.service.impl;
  */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.GamificationService;
@@ -51,17 +52,20 @@ public class SopInstanceServiceImpl implements SopInstanceService {
      * 查询当前用户的周期性实例列表
      * @param userId 用户ID
      * @param status 状态过滤（可选）
-     * @return 实例列表
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 实例分页列表
      */
     @Override
-    public List<SopInstance> getMyInstances(Long userId, String status) {
+    public Page<SopInstance> getMyInstances(Long userId, String status, int page, int pageSize) {
         LambdaQueryWrapper<SopInstance> q = new LambdaQueryWrapper<SopInstance>()
                 .eq(SopInstance::getExecutorId, userId)
                 .orderByDesc(SopInstance::getCreatedAt);
         if (status != null && !status.isEmpty()) {
             q.eq(SopInstance::getStatus, status);
         }
-        return instanceMapper.selectList(q);
+        Page<SopInstance> p = new Page<>(page, pageSize);
+        return instanceMapper.selectPage(p, q);
     }
 
     /**
@@ -70,6 +74,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
      * @return 实例实体
      */
     @Override
+    @Transactional(readOnly = true)
     public SopInstance getInstance(Long instanceId) {
         SopInstance inst = instanceMapper.selectById(instanceId);
         if (inst == null) {
@@ -158,18 +163,40 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         }
 
         Sop sop = sopMapper.selectById(inst.getSopId());
+        if (sop == null) {
+            log.warn("SOP {} 已删除，无法完成步骤", inst.getSopId());
+            throw new RuntimeException("SOP已删除");
+        }
         List<?> steps = parseJson(sop.getContent(), List.class);
-        if (steps == null) {
-            steps = Collections.emptyList();
+        if (stepIndex < 1 || stepIndex > steps.size()) {
+            throw new RuntimeException("步骤序号无效: " + stepIndex);
         }
 
+        // Idempotency check: skip if step already completed
         SopExecution latestExec = getLatestExecution(userId, inst.getSopId());
+        if (latestExec == null) {
+            throw new RuntimeException("无执行记录");
+        }
+        ExecutionStepRecord existing = stepRecordMapper.selectOne(
+            new LambdaQueryWrapper<ExecutionStepRecord>()
+                .eq(ExecutionStepRecord::getExecutionId, latestExec.getId())
+                .eq(ExecutionStepRecord::getStepIndex, stepIndex)
+        );
+        if (existing != null) {
+            log.info("步骤已完成，跳过 instanceId={}, stepIndex={}", instanceId, stepIndex);
+            return stepIndex >= steps.size();
+        }
+
         if (latestExec != null) {
             ExecutionStepRecord record = new ExecutionStepRecord();
             record.setExecutionId(latestExec.getId());
             record.setStepIndex(stepIndex);
-            if (steps.size() >= stepIndex) {
-                Map<?, ?> step = (Map<?, ?>) steps.get(stepIndex - 1);
+            if (stepIndex >= 1 && stepIndex <= steps.size()) {
+                Object stepObj = steps.get(stepIndex - 1);
+                if (!(stepObj instanceof Map)) {
+                    throw new RuntimeException("步骤数据格式错误，请重新打开SOP");
+                }
+                Map<?, ?> step = (Map<?, ?>) stepObj;
                 record.setStepTitle((String) step.get("title"));
             }
             record.setCompletedAt(LocalDateTime.now());
@@ -200,7 +227,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             notif.setUserId(userId);
             notif.setType("execution_completed");
             notif.setTitle("SOP 执行完成");
-            notif.setContent("您执行的 SOP《" + sop.getTitle() + "》已全部完成！");
+            notif.setContent("您执行的 SOP《" + (sop != null ? sop.getTitle() : "已删除SOP") + "》已全部完成！");
             notif.setSourceType("sop");
             notif.setSourceId(sop.getId());
             notif.setIsRead(0);
@@ -232,6 +259,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         if (!inst.getExecutorId().equals(userId)) {
             throw new RuntimeException("无权操作");
         }
+        
+        // Idempotency check: if already completed, skip gamification award
+        if ("completed".equals(inst.getStatus())) {
+            log.info("实例已完结，跳过重复奖励 instanceId={}", instanceId);
+            return;
+        }
+        
         inst.setStatus("completed");
         inst.setCompletedAt(LocalDateTime.now());
         inst.setUpdatedAt(LocalDateTime.now());
@@ -268,11 +302,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                         .in(Sop::getCategory, "daily", "weekly", "monthly", "yearly"));
 
         for (Sop sop : publishedSops) {
-            try {
-                generateForSop(sop, today);
-            } catch (Exception e) {
-                log.error("生成实例失败 sopId={} error={}", sop.getId(), e.getMessage());
-            }
+            generateForSop(sop, today);
         }
     }
 
@@ -308,15 +338,6 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         }
 
         Long userId = sop.getUserId();
-        Long existing = instanceMapper.selectCount(
-                new LambdaQueryWrapper<SopInstance>()
-                        .eq(SopInstance::getSopId, sop.getId())
-                        .eq(SopInstance::getExecutorId, userId)
-                        .eq(SopInstance::getPeriodStart, periodStart)
-                        .eq(SopInstance::getPeriodEnd, periodEnd));
-        if (existing > 0) {
-            return;
-        }
 
         SopInstance inst = new SopInstance();
         inst.setSopId(sop.getId());
@@ -328,7 +349,14 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         inst.setCurrentStep(0);
         inst.setCreatedAt(LocalDateTime.now());
         inst.setUpdatedAt(LocalDateTime.now());
-        instanceMapper.insert(inst);
+        
+        // Use INSERT IGNORE to prevent race condition duplicates
+        int inserted = instanceMapper.insertIgnore(inst);
+        if (inserted == 0) {
+            log.info("实例已存在，跳过 sopId={}, executorId={}, periodStart={}", 
+                sop.getId(), userId, periodStart);
+            return;
+        }
 
         Notification notif = new Notification();
         notif.setUserId(userId);
@@ -367,7 +395,10 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             notif.setUserId(inst.getExecutorId());
             notif.setType("execution_overdue");
             notif.setTitle("SOP 执行逾期");
-            notif.setContent("您的 SOP《" + (sop != null ? sop.getTitle() : "") + "》已超过执行期限，请尽快处理！");
+            notif.setContent("SOP《" + (sop != null ? sop.getTitle() : "（已删除）") + "》已超过执行期限");
+            if (sop == null) {
+                log.warn("SOP {} 已删除，实例 {} 仍被标记为逾期", inst.getSopId(), inst.getId());
+            }
             notif.setSourceType("sop");
             notif.setSourceId(inst.getSopId());
             notif.setIsRead(0);

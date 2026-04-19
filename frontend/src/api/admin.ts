@@ -34,14 +34,14 @@ export interface BadgeListResp {
  * @returns 徽章列表及总数
  */
 export const getBadgeList = () =>
-  request.get<any, BadgeListResp>('/admin/gamification/badges')
+  request.get<unknown, ApiResponse<BadgeListResp>>('/admin/gamification/badges')
 
 /**
  * 创建徽章
  * @param data 徽章信息
  */
 export const createBadge = (data: Badge) =>
-  request.post<any, any>('/admin/gamification/badges', data)
+  request.post<Badge, ApiResponse<void>>('/admin/gamification/badges', data)
 
 /**
  * 更新徽章
@@ -49,14 +49,14 @@ export const createBadge = (data: Badge) =>
  * @param data 徽章信息
  */
 export const updateBadge = (id: number, data: Badge) =>
-  request.put<any, any>(`/admin/gamification/badges/${id}`, data)
+  request.put<Badge, ApiResponse<void>>(`/admin/gamification/badges/${id}`, data)
 
 /**
  * 删除徽章
  * @param id 徽章ID
  */
 export const deleteBadge = (id: number) =>
-  request.delete<any, any>(`/admin/gamification/badges/${id}`)
+  request.delete<number, ApiResponse<void>>(`/admin/gamification/badges/${id}`)
 
 // ============ 商品管理 ============
 /**
@@ -90,14 +90,14 @@ export interface ProductListResp {
  * @returns 商品列表及总数
  */
 export const getProductList = () =>
-  request.get<any, ProductListResp>('/admin/gamification/products')
+  request.get<unknown, ApiResponse<ProductListResp>>('/admin/gamification/products')
 
 /**
  * 创建商品
  * @param data 商品信息
  */
 export const createProduct = (data: Product) =>
-  request.post<any, any>('/admin/gamification/products', data)
+  request.post<Product, ApiResponse<void>>('/admin/gamification/products', data)
 
 /**
  * 更新商品
@@ -105,14 +105,14 @@ export const createProduct = (data: Product) =>
  * @param data 商品信息
  */
 export const updateProduct = (id: number, data: Product) =>
-  request.put<any, any>(`/admin/gamification/products/${id}`, data)
+  request.put<Product, ApiResponse<void>>(`/admin/gamification/products/${id}`, data)
 
 /**
  * 删除商品
  * @param id 商品ID
  */
 export const deleteProduct = (id: number) =>
-  request.delete<any, any>(`/admin/gamification/products/${id}`)
+  request.delete<number, ApiResponse<void>>(`/admin/gamification/products/${id}`)
 
 // ============ AI 模型配置 ============
 export interface AiModelConfig {
@@ -136,10 +136,10 @@ export const getUserAiConfigs = () =>
   request.get<any, ApiResponse<{ list: AiModelConfig[]; total: number }>>('/admin/ai-config/users')
 
 export const saveGlobalAiConfig = (data: AiModelConfig) =>
-  request.post<any, ApiResponse<any>>('/admin/ai-config/global', data)
+  request.post<AiModelConfig, ApiResponse<void>>('/admin/ai-config/global', data)
 
 export const deleteGlobalAiConfig = (id: number) =>
-  request.delete<any, ApiResponse<any>>(`/admin/ai-config/global/${id}`)
+  request.delete<number, ApiResponse<void>>(`/admin/ai-config/global/${id}`)
 
 // ============ 成长规则 ============
 /**
@@ -203,7 +203,7 @@ export const getGrowthRules = () =>
  * @param data 成长规则配置
  */
 export const updateGrowthRules = (data: GrowthRulesResp) =>
-  request.put<any, any>('/admin/gamification/rules', data)
+  request.put<GrowthRulesResp, ApiResponse<void>>('/admin/gamification/rules', data)
 
 // ============ 邮件配置 ============
 export interface EmailConfig {
@@ -224,7 +224,7 @@ export const getEmailConfig = () =>
   request.get<any, ApiResponse<EmailConfig>>('/admin/email-config')
 
 export const saveEmailConfig = (data: Partial<EmailConfig>) =>
-  request.post<any, ApiResponse<any>>('/admin/email-config', data)
+  request.post<Partial<EmailConfig>, ApiResponse<void>>('/admin/email-config', data)
 
 export const testEmailConfig = (to: string) =>
-  request.post<any, ApiResponse<any>>('/admin/email-config/test', { to })
+  request.post<{ to: string }, ApiResponse<void>>('/admin/email-config/test', { to })

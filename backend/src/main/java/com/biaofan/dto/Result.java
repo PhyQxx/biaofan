@@ -80,4 +80,21 @@ public class Result<T> {
         r.success = false;
         return r;
     }
+
+    /**
+     * 创建成功响应（201 Created）
+     *
+     * @param data 响应的数据
+     * @param <T>  数据类型
+     * @return Result实例
+     */
+    public static <T> Result<T> created(T data) {
+        Result<T> r = new Result<>();
+        r.code = 201;
+        r.message = "创建成功";
+        r.data = data;
+        r.timestamp = System.currentTimeMillis();
+        r.success = true;
+        return r;
+    }
 }

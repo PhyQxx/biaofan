@@ -105,7 +105,20 @@ router.beforeEach(async (to) => {
 
   // 如果本地存在 token 但用户信息未加载，则尝试获取用户信息
   if (token && !authStore.userInfo) {
-    await authStore.fetchMe()
+    try {
+      await authStore.fetchMe()
+    } catch (e: unknown) {
+      // Distinguish 401 (invalid token → logout) from network error (temporary → don't logout)
+      const err = e as { response?: { status?: number }; message?: string }
+      const is401 = err?.response?.status === 401 || err?.message?.includes('401')
+      if (is401) {
+        authStore.logout()
+        return '/login'
+      }
+      // Network error — don't logout, redirect to login page
+      console.error('[router] fetchMe failed:', e)
+      return '/login'
+    }
   }
 
   // 已登录用户访问游客页面（如登录、注册）时，重定向到首页
@@ -115,11 +128,11 @@ router.beforeEach(async (to) => {
 
   // 需要登录的路由：检查 token 和用户信息是否完整
   if (to.meta.requiresAuth) {
-    if (!token) return '/login'
-    // 如果 fetchMe 失败（userInfo 仍为空），说明 token 可能已失效
+    if (!token) return { path: '/login', query: { redirect: to.fullPath } }
+    // If fetchMe succeeded but userInfo is still null, something went wrong
     if (!authStore.userInfo) {
       authStore.logout()
-      return '/login'
+      return { path: '/login', query: { redirect: to.fullPath } }
     }
   }
 })

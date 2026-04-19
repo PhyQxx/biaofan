@@ -228,7 +228,7 @@
  * - 上一步 / 完成本步 按钮
  * - 最后一步完成后显示完成统计（总步骤数、用时）
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
@@ -248,6 +248,7 @@ const notes = ref('')
 const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
+const completionTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const stepsLoaded = ref(false)
 const showAi = ref(false)
 
@@ -295,7 +296,7 @@ const handleBack = () => {
       type: 'warning',
     }).then(() => {
       router.push('/execution')
-    }).catch(() => {})
+    }).catch(() => {}) // ignore — user cancelled confirm dialog
   } else {
     router.push('/execution')
   }
@@ -325,7 +326,7 @@ const handleComplete = () => {
     type: 'info',
   }).then(() => {
     completeStep()
-  }).catch(() => {})
+  }).catch(() => {}) // ignore — user cancelled confirm dialog
 }
 
 const completeStep = async () => {
@@ -352,9 +353,13 @@ const completeStep = async () => {
         console.error('[ExecutionDoView] re-fetch execution status failed:', e)
       }
 
-      // Flash animation
+      // Flash animation — clear any existing timeout to prevent stale resets
       justCompleted.value = true
-      setTimeout(() => { justCompleted.value = false }, 600)
+      if (completionTimeout.value) clearTimeout(completionTimeout.value)
+      completionTimeout.value = setTimeout(() => {
+        justCompleted.value = false
+        completionTimeout.value = null
+      }, 600)
 
       const completed = res.data?.completed || execution.value?.status === 'completed'
       if (completed || currentStep.value >= totalSteps.value) {
@@ -376,6 +381,13 @@ const completeStep = async () => {
     isSubmitting.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  if (completionTimeout.value) {
+    clearTimeout(completionTimeout.value)
+    completionTimeout.value = null
+  }
+})
 
 onMounted(async () => {
   try {

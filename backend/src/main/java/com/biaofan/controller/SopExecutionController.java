@@ -1,5 +1,6 @@
 package com.biaofan.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.ExecutionStepRecord;
 import com.biaofan.entity.Sop;
@@ -28,13 +29,15 @@ public class SopExecutionController {
      * 转发到: GET /api/execution/my?executorId=X
      */
     @GetMapping("/my")
-    public Result<List<SopExecution>> myExecutions(
+    public Result<Page<SopExecution>> myExecutions(
             @RequestParam(required = false) String status,
-            @AuthenticationPrincipal Long userId) {
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
         if (userId == null) {
             return Result.fail(401, "未登录");
         }
-        List<SopExecution> result = executionService.getMyExecutions(userId, status);
+        Page<SopExecution> result = executionService.getMyExecutions(userId, status, page, pageSize);
         return Result.ok(result);
     }
 

@@ -1,6 +1,13 @@
 /**
  * 认证状态管理模块
  * 负责用户登录、注册、登出、获取用户信息等认证相关功能
+ *
+ * [安全说明 - JWT 存储方式]
+ * 当前实现将 JWT 存储在 localStorage 中（key: 'bf_token'）。
+ * 风险：localStorage 可被任何注入页面的 JavaScript 访问，存在 XSS 窃取 token 的风险。
+ * 替代方案：使用 httpOnly Cookie 存储 JWT，由后端通过 Set-Cookie 设置。
+ * 这需要后端较大改动（将 JWT 从 Authorization header 移到 Cookie）。
+ * 当前为已知的架构限制，适合内部工具类应用使用。
  */
 import { defineStore } from 'pinia'
 import request from '@/api'
@@ -9,6 +16,7 @@ import type { UserInfo } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   // token: 存储用户登录凭证，从 localStorage 初始化
+  // 注意：此存储方式存在 XSS 风险，见上方安全说明
   const token = ref(localStorage.getItem('bf_token') || '')
   // userInfo: 存储当前登录用户的信息
   const userInfo = ref<UserInfo | null>(null)
@@ -47,16 +55,23 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function fetchMe() {
     try {
-      const res = await request.get<unknown, { code: number; data: UserInfo }>('/auth/me')
+      const res = await request.get<unknown, { code: number; message?: string; data: UserInfo }>('/auth/me')
       if (res.code === 200) {
         userInfo.value = res.data
         // 将 userId 持久化到 localStorage，供其他组件使用
         if (res.data?.id) {
           localStorage.setItem('bf_user_id', String(res.data.id))
         }
+      } else {
+        // Non-200 responses (including 401 handled by interceptor) are re-thrown
+        throw new Error(`fetchMe failed: ${res.message ?? 'unknown error'}`)
       }
-    } catch (e) {
-      // M-19: 添加错误日志而非静默捕获
+    } catch (e: unknown) {
+      // Re-throw 401 so router guard can distinguish invalid token from network error
+      const err = e as { response?: { status?: number }; message?: string }
+      const is401 = err?.response?.status === 401 || err?.message?.includes('401')
+      if (is401) throw e
+      // For other errors (network failure), log but don't throw — guard will handle
       console.error('[auth] fetchMe failed:', e)
     }
   }

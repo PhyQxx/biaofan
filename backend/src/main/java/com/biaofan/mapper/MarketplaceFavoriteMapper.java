@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.MarketplaceFavorite;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -25,4 +26,12 @@ public interface MarketplaceFavoriteMapper extends BaseMapper<MarketplaceFavorit
      * @return 分页后的收藏记录列表
      */
     IPage<MarketplaceFavorite> selectByUserId(Page<MarketplaceFavorite> page, @Param("userId") String userId);
+
+    /**
+     * 插入收藏记录（如果已存在唯一冲突则忽略）
+     * 用于防止收藏重复添加的TOCTOU竞态条件
+     */
+    @Insert("INSERT IGNORE INTO marketplace_favorite (user_id, template_id, created_at) " +
+            "VALUES (#{userId}, #{templateId}, #{createdAt})")
+    int insertIgnore(MarketplaceFavorite favorite);
 }

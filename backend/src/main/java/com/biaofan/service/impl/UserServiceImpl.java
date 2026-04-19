@@ -1,10 +1,18 @@
 package com.biaofan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.biaofan.entity.AuthRefreshToken;
 import com.biaofan.entity.User;
 import com.biaofan.dto.LoginRequest;
+import com.biaofan.dto.RefreshTokenRequest;
 import com.biaofan.dto.RegisterRequest;
+import com.biaofan.mapper.AuthRefreshTokenMapper;
 import com.biaofan.mapper.UserMapper;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.UUID;
 import com.biaofan.service.UserService;
 import com.biaofan.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +39,16 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
+    private final AuthRefreshTokenMapper authRefreshTokenMapper;
     private final JwtUtil jwtUtil;
     // H-15 / M-08: 注入 BCryptPasswordEncoder Bean，而非重复创建
     private final BCryptPasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
+    private static final int REFRESH_TOKEN_TTL_DAYS = 7;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
 
     /**
      * 用户登录
@@ -45,6 +57,42 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public String login(LoginRequest req) {
+        String key = "failed_login:" + req.getPhone();
+
+        // Check if locked
+        String failedCount = redisTemplate.opsForValue().get(key);
+        if (failedCount != null && Integer.parseInt(failedCount) >= MAX_FAILED_ATTEMPTS) {
+            throw new RuntimeException("账号已锁定，请15分钟后再试");
+        }
+
+        try {
+            User user = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getPhone, req.getPhone())
+            );
+            if (user == null) {
+                throw new RuntimeException("用户不存在");
+            }
+            if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+                throw new RuntimeException("密码错误");
+            }
+            // Login success - clear failed attempts
+            redisTemplate.delete(key);
+            return jwtUtil.generateToken(user.getId(), user.getUsername());
+        } catch (RuntimeException e) {
+            // Login failed - increment counter
+            redisTemplate.opsForValue().increment(key);
+            redisTemplate.expire(key, LOCKOUT_DURATION);
+            throw e;
+        }
+    }
+
+    /**
+     * 用户登录（带刷新令牌）
+     * @param req 包含手机号和密码的登录请求
+     * @return 包含token、refreshToken和expiresIn的Map
+     */
+    @Override
+    public Map<String, Object> loginWithRefreshToken(LoginRequest req) {
         User user = userMapper.selectOne(
             new LambdaQueryWrapper<User>().eq(User::getPhone, req.getPhone())
         );
@@ -54,7 +102,81 @@ public class UserServiceImpl implements UserService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误");
         }
-        return jwtUtil.generateToken(user.getId(), user.getUsername());
+
+        // 生成 access token
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+
+        // 生成 refresh token (UUID)
+        String refreshToken = UUID.randomUUID().toString().replace("-", "");
+
+        // 存储 refresh token 到数据库
+        AuthRefreshToken rt = new AuthRefreshToken();
+        rt.setUserId(user.getId());
+        rt.setToken(refreshToken);
+        rt.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_TTL_DAYS));
+        rt.setCreatedAt(LocalDateTime.now());
+        authRefreshTokenMapper.insert(rt);
+
+        return Map.of(
+            "token", token,
+            "refreshToken", refreshToken,
+            "expiresIn", 86400000  // 24小时，单位毫秒
+        );
+    }
+
+    /**
+     * 刷新访问令牌
+     * @param refreshToken 刷新令牌
+     * @return 新的token、refreshToken和expiresIn
+     */
+    @Override
+    public Map<String, Object> refreshToken(String refreshToken) {
+        // 查询 refresh token
+        AuthRefreshToken rt = authRefreshTokenMapper.selectOne(
+            new LambdaQueryWrapper<AuthRefreshToken>()
+                .eq(AuthRefreshToken::getToken, refreshToken)
+        );
+
+        if (rt == null) {
+            throw new RuntimeException("无效的刷新令牌");
+        }
+
+        // 查询用户
+        User user = userMapper.selectById(rt.getUserId());
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // Atomic: delete only if expired (prevents race condition in token rotation)
+        int deleted = authRefreshTokenMapper.delete(
+            new LambdaQueryWrapper<AuthRefreshToken>()
+                .eq(AuthRefreshToken::getToken, refreshToken)
+                .lt(AuthRefreshToken::getExpiresAt, LocalDateTime.now())
+        );
+        if (deleted == 0) {
+            // Token exists but not expired — reject (shouldn't happen in normal rotation)
+            throw new RuntimeException("刷新令牌已过期");
+        }
+
+        // 生成新的 access token
+        String newToken = jwtUtil.generateToken(user.getId(), user.getUsername());
+
+        // 生成新的 refresh token
+        String newRefreshToken = UUID.randomUUID().toString().replace("-", "");
+
+        // 存储新的 refresh token
+        AuthRefreshToken newRt = new AuthRefreshToken();
+        newRt.setUserId(user.getId());
+        newRt.setToken(newRefreshToken);
+        newRt.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_TTL_DAYS));
+        newRt.setCreatedAt(LocalDateTime.now());
+        authRefreshTokenMapper.insert(newRt);
+
+        return Map.of(
+            "token", newToken,
+            "refreshToken", newRefreshToken,
+            "expiresIn", 86400000  // 24小时，单位毫秒
+        );
     }
 
     /**
@@ -126,6 +248,12 @@ public class UserServiceImpl implements UserService {
         if (newPassword == null || newPassword.length() < 6) throw new RuntimeException("新密码至少6位");
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
+
+        // Invalidate all refresh tokens for this user
+        authRefreshTokenMapper.delete(
+            new LambdaQueryWrapper<AuthRefreshToken>()
+                .eq(AuthRefreshToken::getUserId, userId)
+        );
     }
 
     /**

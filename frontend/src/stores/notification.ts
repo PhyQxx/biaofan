@@ -27,7 +27,7 @@ export const useNotificationStore = defineStore('notification', () => {
       const res = await request.get<unknown, ApiResponse<Notification[]>>('/notifications')
       if (res.code === 200) {
         // 过滤出未读通知并更新数量
-        unreadCount.value = (res.data || []).filter((n) => !n.isRead).length
+        unreadCount.value = Array.isArray(res.data) ? res.data.filter((n) => !n.isRead).length : 0
       }
     } catch (e) {
       console.error('[notification] fetchUnreadCount failed:', e)

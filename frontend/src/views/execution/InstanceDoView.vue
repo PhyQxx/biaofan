@@ -218,7 +218,7 @@
  * - 类似 ExecutionDoView，但针对周期实例
  * - 激活实例 -> 逐步执行步骤 -> 完成
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api'
@@ -238,6 +238,7 @@ const notes = ref('')
 const checkData = ref<Record<string, any>>({})
 const isSubmitting = ref(false)
 const justCompleted = ref(false)
+const completionTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const stepsLoaded = ref(false)
 
 const sopId = computed(() => execution.value?.sopId)
@@ -284,7 +285,7 @@ const handleBack = () => {
       type: 'warning',
     }).then(() => {
       router.push('/execution')
-    }).catch(() => {})
+    }).catch(() => {}) // ignore — user cancelled confirm dialog
   } else {
     router.push('/execution')
   }
@@ -314,7 +315,7 @@ const handleComplete = () => {
     type: 'info',
   }).then(() => {
     completeStep()
-  }).catch(() => {})
+  }).catch(() => {}) // ignore — user cancelled confirm dialog
 }
 
 const completeStep = async () => {
@@ -342,9 +343,13 @@ const completeStep = async () => {
         console.error('[InstanceDoView] re-fetch instance status failed:', e)
       }
 
-      // Flash animation
+      // Flash animation — clear any existing timeout to prevent stale resets
       justCompleted.value = true
-      setTimeout(() => { justCompleted.value = false }, 600)
+      if (completionTimeout.value) clearTimeout(completionTimeout.value)
+      completionTimeout.value = setTimeout(() => {
+        justCompleted.value = false
+        completionTimeout.value = null
+      }, 600)
 
       const completed = res.data?.completed || execution.value?.status === 'completed'
       if (completed || currentStep.value >= totalSteps.value) {
@@ -366,6 +371,13 @@ const completeStep = async () => {
     isSubmitting.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  if (completionTimeout.value) {
+    clearTimeout(completionTimeout.value)
+    completionTimeout.value = null
+  }
+})
 
 onMounted(async () => {
   try {

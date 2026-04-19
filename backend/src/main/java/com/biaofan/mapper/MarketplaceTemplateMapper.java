@@ -32,7 +32,7 @@ public interface MarketplaceTemplateMapper extends BaseMapper<MarketplaceTemplat
      */
     @Select("SELECT * FROM marketplace_template WHERE status = 'approved' " +
             "AND (#{category} IS NULL OR #{category} = '' OR category = #{category}) " +
-            "AND (#{keyword} IS NULL OR #{keyword} = '' OR title LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%')) " +
+            "AND (#{keyword} IS NULL OR #{keyword} = '' OR title LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\' OR description LIKE CONCAT('%', #{keyword}, '%') ESCAPE '\\') " +
             "ORDER BY " +
             "  CASE WHEN #{sort} = 'popular' THEN use_count END DESC, " +
             "  CASE WHEN #{sort} = 'rated' THEN avg_rating END DESC, " +

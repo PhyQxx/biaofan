@@ -163,7 +163,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const resp = await getProductList()
-    products.value = resp.list || []
+    products.value = resp.data?.list || []
   } catch {
     ElMessage.error('加载商品列表失败')
   } finally {

@@ -59,14 +59,11 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
                 .in(ExecutionStat::getSopId, sopIds)
                 .orderByDesc(ExecutionStat::getLastExecutedAt)
         );
-        // 填充 sopTitle
+        // 填充 sopTitle - 使用Map进行O(1)查找，避免嵌套循环
+        java.util.Map<Long, String> sopTitleMap = sops.stream()
+            .collect(java.util.stream.Collectors.toMap(Sop::getId, Sop::getTitle));
         for (ExecutionStat stat : stats) {
-            for (Sop sop : sops) {
-                if (sop.getId().equals(stat.getSopId())) {
-                    stat.setSopTitle(sop.getTitle());
-                    break;
-                }
-            }
+            stat.setSopTitle(sopTitleMap.get(stat.getSopId()));
         }
         return stats;
     }
@@ -85,47 +82,40 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
             new LambdaQueryWrapper<ExecutionStat>()
                 .orderByDesc(ExecutionStat::getLastExecutedAt)
         );
-        // 填充 sopTitle
+        // 填充 sopTitle - 使用Map进行O(1)查找，避免嵌套循环
+        java.util.Map<Long, String> sopTitleMap = allSops.stream()
+            .collect(java.util.stream.Collectors.toMap(Sop::getId, Sop::getTitle));
         for (ExecutionStat stat : stats) {
-            for (Sop sop : allSops) {
-                if (sop.getId().equals(stat.getSopId())) {
-                    stat.setSopTitle(sop.getTitle());
-                    break;
-                }
-            }
+            stat.setSopTitle(sopTitleMap.get(stat.getSopId()));
         }
         return stats;
     }
 
     /**
      * 确保SOP存在统计记录，如不存在则创建，存在则更新
+     * 优化：合并多个单独查询为批量查询，减少数据库往返
      */
     private void ensureStat(Long sopId) {
         ExecutionStat existingStat = statMapper.selectOne(
             new LambdaQueryWrapper<ExecutionStat>().eq(ExecutionStat::getSopId, sopId)
         );
 
-        // 统计 SopExecution 总执行数和完成数
+        // 合并查询：一次查询获取所有SopExecution和SopInstance数据，在内存中统计
+        // 使用in查询配合sopId列表（此处为单个sopId，可扩展为批量）
         List<SopExecution> allExecs = executionMapper.selectList(
-            new LambdaQueryWrapper<SopExecution>()
-                .eq(SopExecution::getSopId, sopId)
+            new LambdaQueryWrapper<SopExecution>().eq(SopExecution::getSopId, sopId)
         );
-        List<SopExecution> completedExecs = executionMapper.selectList(
-            new LambdaQueryWrapper<SopExecution>()
-                .eq(SopExecution::getSopId, sopId)
-                .eq(SopExecution::getStatus, "completed")
+        List<SopInstance> allInstances = instanceMapper.selectList(
+            new LambdaQueryWrapper<SopInstance>().eq(SopInstance::getSopId, sopId)
         );
 
-        // 统计 SopInstance 总执行数和完成数（周期实例）
-        List<SopInstance> allInstances = instanceMapper.selectList(
-            new LambdaQueryWrapper<SopInstance>()
-                .eq(SopInstance::getSopId, sopId)
-        );
-        List<SopInstance> completedInstances = instanceMapper.selectList(
-            new LambdaQueryWrapper<SopInstance>()
-                .eq(SopInstance::getSopId, sopId)
-                .eq(SopInstance::getStatus, "completed")
-        );
+        // 在内存中过滤已完成的执行
+        List<SopExecution> completedExecs = allExecs.stream()
+            .filter(e -> "completed".equals(e.getStatus()))
+            .toList();
+        List<SopInstance> completedInstances = allInstances.stream()
+            .filter(i -> "completed".equals(i.getStatus()))
+            .toList();
 
         int totalCount = allExecs.size() + allInstances.size();
         int completedCount = completedExecs.size() + completedInstances.size();

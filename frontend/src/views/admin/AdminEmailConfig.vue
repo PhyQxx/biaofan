@@ -146,7 +146,7 @@ async function handleTest() {
   try {
     const res = await testEmailConfig(testEmail.value.trim())
     if (res.code === 200) {
-      alert(res.data || '测试邮件已发送')
+      alert('测试邮件已发送')
     } else {
       alert(res.message || '发送失败')
     }

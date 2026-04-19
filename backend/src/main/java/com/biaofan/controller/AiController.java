@@ -9,6 +9,7 @@ import com.biaofan.dto.ai.AiChatRequest;
 import com.biaofan.dto.ai.SopAiAssistRequest;
 import com.biaofan.dto.ai.SopAiCreateRequest;
 import com.biaofan.service.AiService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,7 @@ public class AiController {
      */
     @PostMapping("/sop/generate")
     public Result<String> generateSop(@AuthenticationPrincipal Long userId,
-                                     @RequestBody SopAiCreateRequest request) {
+                                     @Valid @RequestBody SopAiCreateRequest request) {
         String sopJson = sopAiAssistService.generateSop(userId, request);
         return Result.ok(sopJson);
     }
@@ -49,7 +50,7 @@ public class AiController {
      */
     @PostMapping("/sop/execute/guidance")
     public Result<String> getExecuteGuidance(@AuthenticationPrincipal Long userId,
-                                              @RequestBody SopAiAssistRequest request) {
+                                              @Valid @RequestBody SopAiAssistRequest request) {
         String guidance = sopAiAssistService.getExecuteGuidance(userId, request);
         return Result.ok(guidance);
     }
@@ -63,7 +64,7 @@ public class AiController {
      */
     @PostMapping("/sop/review")
     public Result<SopAiReview> reviewSop(@AuthenticationPrincipal Long userId,
-                                         @RequestBody SopAiReviewRequest request) {
+                                         @Valid @RequestBody SopAiReviewRequest request) {
         Sop sop = sopMapper.selectById(request.getSopId());
         if (sop == null) {
             return Result.fail(404, "SOP 不存在");
@@ -82,7 +83,7 @@ public class AiController {
      */
     @PostMapping("/chat")
     public Result<String> chat(@AuthenticationPrincipal Long userId,
-                               @RequestBody AiChatRequest request) {
+                               @Valid @RequestBody AiChatRequest request) {
         String reply = aiService.chat(userId, request);
         return Result.ok(reply);
     }

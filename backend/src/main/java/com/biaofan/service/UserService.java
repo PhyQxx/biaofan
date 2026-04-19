@@ -2,7 +2,10 @@ package com.biaofan.service;
 
 import com.biaofan.entity.User;
 import com.biaofan.dto.LoginRequest;
+import com.biaofan.dto.RefreshTokenRequest;
 import com.biaofan.dto.RegisterRequest;
+
+import java.util.Map;
 
 /**
  * 用户服务接口
@@ -15,6 +18,20 @@ public interface UserService {
      * @return 登录成功返回token凭证
      */
     String login(LoginRequest req);
+
+    /**
+     * 用户登录（带刷新令牌）
+     * @param req 登录请求（包含手机号、密码等）
+     * @return 登录结果，包含token、refreshToken和expiresIn
+     */
+    Map<String, Object> loginWithRefreshToken(LoginRequest req);
+
+    /**
+     * 刷新访问令牌
+     * @param refreshToken 刷新令牌
+     * @return 新的token、refreshToken和expiresIn
+     */
+    Map<String, Object> refreshToken(String refreshToken);
 
     /**
      * 用户注册

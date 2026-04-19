@@ -1,11 +1,14 @@
 package com.biaofan.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopInstance;
 import com.biaofan.service.SopInstanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,17 +31,30 @@ public class SopInstanceController {
     private final SopInstanceService instanceService;
 
     /**
+     * 从SecurityContext获取当前登录用户ID
+     */
+    private Long getCurrentUserId() {
+        return Long.valueOf(
+                ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername()
+        );
+    }
+
+    /**
      * 获取当前用户的SOP实例列表
      *
      * @param userId 当前登录用户ID
      * @param status 可选的实例状态过滤
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认20）
      * @return 实例列表
      */
     @GetMapping("/my")
-    public Result<List<SopInstance>> myInstances(
+    public Result<Page<SopInstance>> myInstances(
             @AuthenticationPrincipal Long userId,
-            @RequestParam(required = false) String status) {
-        return Result.ok(instanceService.getMyInstances(userId, status));
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.ok(instanceService.getMyInstances(userId, status, page, pageSize));
     }
 
     /**
@@ -52,7 +68,11 @@ public class SopInstanceController {
     public Result<Map<String, Object>> getInstance(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long id) {
+        Long currentUserId = getCurrentUserId();
         SopInstance inst = instanceService.getInstance(id);
+        if (!inst.getExecutorId().equals(currentUserId)) {
+            return Result.fail(403, "无权访问该实例");
+        }
         Sop sop = instanceService.getSopByInstanceId(id);
         return Result.ok(Map.of(
                 "instance", inst,
@@ -72,6 +92,11 @@ public class SopInstanceController {
     public Result<Void> activate(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long id) {
+        Long currentUserId = getCurrentUserId();
+        SopInstance inst = instanceService.getInstance(id);
+        if (!inst.getExecutorId().equals(currentUserId)) {
+            return Result.fail(403, "无权操作该实例");
+        }
         try {
             instanceService.activateInstance(userId, id);
             return Result.ok();
@@ -96,6 +121,11 @@ public class SopInstanceController {
             @PathVariable Long id,
             @PathVariable int stepIndex,
             @RequestBody(required = false) Map<String, Object> body) {
+        Long currentUserId = getCurrentUserId();
+        SopInstance inst = instanceService.getInstance(id);
+        if (!inst.getExecutorId().equals(currentUserId)) {
+            return Result.fail(403, "无权操作该实例");
+        }
         try {
             String notes = body != null && body.get("notes") != null ? body.get("notes").toString() : null;
             @SuppressWarnings("unchecked")
@@ -120,6 +150,11 @@ public class SopInstanceController {
     public Result<Void> finish(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long id) {
+        Long currentUserId = getCurrentUserId();
+        SopInstance inst = instanceService.getInstance(id);
+        if (!inst.getExecutorId().equals(currentUserId)) {
+            return Result.fail(403, "无权操作该实例");
+        }
         try {
             instanceService.finishInstance(userId, id);
             return Result.ok();

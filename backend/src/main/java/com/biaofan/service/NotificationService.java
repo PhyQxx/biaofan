@@ -1,6 +1,7 @@
 package com.biaofan.service;
 
 import com.biaofan.entity.Notification;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;
 
 /**
@@ -11,9 +12,11 @@ public interface NotificationService {
     /**
      * 获取当前用户的通知列表
      * @param userId 用户ID
-     * @return 通知列表（按创建时间倒序）
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 通知分页列表（按创建时间倒序）
      */
-    List<Notification> getMyNotifications(Long userId);
+    Page<Notification> getMyNotifications(Long userId, int page, int pageSize);
 
     /**
      * 标记单条通知为已读

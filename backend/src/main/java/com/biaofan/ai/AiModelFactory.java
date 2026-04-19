@@ -39,7 +39,7 @@ public class AiModelFactory {
     /**
      * 发送对话请求（快捷方法）
      */
-    public String chat(List<Map<String, String>> messages, AiModelConfig config) {
+    public AiResult chat(List<Map<String, String>> messages, AiModelConfig config) {
         AiModel model = getModel(config.getModelType());
         return model.chat(messages, config);
     }

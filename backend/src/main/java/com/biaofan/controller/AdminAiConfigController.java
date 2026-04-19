@@ -5,6 +5,7 @@ import com.biaofan.dto.Result;
 import com.biaofan.entity.AiModelConfig;
 import com.biaofan.mapper.AiModelConfigMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/ai-config")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminAiConfigController {
 
     private final AiModelConfigMapper configMapper;

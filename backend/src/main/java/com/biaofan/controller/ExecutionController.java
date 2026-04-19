@@ -1,5 +1,6 @@
 package com.biaofan.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.ExecutionStepRecord;
 import com.biaofan.entity.Sop;
@@ -120,13 +121,17 @@ public class ExecutionController {
      *
      * @param status 可选的执行状态过滤（pending/in_progress/completed/abnormal）
      * @param userId 当前登录用户ID
+     * @param page 页码（默认1）
+     * @param pageSize 每页数量（默认20）
      * @return 执行记录列表
      */
     @GetMapping("/my")
-    public Result<List<SopExecution>> myExecutions(
+    public Result<Page<SopExecution>> myExecutions(
             @RequestParam(required = false) String status,
-            @AuthenticationPrincipal Long userId) {
-        return Result.ok(executionService.getMyExecutions(userId, status));
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.ok(executionService.getMyExecutions(userId, status, page, pageSize));
     }
 
     /**

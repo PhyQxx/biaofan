@@ -90,7 +90,8 @@ export default {
       refreshing: false,
       isOffline: false,
       hasPendingDrafts: false,
-      pendingDraftsCount: 0
+      pendingDraftsCount: 0,
+      _isRefreshing: false // internal flag to prevent concurrent overwrites
     }
   },
 
@@ -136,7 +137,10 @@ export default {
   },
 
   onShow() {
-    this.loadData()
+    // Only refresh if not already refreshing (prevent overwrites mid-load)
+    if (!this._isRefreshing) {
+      this.loadData()
+    }
   },
 
   onPullDownRefresh() {
@@ -148,9 +152,18 @@ export default {
       const auth = useAuthStore()
       if (!auth.isLoggedIn) return
 
+      // Debounce: skip if refreshed within 30 seconds (unless forced by pull-to-refresh)
+      const now = Date.now()
+      const lastFetch = uni.getStorageSync('last_fetch_instances') || 0
+      if (now - lastFetch < 30000 && !this.refreshing) {
+        return
+      }
+
+      this._isRefreshing = true
       try {
         const res = await api.instance.myInstances()
         this.allInstances = res.data || []
+        uni.setStorageSync('last_fetch_instances', now)
 
         const sopIds = [...new Set(this.allInstances.map(e => e.sopId))]
         // 并发请求所有 SOP 详情，避免串行等待
@@ -186,6 +199,7 @@ export default {
       } finally {
         uni.stopPullDownRefresh()
         this.refreshing = false
+        this._isRefreshing = false
       }
     },
 
@@ -248,7 +262,13 @@ export default {
 .tab { flex: 1; height: 88rpx; line-height: 88rpx; text-align: center; font-size: 28rpx; color: #666; position: relative; }
 .tab.active { color: #4A90E2; font-weight: bold; }
 .tab.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 60rpx; height: 4rpx; background: #4A90E2; border-radius: 2rpx; }
-.list-container { height: calc(100vh - 88rpx - 80rpx); padding: 20rpx 30rpx; }
+.list-container {
+  height: calc(100vh - 88rpx - 80rpx - constant(safe-area-inset-bottom));
+  height: calc(100vh - 88rpx - 80rpx - env(safe-area-inset-bottom));
+  padding: 20rpx 30rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
 .card { background: #FFFFFF; border-radius: 16rpx; padding: 30rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .title { font-size: 32rpx; font-weight: bold; color: #333; flex: 1; margin-right: 20rpx; }

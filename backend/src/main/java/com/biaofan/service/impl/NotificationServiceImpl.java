@@ -1,6 +1,7 @@
 package com.biaofan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.Notification;
 import com.biaofan.mapper.NotificationMapper;
 import com.biaofan.service.NotificationService;
@@ -27,16 +28,17 @@ public class NotificationServiceImpl implements NotificationService {
     /**
      * 获取当前用户的消息通知列表
      * @param userId 用户ID
-     * @return 通知列表，最多50条，按时间倒序
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 通知分页列表，按时间倒序
      */
     @Override
-    public List<Notification> getMyNotifications(Long userId) {
-        return notificationMapper.selectList(
-            new LambdaQueryWrapper<Notification>()
+    public Page<Notification> getMyNotifications(Long userId, int page, int pageSize) {
+        LambdaQueryWrapper<Notification> q = new LambdaQueryWrapper<Notification>()
                 .eq(Notification::getUserId, userId)
-                .orderByDesc(Notification::getCreatedAt)
-                .last("LIMIT 50")
-        );
+                .orderByDesc(Notification::getCreatedAt);
+        Page<Notification> p = new Page<>(page, pageSize);
+        return notificationMapper.selectPage(p, q);
     }
 
     /**

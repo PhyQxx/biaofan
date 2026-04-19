@@ -24,6 +24,8 @@ import com.biaofan.mapper.SopMapper;
 import com.biaofan.service.MarketplaceService;
 import com.biaofan.util.IdUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
  *
  * @author biaofan
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MarketplaceServiceImpl implements MarketplaceService {
@@ -59,6 +62,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
      * @return 模板分页列表
      */
     @Override
+    @Cacheable(value = "marketplaceTemplates", key = "#category + '_' + #keyword + '_' + #sort + '_' + #page + '_' + #pageSize")
     public IPage<MarketplaceTemplate> getTemplateList(String category, String keyword, String sort, int page, int pageSize) {
         Page<MarketplaceTemplate> p = new Page<>(page, pageSize);
         LambdaQueryWrapper<MarketplaceTemplate> q = new LambdaQueryWrapper<MarketplaceTemplate>()
@@ -145,16 +149,15 @@ public class MarketplaceServiceImpl implements MarketplaceService {
      */
     @Override
     public void addFavorite(String templateId, String userId) {
-        MarketplaceFavorite existing = favoriteMapper.selectOne(
-                new LambdaQueryWrapper<MarketplaceFavorite>()
-                        .eq(MarketplaceFavorite::getUserId, userId)
-                        .eq(MarketplaceFavorite::getTemplateId, templateId));
-        if (existing != null) return;
+        // Use insertIgnore to prevent TOCTOU race condition
         MarketplaceFavorite fav = new MarketplaceFavorite();
         fav.setUserId(userId);
         fav.setTemplateId(templateId);
         fav.setCreatedAt(LocalDateTime.now());
-        favoriteMapper.insert(fav);
+        int inserted = favoriteMapper.insertIgnore(fav);
+        if (inserted > 0) {
+            log.info("收藏成功 userId={}, templateId={}", userId, templateId);
+        }
     }
 
     /**
@@ -213,7 +216,9 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         var list = templateMapper.selectList(
                 new LambdaQueryWrapper<MarketplaceTemplate>()
                         .in(MarketplaceTemplate::getTemplateId, templateIds)
-                        .eq(MarketplaceTemplate::getStatus, "approved"));
+                        .eq(MarketplaceTemplate::getStatus, "approved")
+                        .orderByDesc(MarketplaceTemplate::getTemplateId)
+                        .last("LIMIT " + pageSize + " OFFSET " + ((page - 1) * pageSize)));
         result.setRecords(list);
         return result;
     }
@@ -351,6 +356,11 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                 new LambdaQueryWrapper<MarketplaceTemplate>()
                         .eq(MarketplaceTemplate::getTemplateId, templateId));
         if (tpl == null) throw new RuntimeException("模板不存在");
+
+        // Prevent self-approval
+        if (tpl.getAuthorId() != null && tpl.getAuthorId().equals(Long.valueOf(auditorId))) {
+            throw new RuntimeException("不能审核自己的模板");
+        }
 
         templateMapper.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MarketplaceTemplate>()

@@ -2,7 +2,9 @@ package com.biaofan.controller;
 
 import com.biaofan.dto.Result;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,8 +13,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * 文件上传 Controller
@@ -45,6 +48,7 @@ import java.util.UUID;
  *   - 最大 10MB，支持 jpg/png/gif/webp 格式
  *   - 返回访问 URL
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
@@ -57,6 +61,9 @@ public class UploadController {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"
     );
+    
+    // Issue 28: Static date formatter to avoid per-request SimpleDateFormat allocation
+    private static final DateTimeFormatter DATE_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     /**
      * 上传图片
@@ -65,7 +72,9 @@ public class UploadController {
      * @return 上传结果，包含文件访问路径
      */
     @PostMapping("/image")
-    public Result<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, String>> uploadImage(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return Result.fail(400, "文件不能为空");
         }
@@ -83,23 +92,30 @@ public class UploadController {
 
         try {
             // 创建日期子目录
-            String dateDir = new SimpleDateFormat("yyyyMMdd").format(new Date());
+            String dateDir = LocalDate.now().format(DATE_DIR_FORMATTER);
             String fullDir = uploadDir + File.separator + dateDir;
             Files.createDirectories(Paths.get(fullDir));
 
-            // 生成唯一文件名
-            String originalFilename = file.getOriginalFilename();
-            String ext = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+            // 生成唯一文件名，使用内容类型而非客户端提供的扩展名
+            String detectedContentType = file.getContentType();
+            String safeExt;
+            if (detectedContentType != null) {
+                safeExt = switch (detectedContentType) {
+                    case "image/jpeg" -> ".jpg";
+                    case "image/png" -> ".png";
+                    case "image/gif" -> ".gif";
+                    case "image/webp" -> ".webp";
+                    case "application/pdf" -> ".pdf";
+                    default -> {
+                        log.warn("Unsupported content type: {}", detectedContentType);
+                        yield ".bin";
+                    }
+                };
+            } else {
+                safeExt = ".bin";
             }
 
-            // H-08: 扩展名白名单校验
-            if (ext.isEmpty() || !ALLOWED_EXTENSIONS.contains(ext)) {
-                return Result.fail(400, "不支持的文件扩展名，仅支持: " + String.join(", ", ALLOWED_EXTENSIONS));
-            }
-
-            String filename = UUID.randomUUID().toString().replace("-", "") + ext;
+            String filename = UUID.randomUUID().toString().replace("-", "") + safeExt;
 
             // 保存文件
             Path filePath = Paths.get(fullDir, filename);
@@ -110,7 +126,7 @@ public class UploadController {
             return Result.ok(Map.of("url", url));
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("文件上传失败: {}", e.getMessage(), e);
             return Result.fail(500, "文件上传失败: " + e.getMessage());
         }
     }

@@ -50,7 +50,7 @@
             @click="goDetail(tpl)"
           >
             <div class="featured-cover">
-              <img v-if="tpl.coverUrl" :src="tpl.coverUrl" :alt="tpl.title" />
+              <img v-if="tpl.coverUrl" :src="tpl.coverUrl" :alt="tpl.title" loading="lazy" />
               <div v-else class="cover-placeholder">📋</div>
             </div>
             <div class="featured-info">
@@ -88,7 +88,7 @@
             @click="goDetail(tpl)"
           >
             <div class="card-cover">
-              <img v-if="tpl.coverUrl" :src="tpl.coverUrl" :alt="tpl.title" />
+              <img v-if="tpl.coverUrl" :src="tpl.coverUrl" :alt="tpl.title" loading="lazy" />
               <div v-else class="cover-placeholder">📋</div>
               <div class="card-overlay">
                 <button class="btn-primary btn-sm">查看详情</button>
@@ -399,7 +399,7 @@ onMounted(() => {
 
 .sort-label {
   font-size: 14px;
-  color: #6B7280;
+  color: #374151; /* Darker gray — passes WCAG AA on light backgrounds */
 }
 
 .sort-btn {

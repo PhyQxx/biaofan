@@ -1,8 +1,10 @@
 package com.biaofan.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -20,6 +22,8 @@ public class Sop {
     private String content; // JSON string
     private String category;
     private String tags; // JSON array string
+    @TableField("version")
+    @Version
     private Integer version;
     private String status; // draft / published
     private Long userId;

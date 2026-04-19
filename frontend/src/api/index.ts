@@ -2,12 +2,19 @@
 /**
  * Axios 实例封装
  * - baseURL: /api
- * - 请求拦截器：自动附加 Authorization: Bearer {token}
+ * - 请求拦截器：自动附加 Authorization: Bearer ***
  * - 响应拦截器：
  *   - 2xx: 解包 data，直接返回
  *   - 401: 清除 bf_token，跳转 /login
  *   - 其他: 弹出错误提示
  * - 各模块 API 函数：auth / sop / execution / gamification / admin / stats / marketplace
+ *
+ * [安全说明 - CSRF 防护]
+ * 本系统使用 JWT 存储在 localStorage，通过 Authorization: Bearer {token} 头部发送。
+ * 由于 JWT 不在 Cookie 中，浏览器会自动阻止跨域请求携带该令牌（Cookie 才会自动携带）。
+ * 因此传统 CSRF 攻击（利用 Cookie 自动发送特性）不适用于本系统。
+ * CSRF token 在此架构下非必需，但如果未来改用 httpOnly Cookie 存储 JWT，
+ * 则必须重新启用 CSRF 防护。
  */
 
 // 引入 axios HTTP 请求库

@@ -2,6 +2,7 @@ package com.biaofan.service.impl;
 
 import com.biaofan.ai.AiModel;
 import com.biaofan.ai.AiModelFactory;
+import com.biaofan.ai.AiResult;
 import com.biaofan.entity.AiModelConfig;
 import com.biaofan.entity.SopAiReview;
 import com.biaofan.mapper.SopAiReviewMapper;
@@ -54,8 +55,11 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
                 Map.of("role", "user", "content", userPrompt)
         );
 
-        String response = aiModelFactory.chat(messages, config);
-        return extractJson(response);
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 创建 SOP 失败: " + result.getError());
+        }
+        return extractJson(result.getContent());
     }
 
     private String buildCreateUserPrompt(SopAiCreateRequest req) {
@@ -95,7 +99,11 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
                 Map.of("role", "user", "content", userPrompt)
         );
 
-        return aiModelFactory.chat(messages, config);
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 执行指导失败: " + result.getError());
+        }
+        return result.getContent();
     }
 
     private String buildExecuteUserPrompt(SopAiAssistRequest req) {
@@ -135,20 +143,25 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
         );
 
         long start = System.currentTimeMillis();
-        String response = aiModelFactory.chat(messages, config);
+        AiResult result = aiModelFactory.chat(messages, config);
         long costMs = System.currentTimeMillis() - start;
 
         SopAiReview review = new SopAiReview();
         review.setSopId(sopId);
         review.setSopVersion(sopVersion);
         review.setReviewMode("review");
-        review.setRawResponse(response);
         review.setModelType(config.getModelType());
         review.setCostMs(costMs);
         review.setCreatedAt(LocalDateTime.now());
 
-        // 解析 JSON 响应
-        parseAndSaveReview(response, review);
+        if (!result.isSuccess()) {
+            log.error("AI 审核失败: {}", result.getError());
+            review.setVerdict("warning");
+            review.setRawResponse("AI 调用失败: " + result.getError());
+        } else {
+            review.setRawResponse(result.getContent());
+            parseAndSaveReview(result.getContent(), review);
+        }
         reviewMapper.insert(review);
         return review;
     }
@@ -178,21 +191,32 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
      * 从 AI 返回内容中提取 JSON（处理 Markdown 代码块）
      */
     private String extractJson(String response) {
-        if (response == null) return "";
+        if (response == null || response.isBlank()) {
+            log.warn("AI 返回内容为空，无法提取 JSON");
+            return "{}";
+        }
         String trimmed = response.trim();
-        if (trimmed.startsWith("```json")) {
-            int start = trimmed.indexOf("```json") + 7;
-            int end = trimmed.lastIndexOf("```");
-            if (end > start) {
-                return trimmed.substring(start, end).trim();
-            }
-        } else if (trimmed.startsWith("```")) {
-            int start = trimmed.indexOf("```") + 3;
-            int end = trimmed.lastIndexOf("```");
-            if (end > start) {
-                return trimmed.substring(start, end).trim();
+        // Try to find a ```json code block first
+        int jsonStart = trimmed.indexOf("```json");
+        if (jsonStart >= 0) {
+            int codeStart = jsonStart + "```json".length();
+            int codeEnd = trimmed.indexOf("```", codeStart);
+            if (codeEnd > codeStart) {
+                return trimmed.substring(codeStart, codeEnd).trim();
             }
         }
+
+        // Fallback to generic ``` code block (find FIRST pair)
+        int firstFence = trimmed.indexOf("```");
+        if (firstFence >= 0) {
+            int contentStart = firstFence + "```".length();
+            int nextFence = trimmed.indexOf("```", contentStart);
+            if (nextFence > contentStart) {
+                return trimmed.substring(contentStart, nextFence).trim();
+            }
+        }
+
+        // No code fence found, return the whole response
         return trimmed;
     }
 }

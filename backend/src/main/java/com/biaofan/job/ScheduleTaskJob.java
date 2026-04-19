@@ -1,14 +1,6 @@
 package com.biaofan.job;
 
 
-/**
- * 定时任务：SOP 周期实例生成
- * - 每分钟执行一次（@Scheduled(fixedRate = 60000)）
- * - 扫描所有 ScheduleTask（周期任务配置）
- * - 判断当前时间是否到达周期开始时间
- * - 如到达：创建 SopInstance（周期实例），并记录下次触发时间
- * - 支持 Cron 表达式灵活配置触发时间
- */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.Notification;
 import com.biaofan.entity.ScheduleTask;
@@ -21,9 +13,11 @@ import com.biaofan.service.ScheduleTaskService;
 import com.biaofan.service.SopInstanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -50,6 +44,7 @@ public class ScheduleTaskJob {
     private final SopMapper sopMapper;
     private final NotificationMapper notificationMapper;
     private final NotificationDispatcher notificationDispatcher;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 处理周期性SOP实例生成
@@ -57,10 +52,16 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 60000)
     public void processPeriodicInstances() {
+        if (!redisTemplate.opsForValue().setIfAbsent("lock:processPeriodicInstances", "1", Duration.ofMinutes(2))) {
+            log.info("[Job] processPeriodicInstances 已被其他实例锁定，跳过执行");
+            return;
+        }
         try {
             instanceService.generatePeriodicInstances();
         } catch (Exception e) {
             log.error("生成周期实例异常: {}", e.getMessage(), e);
+        } finally {
+            redisTemplate.delete("lock:processPeriodicInstances");
         }
     }
 
@@ -71,6 +72,10 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 60000)
     public void processCronTasks() {
+        if (!redisTemplate.opsForValue().setIfAbsent("lock:processCronTasks", "1", Duration.ofMinutes(2))) {
+            log.info("[Job] processCronTasks 已被其他实例锁定，跳过执行");
+            return;
+        }
         try {
             var dueTasks = scheduleTaskMapper.selectList(
                     new LambdaQueryWrapper<ScheduleTask>()
@@ -82,6 +87,8 @@ public class ScheduleTaskJob {
             }
         } catch (Exception e) {
             log.error("Cron 任务处理异常: {}", e.getMessage(), e);
+        } finally {
+            redisTemplate.delete("lock:processCronTasks");
         }
     }
 
@@ -119,7 +126,15 @@ public class ScheduleTaskJob {
             log.info("[CronTask] 触发通知已发送 taskId={} sopId={} userId={}",
                     task.getId(), task.getSopId(), task.getUserId());
         } catch (Exception e) {
-            log.error("[CronTask] 处理失败 taskId={} error={}", task.getId(), e.getMessage());
+            log.error("[CronTask] 处理失败 taskId={} error={}", task.getId(), e.getMessage(), e);
+            try {
+                // Advance next fire time to prevent infinite retry loop
+                // Schedule it 5 minutes from now
+                task.setNextFireTime(LocalDateTime.now().plusMinutes(5));
+                scheduleTaskMapper.updateById(task);
+            } catch (Exception ex) {
+                log.error("更新任务状态失败 taskId={}", task.getId(), ex);
+            }
         }
     }
 
@@ -129,10 +144,38 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 300000)
     public void checkOverdue() {
+        if (!redisTemplate.opsForValue().setIfAbsent("lock:checkOverdue", "1", Duration.ofMinutes(2))) {
+            log.info("[Job] checkOverdue 已被其他实例锁定，跳过执行");
+            return;
+        }
         try {
             instanceService.markOverdueInstances();
         } catch (Exception e) {
             log.error("逾期检查异常: {}", e.getMessage(), e);
+        } finally {
+            redisTemplate.delete("lock:checkOverdue");
+        }
+    }
+
+    /**
+     * 清理90天前已读通知
+     * 每日执行一次，防止通知表无限增长
+     */
+    @Scheduled(fixedRate = 86400000)
+    public void cleanupOldNotifications() {
+        if (!redisTemplate.opsForValue().setIfAbsent("lock:cleanupOldNotifications", "1", Duration.ofMinutes(30))) {
+            return;
+        }
+        try {
+            LocalDateTime cutoff = LocalDateTime.now().minusDays(90);
+            int deleted = notificationMapper.delete(
+                new LambdaQueryWrapper<Notification>()
+                    .lt(Notification::getCreatedAt, cutoff)
+                    .eq(Notification::getIsRead, true) // Only delete read notifications
+            );
+            log.info("[Notification] 清理了 {} 条90天前已读通知", deleted);
+        } finally {
+            redisTemplate.delete("lock:cleanupOldNotifications");
         }
     }
 }

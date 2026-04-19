@@ -2,11 +2,19 @@ server:
   port: 8013
 
 spring:
+  profiles:
+    active: dev
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/biaofan?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 123456
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   data:
     redis:
@@ -23,12 +31,31 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
 
 jwt:
   # C-03: JWT secret 通过环境变量注入，避免硬编码
-  secret: ${JWT_SECRET:biaofan-sop-platform-secret-key-2026-very-long-and-secure}
+  secret: ${JWT_SECRET:default-dev-secret-key-at-least-32-chars}
   ttl: 86400000
+
+ai:
+  model:
+    connect-timeout-ms: 10000
+    read-timeout-ms: 60000
+
+logging:
+  level:
+    com.biaofan: INFO
+    com.baomidou.mybatisplus: WARN
+    org.springframework.security: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized

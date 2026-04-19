@@ -9,16 +9,16 @@
         </div>
       </div>
       <div class="header-right">
-        <button v-if="isAdmin" class="btn-admin" @click="isAdminRoute ? router.push('/') : router.push('/admin/badges')">
+        <button v-if="isAdmin" class="btn-admin" @click="isAdminRoute ? router.push('/') : router.push('/admin/badges')" aria-label="管理后台">
           {{ isAdminRoute ? '← 返回' : '⚙️ 管理后台' }}
         </button>
-        <button class="btn-new" @click="router.push('/sop/new')">+ 新建 SOP</button>
-        <div class="notif-bell" @click="router.push('/notification')">
+        <button class="btn-new" @click="router.push('/sop/new')" aria-label="新建 SOP">+ 新建 SOP</button>
+        <div class="notif-bell" @click="router.push('/notification')" role="button" aria-label="查看通知">
           <span class="bell-icon">🔔</span>
           <span class="notif-badge" v-if="unreadNotif > 0">{{ unreadNotif > 9 ? '9+' : unreadNotif }}</span>
         </div>
         <div class="avatar-wrapper">
-          <div class="avatar" @click="showUserMenu = !showUserMenu">{{ userInitial }}</div>
+          <div class="avatar" @click="showUserMenu = !showUserMenu" role="button" aria-label="用户菜单">{{ userInitial }}</div>
           <div class="user-menu" v-if="showUserMenu" @mouseleave="showUserMenu = false">
             <div class="menu-item" @click="showUserMenu = false; router.push('/profile')">
               <span>👤</span> 个人中心
@@ -38,27 +38,27 @@
       <aside class="layout-sidebar" :class="{ dark: isDarkRoute }">
         <!-- 管理后台菜单 -->
         <template v-if="isAdminRoute">
-          <div class="sidebar-item" :class="{ active: isActive('/admin/badges') }" @click="router.push('/admin/badges')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/badges') }" @click="router.push('/admin/badges')" role="button" aria-label="徽章管理">
             <span class="sidebar-icon">🏅</span>
             <span>徽章管理</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/products') }" @click="router.push('/admin/products')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/products') }" @click="router.push('/admin/products')" role="button" aria-label="商品管理">
             <span class="sidebar-icon">📦</span>
             <span>商品管理</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/rules') }" @click="router.push('/admin/rules')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/rules') }" @click="router.push('/admin/rules')" role="button" aria-label="规则管理">
             <span class="sidebar-icon">📏</span>
             <span>规则管理</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/marketplace') }" @click="router.push('/admin/marketplace')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/marketplace') }" @click="router.push('/admin/marketplace')" role="button" aria-label="市场审核">
             <span class="sidebar-icon">🛒</span>
             <span>市场审核</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/ai-config') }" @click="router.push('/admin/ai-config')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/ai-config') }" @click="router.push('/admin/ai-config')" role="button" aria-label="AI配置">
             <span class="sidebar-icon">🤖</span>
             <span>AI配置</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/email-config') }" @click="router.push('/admin/email-config')">
+          <div class="sidebar-item" :class="{ active: isActive('/admin/email-config') }" @click="router.push('/admin/email-config')" role="button" aria-label="邮件配置">
             <span class="sidebar-icon">📧</span>
             <span>邮件配置</span>
           </div>
@@ -67,30 +67,30 @@
 
         <!-- 普通用户菜单 -->
         <template v-else>
-          <div class="sidebar-item" :class="{ active: isActive('/') }" @click="router.push('/')">
+          <div class="sidebar-item" :class="{ active: isActive('/') }" @click="router.push('/')" role="button" aria-label="工作台">
             <span class="sidebar-icon">📊</span>
             <span>工作台</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/execution') }" @click="router.push('/execution')">
+          <div class="sidebar-item" :class="{ active: isActive('/execution') }" @click="router.push('/execution')" role="button" aria-label="执行台">
             <span class="sidebar-icon">▶️</span>
             <span>执行台</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/stats') }" @click="router.push('/stats')">
+          <div class="sidebar-item" :class="{ active: isActive('/stats') }" @click="router.push('/stats')" role="button" aria-label="统计">
             <span class="sidebar-icon">📈</span>
             <span>统计</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/notification') }" @click="router.push('/notification')">
+          <div class="sidebar-item" :class="{ active: isActive('/notification') }" @click="router.push('/notification')" role="button" aria-label="通知">
             <span class="sidebar-icon">🔔</span>
             <span>通知</span>
             <span class="sidebar-badge" v-if="unreadNotif > 0">{{ unreadNotif }}</span>
           </div>
           <div class="sidebar-divider"></div>
           <div class="sidebar-group-label">🏆 游戏化</div>
-          <div class="sidebar-item" :class="{ active: isActive('/profile') }" @click="router.push('/profile')">
+          <div class="sidebar-item" :class="{ active: isActive('/profile') }" @click="router.push('/profile')" role="button" aria-label="个人中心">
             <span class="sidebar-icon">👤</span>
             <span>个人中心</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/leaderboard') }" @click="router.push('/leaderboard')">
+          <div class="sidebar-item" :class="{ active: isActive('/leaderboard') }" @click="router.push('/leaderboard')" role="button" aria-label="排行榜">
             <span class="sidebar-icon">🏆</span>
             <span>排行榜</span>
           </div>
@@ -151,7 +151,11 @@ function handleLogout() {
 }
 
 onMounted(notifStore.fetchUnreadCount)
-watch(() => route.path, notifStore.fetchUnreadCount)
+watch(() => route.path, (newPath) => {
+  if (['/execution', '/instance', '/notification'].some(p => newPath.startsWith(p))) {
+    notifStore.fetchUnreadCount()
+  }
+}, { immediate: false })
 </script>
 
 <style scoped>

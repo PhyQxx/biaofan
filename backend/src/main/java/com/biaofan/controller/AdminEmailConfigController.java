@@ -7,6 +7,7 @@ import com.biaofan.mapper.EmailConfigMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Properties;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/admin/email-config")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminEmailConfigController {
 
     private final EmailConfigMapper emailConfigMapper;

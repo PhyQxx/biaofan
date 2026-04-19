@@ -37,6 +37,12 @@
             <text class="notif-title">{{ item.title }}</text>
             <text class="notif-time">{{ relativeTime(item.createdAt) }}</text>
           </view>
+          <!--
+            XSS 安全说明：
+            Vue 的 {{ }} 插值默认会对内容进行 HTML 转义，防止 XSS 攻击。
+            此处使用 {{ item.content }} 而非 v-html="item.content" 是正确的做法。
+            如果未来需要支持富文本显示，请确保后端返回的内容已经过严格过滤。
+          -->
           <view class="notif-body">{{ item.content }}</view>
           <view class="notif-action" v-if="item.actionUrl">
             <text>点击查看 ></text>

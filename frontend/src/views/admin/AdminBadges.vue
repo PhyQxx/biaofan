@@ -190,7 +190,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const resp = await getBadgeList()
-    badges.value = resp.list || []
+    badges.value = resp.data?.list || []
   } catch {
     ElMessage.error('加载徽章列表失败')
   } finally {

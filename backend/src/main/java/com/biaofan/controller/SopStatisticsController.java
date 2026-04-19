@@ -9,6 +9,7 @@ package com.biaofan.controller;
  */
 import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.ExecutionStat;
 import com.biaofan.entity.Sop;
@@ -22,7 +23,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -70,11 +73,15 @@ public class SopStatisticsController {
     public Result<Map<String, Object>> statistics(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "100") Integer pageSize) {
         LambdaQueryWrapper<SopExecution> q = new LambdaQueryWrapper<SopExecution>();
         if (from != null) q.ge(SopExecution::getCreatedAt, from.atStartOfDay());
         if (to != null) q.le(SopExecution::getCreatedAt, to.atTime(23, 59, 59));
-        List<SopExecution> allExecs = executionMapper.selectList(q);
+        Page<SopExecution> p = new Page<>(page, pageSize);
+        Page<SopExecution> resultPage = executionMapper.selectPage(p, q);
+        List<SopExecution> allExecs = resultPage.getRecords();
 
         long totalExecutions = allExecs.size();
         long completedExecutions = allExecs.stream().filter(e -> "completed".equals(e.getStatus())).count();
@@ -136,31 +143,52 @@ public class SopStatisticsController {
     /** 导出 Excel */
     @GetMapping("/export")
     public void export(
+            @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "xlsx") String format,
+            @RequestParam(defaultValue = "1000") Integer batchSize,
             HttpServletResponse response) throws IOException {
         LambdaQueryWrapper<SopExecution> q = new LambdaQueryWrapper<SopExecution>();
         if (from != null) q.ge(SopExecution::getCreatedAt, from.atStartOfDay());
         if (to != null) q.le(SopExecution::getCreatedAt, to.atTime(23, 59, 59));
         q.orderByDesc(SopExecution::getCreatedAt);
-        List<SopExecution> execs = executionMapper.selectList(q);
+        List<SopExecution> allExecs = executionMapper.selectList(q);
 
-        List<Map<String, Object>> rows = new ArrayList<>();
+        // Fix N+1: batch fetch all needed SOPs before the loop
+        List<Long> sopIds = allExecs.stream().map(SopExecution::getSopId).distinct().toList();
+        Map<Long, Sop> sopMap = sopIds.isEmpty() ? Collections.emptyMap()
+            : sopMapper.selectBatchIds(sopIds).stream().collect(Collectors.toMap(Sop::getId, s -> s));
+
+        // Issue 30: Use SXSSFWorkbook for streaming to handle large exports
+        // Keep only 1000 rows in memory, rest spills to temp files
+        SXSSFWorkbook workbook = new SXSSFWorkbook(1000);
+        workbook.setCompressTempFiles(true);
+        var sheet = workbook.createSheet("执行记录");
+        
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        for (SopExecution exec : execs) {
-            Sop sop = sopMapper.selectById(exec.getSopId());
-            rows.add(Map.of(
-                "执行ID", exec.getId(),
-                "SOP标题", sop != null ? sop.getTitle() : "未知",
-                "执行人ID", exec.getExecutorId(),
-                "状态", exec.getStatus(),
-                "当前步骤", exec.getCurrentStep(),
-                "开始时间", exec.getStartedAt() != null ? exec.getStartedAt().format(fmt) : "",
-                "完成时间", exec.getCompletedAt() != null ? exec.getCompletedAt().format(fmt) : "",
-                "截止时间", exec.getDeadline() != null ? exec.getDeadline().format(fmt) : "",
-                "创建时间", exec.getCreatedAt() != null ? exec.getCreatedAt().format(fmt) : ""
-            ));
+        
+        // Create header row
+        var headerRow = sheet.createRow(0);
+        String[] headers = {"执行ID", "SOP标题", "执行人ID", "状态", "当前步骤", "开始时间", "完成时间", "截止时间", "创建时间"};
+        for (int i = 0; i < headers.length; i++) {
+            headerRow.createCell(i).setCellValue(headers[i]);
+        }
+        
+        // Write data rows
+        int rowNum = 1;
+        for (SopExecution exec : allExecs) {
+            Sop sop = sopMap.get(exec.getSopId());
+            var row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(exec.getId());
+            row.createCell(1).setCellValue(sop != null ? sop.getTitle() : "未知");
+            row.createCell(2).setCellValue(exec.getExecutorId());
+            row.createCell(3).setCellValue(exec.getStatus() != null ? exec.getStatus() : "");
+            row.createCell(4).setCellValue(exec.getCurrentStep() != null ? exec.getCurrentStep() : 0);
+            row.createCell(5).setCellValue(exec.getStartedAt() != null ? exec.getStartedAt().format(fmt) : "");
+            row.createCell(6).setCellValue(exec.getCompletedAt() != null ? exec.getCompletedAt().format(fmt) : "");
+            row.createCell(7).setCellValue(exec.getDeadline() != null ? exec.getDeadline().format(fmt) : "");
+            row.createCell(8).setCellValue(exec.getCreatedAt() != null ? exec.getCreatedAt().format(fmt) : "");
         }
 
         String filename = "SOP执行报表_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
@@ -169,8 +197,9 @@ public class SopStatisticsController {
         response.setHeader("Content-Disposition",
             "attachment;filename=" + URLEncoder.encode(filename, StandardCharsets.UTF_8) + ".xlsx");
 
-        EasyExcel.write(response.getOutputStream())
-            .sheet("执行记录")
-            .doWrite(rows);
+        OutputStream out = response.getOutputStream();
+        workbook.write(out);
+        workbook.dispose(); // cleanup temp files
+        workbook.close();
     }
 }

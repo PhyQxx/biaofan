@@ -5,7 +5,9 @@ import com.biaofan.dto.MarketplaceAuditRequest;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.MarketplaceTemplate;
 import com.biaofan.service.MarketplaceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/marketplace")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminMarketplaceController {
 
     private final MarketplaceService marketplaceService;
@@ -58,7 +61,7 @@ public class AdminMarketplaceController {
     public Result<?> auditTemplate(
             @PathVariable String templateId,
             @AuthenticationPrincipal Long userId,
-            @RequestBody MarketplaceAuditRequest req) {
+            @Valid @RequestBody MarketplaceAuditRequest req) {
         try {
             // C-05: auditorId 从 @AuthenticationPrincipal 获取，而非 @RequestParam
             marketplaceService.auditTemplate(templateId, String.valueOf(userId), req.getStatus(), req.getRejectReason());

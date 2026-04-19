@@ -1,52 +1,67 @@
 <template>
-  <div class="welcome-card">
-    <h2>{{ greeting }}，{{ user?.username || '朋友' }} 👋</h2>
-    <p>开始管理你的 SOP 流程，让每一步都有标准</p>
-    <button class="btn-primary" @click="router.push('/sop/new')">创建第一个 SOP</button>
-  </div>
-
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-num">{{ total }}</div>
-      <div class="stat-label">我的 SOP</div>
+  <div v-if="loading" class="loading-state">
+    <div class="welcome-card">
+      <el-skeleton variant="text" width="200px" height="32px" style="margin-bottom:8px" />
+      <el-skeleton variant="text" width="280px" height="20px" />
     </div>
-    <div class="stat-card">
-      <div class="stat-num blue">{{ pendingExec }}</div>
-      <div class="stat-label">待执行</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num orange">{{ inProgressExec }}</div>
-      <div class="stat-label">执行中</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num green">{{ completedRate }}%</div>
-      <div class="stat-label">完成率</div>
-    </div>
-  </div>
-
-  <div class="section-header">
-    <h3>最近编辑</h3>
-    <button class="btn-secondary" @click="router.push('/sops')">查看全部</button>
-  </div>
-
-  <div class="sop-grid" v-if="sops.length">
-    <div v-for="sop in sops" :key="sop.id" class="sop-card">
-      <div class="sop-category">{{ ({daily:'日SOP',weekly:'周SOP',monthly:'月SOP',yearly:'年SOP'} as any)[sop.category] || sop.category }}</div>
-      <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
-      <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
-      <div class="sop-footer">
-        <span class="sop-date">{{ formatDate(sop.updatedAt) }}</span>
-        <span class="sop-status" :class="sop.status">{{ sop.status === 'published' ? '已发布' : '草稿' }}</span>
-      </div>
-      <div class="sop-actions">
-        <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
-        <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
-        <button class="btn-xs btn-start" v-if="sop.status === 'published'" @click.stop="router.push('/execution')">▶️ 去执行</button>
+    <div class="stats-row">
+      <div class="stat-card" v-for="i in 4" :key="i">
+        <el-skeleton variant="text" width="60px" height="32px" style="margin-bottom:8px" />
+        <el-skeleton variant="text" width="80px" height="16px" />
       </div>
     </div>
+    <el-skeleton :rows="6" animated />
   </div>
-  <div v-else class="empty-state">
-    <p>还没有 SOP，创建一个开始吧！</p>
+  <div v-else>
+    <div class="welcome-card">
+      <h2>{{ greeting }}，{{ user?.username || '朋友' }} 👋</h2>
+      <p>开始管理你的 SOP 流程，让每一步都有标准</p>
+      <button class="btn-primary" @click="router.push('/sop/new')">创建第一个 SOP</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num">{{ total }}</div>
+        <div class="stat-label">我的 SOP</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num blue">{{ pendingExec }}</div>
+        <div class="stat-label">待执行</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num orange">{{ inProgressExec }}</div>
+        <div class="stat-label">执行中</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num green">{{ completedRate }}%</div>
+        <div class="stat-label">完成率</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h3>最近编辑</h3>
+      <button class="btn-secondary" @click="router.push('/sops')">查看全部</button>
+    </div>
+
+    <div class="sop-grid" v-if="sops.length">
+      <div v-for="sop in sops" :key="sop.id" class="sop-card">
+        <div class="sop-category">{{ ({daily:'日SOP',weekly:'周SOP',monthly:'月SOP',yearly:'年SOP'} as any)[sop.category] || sop.category }}</div>
+        <h4 class="sop-title" @click="router.push(`/sop/${sop.id}/edit`)" style="cursor:pointer">{{ sop.title }}</h4>
+        <p class="sop-desc">{{ sop.description || '暂无描述' }}</p>
+        <div class="sop-footer">
+          <span class="sop-date">{{ formatDate(sop.updatedAt) }}</span>
+          <span class="sop-status" :class="sop.status">{{ sop.status === 'published' ? '已发布' : '草稿' }}</span>
+        </div>
+        <div class="sop-actions">
+          <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/versions`)">📋 版本历史</button>
+          <button class="btn-xs" @click.stop="router.push(`/sop/${sop.id}/edit`)">✏️ 编辑</button>
+          <button class="btn-xs btn-start" v-if="sop.status === 'published'" @click.stop="router.push('/execution')">▶️ 去执行</button>
+        </div>
+      </div>
+    </div>
+    <div v-else class="empty-state">
+      <p>还没有 SOP，创建一个开始吧！</p>
+    </div>
   </div>
 </template>
 
@@ -69,6 +84,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const sopStore = useSopStore()
 
+const loading = ref(true)
 const user = computed(() => authStore.userInfo)
 const sops = ref<any[]>([])
 const total = ref(0)
@@ -90,23 +106,27 @@ const formatDate = (d: string) => {
 }
 
 onMounted(async () => {
-  await authStore.fetchMe()
-  const res: any = await sopStore.fetchMySops(1, 6)
-  if (res.code === 200) {
-    sops.value = res.data.records || []
-    total.value = res.data.total || 0
-  }
   try {
-    const instRes: any = await request.get('/instance/my')
-    if (instRes.code === 200) {
-      const insts = instRes.data || []
-      pendingExec.value = insts.filter((e: any) => e.status === 'pending').length
-      inProgressExec.value = insts.filter((e: any) => e.status === 'in_progress').length
-      const completed = insts.filter((e: any) => e.status === 'completed').length
-      completedRate.value = insts.length ? Math.round((completed / insts.length) * 100) : 0
+    await authStore.fetchMe()
+    const res: any = await sopStore.fetchMySops(1, 6)
+    if (res.code === 200) {
+      sops.value = res.data.records || []
+      total.value = res.data.total || 0
     }
-  } catch (e) {
-    console.error('[WorkbenchView] fetchStats failed:', e)
+    try {
+      const instRes: any = await request.get('/instance/my')
+      if (instRes.code === 200) {
+        const insts = Array.isArray(instRes.data?.records) ? instRes.data.records : []
+        pendingExec.value = insts.filter((e: any) => e.status === 'pending').length
+        inProgressExec.value = insts.filter((e: any) => e.status === 'in_progress').length
+        const completed = insts.filter((e: any) => e.status === 'completed').length
+        completedRate.value = insts.length ? Math.round((completed / insts.length) * 100) : 0
+      }
+    } catch (e) {
+      console.error('[WorkbenchView] fetchStats failed:', e)
+    }
+  } finally {
+    loading.value = false
   }
 })
 </script>

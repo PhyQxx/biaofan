@@ -1,7 +1,9 @@
 package com.biaofan.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.dto.Result;
 import com.biaofan.service.GamificationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -107,7 +109,7 @@ public class GamificationController {
     @PostMapping("/score/redeem")
     public Result<Map<String, Object>> redeem(
             @AuthenticationPrincipal Long userId,
-            @RequestBody Map<String, Long> body) {
+            @Valid @RequestBody Map<String, Long> body) {
         try {
             return Result.ok(gamificationService.redeemProduct(userId, body.get("productId")));
         } catch (RuntimeException e) {
@@ -117,11 +119,15 @@ public class GamificationController {
 
     /**
      * 获取积分商城商品列表
+     * @param page 页码（默认1）
+     * @param size 每页数量（默认20）
      * @return 可兑换商品列表
      */
     @GetMapping("/store")
-    public Result<List<Map<String, Object>>> store() {
-        return Result.ok(gamificationService.getStore());
+    public Result<Map<String, Object>> store(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(gamificationService.getStore(page, size));
     }
 
     /**

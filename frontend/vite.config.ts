@@ -18,4 +18,19 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    minify: 'esbuild',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('element-plus')) return 'element-plus'
+          if (id.includes('node_modules')) {
+            if (/vue|vue-router|pinia/.test(id)) return 'vue-vendor'
+          }
+        },
+      },
+    },
+  },
 })

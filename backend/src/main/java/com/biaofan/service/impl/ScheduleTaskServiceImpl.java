@@ -7,6 +7,7 @@ import com.biaofan.mapper.ScheduleTaskMapper;
 import com.biaofan.mapper.SopMapper;
 import com.biaofan.service.ScheduleTaskService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -28,6 +29,7 @@ import java.util.List;
  * - 计算下次触发时间
  * - 供 ScheduleTaskJob 调用生成 SopInstance
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScheduleTaskServiceImpl implements ScheduleTaskService {
@@ -56,6 +58,12 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
      */
     @Override
     public void create(Long sopId, Long userId, String cronExpression) {
+        // Validate cron expression before saving
+        LocalDateTime nextFireTime = calcNextFireTime(cronExpression);
+        if (nextFireTime == null) {
+            throw new RuntimeException("无效的Cron表达式: " + cronExpression);
+        }
+
         // 删除旧的
         scheduleTaskMapper.delete(new LambdaQueryWrapper<ScheduleTask>()
                 .eq(ScheduleTask::getSopId, sopId)
@@ -65,7 +73,7 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         task.setSopId(sopId);
         task.setUserId(userId);
         task.setCronExpression(cronExpression);
-        task.setNextFireTime(calcNextFireTime(cronExpression));
+        task.setNextFireTime(nextFireTime);
         task.setEnabled(1);
         scheduleTaskMapper.insert(task);
     }
@@ -199,8 +207,9 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
                 weekDay = dayOfWeek == 1 ? 7 : dayOfWeek - 1;
             }
         } catch (Exception e) {
-            // fallback: 1小时后
+            log.warn("Failed to parse cron expression '{}': {}", cronExpression, e.getMessage());
+            return null; // Return null to indicate invalid
         }
-        return LocalDateTime.now().plusHours(1).withSecond(0).withNano(0);
+        return null; // No matching fire time found within 1 year
     }
 }

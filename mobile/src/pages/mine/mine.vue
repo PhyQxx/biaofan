@@ -112,7 +112,7 @@ export default {
   methods: {
     loadUserInfo() {
       const auth = useAuthStore()
-      const token = uni.getStorageSync('token')
+      const token = uni.getStorageSync('bf_token')
       if (token) {
         uni.request({
           url: api.baseUrl + '/api/auth/me',

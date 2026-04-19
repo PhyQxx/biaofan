@@ -1,5 +1,6 @@
 package com.biaofan.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
@@ -8,6 +9,6 @@ import lombok.Data;
  */
 @Data
 public class MarketplaceTemplateUseRequest {
-    private String userId;
+    @NotBlank(message = "SOP名称不能为空")
     private String sopName;
 }

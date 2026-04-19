@@ -3,7 +3,17 @@
  * 所有接口请求都通过这个模块
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE || 'http://192.168.31.104:8013'
+const BASE_URL = (() => {
+  const env = import.meta.env.VITE_API_BASE
+  return env && env.trim() !== '' ? env.trim() : 'http://localhost:8013'
+})()
+
+// Token 存储键（PC 端用 bf_token，移动端用 token，保持一致）
+const TOKEN_KEY = 'bf_token'
+const USER_ID_KEY = 'bf_userId'
+const USER_INFO_KEY = 'bf_userInfo'
+
+export { TOKEN_KEY, USER_ID_KEY, USER_INFO_KEY }
 
 // 401 跳转锁，防止多个 401 响应重复跳转登录页
 let isRedirecting = false
@@ -13,7 +23,7 @@ let isRedirecting = false
  */
 function request(options) {
   return new Promise((resolve, reject) => {
-    const token = uni.getStorageSync('token')
+    const token = uni.getStorageSync(TOKEN_KEY)
 
     uni.request({
       url: BASE_URL + options.url,
@@ -59,7 +69,7 @@ function request(options) {
 function handle401() {
   if (isRedirecting) return
   isRedirecting = true
-  uni.removeStorageSync('token')
+  uni.removeStorageSync(TOKEN_KEY)
   uni.reLaunch({
     url: '/pages/login/login',
     complete: () => {
@@ -90,18 +100,17 @@ export default {
 
   // ========== 执行单相关 ==========
   execution: {
-    // 我的待执行列表
-    // 注意: executorId 目前从前端传入，后端应从 JWT token 中提取以确保安全性
+    // 我的待执行列表（后端从 JWT token 提取 userId，前端无需传 executorId）
     myPending() {
-      return request({ url: '/api/sop/executions', data: { status: 'pending', executorId: uni.getStorageSync('userId') } })
+      return request({ url: '/api/sop/executions/my', data: { status: 'pending' } })
     },
     // 我的进行中
     myInProgress() {
-      return request({ url: '/api/sop/executions', data: { status: 'in_progress', executorId: uni.getStorageSync('userId') } })
+      return request({ url: '/api/sop/executions/my', data: { status: 'in_progress' } })
     },
     // 我的已完成
     myCompleted() {
-      return request({ url: '/api/sop/executions', data: { status: 'completed', executorId: uni.getStorageSync('userId') } })
+      return request({ url: '/api/sop/executions/my', data: { status: 'completed' } })
     },
     // 执行单详情
     detail(id) {
@@ -191,7 +200,7 @@ export default {
     // 图片上传（用于异常拍照、步骤打卡拍照）
     image(filePath) {
       return new Promise((resolve, reject) => {
-        const token = uni.getStorageSync('token')
+        const token = uni.getStorageSync(TOKEN_KEY)
         uni.uploadFile({
           url: BASE_URL + '/api/upload/image',
           filePath: filePath,

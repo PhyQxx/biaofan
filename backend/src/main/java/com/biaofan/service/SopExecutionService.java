@@ -3,6 +3,7 @@ package com.biaofan.service;
 import com.biaofan.entity.ExecutionStepRecord;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopExecution;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import java.util.List;
 import java.util.Map;
@@ -50,9 +51,11 @@ public interface SopExecutionService {
      * 获取当前用户的执行记录列表
      * @param userId 用户ID
      * @param status 执行状态（可为空，查全部）
-     * @return 执行记录列表
+     * @param page 页码
+     * @param pageSize 每页数量
+     * @return 执行记录分页列表
      */
-    List<SopExecution> getMyExecutions(Long userId, String status);
+    Page<SopExecution> getMyExecutions(Long userId, String status, int page, int pageSize);
 
     /**
      * 获取执行记录详情

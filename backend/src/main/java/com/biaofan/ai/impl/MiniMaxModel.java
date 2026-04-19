@@ -1,22 +1,29 @@
 package com.biaofan.ai.impl;
 
 import com.biaofan.ai.AiModel;
+import com.biaofan.ai.AiResult;
 import com.biaofan.entity.AiModelConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
+
 import java.util.*;
 
 /**
  * MiniMax 模型实现
  * API 格式：https://api.minimax.chat/v1/text/chatcompletion_v2
+ * 必填：group_id（通过 config.groupId 设置）
  */
 @Component
 public class MiniMaxModel implements AiModel {
 
     private static final Logger log = LoggerFactory.getLogger(MiniMaxModel.class);
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Override
     public String getType() {
@@ -24,39 +31,79 @@ public class MiniMaxModel implements AiModel {
     }
 
     @Override
-    public String chat(List<Map<String, String>> messages, AiModelConfig config) {
-        String url = config.getApiUrl();
-        if (url == null || url.isBlank()) {
-            url = "https://api.minimax.chat/v1/text/chatcompletion_v2";
+    public AiResult chat(List<Map<String, String>> messages, AiModelConfig config) {
+        if (config.getApiKey() == null || config.getApiKey().isBlank()) {
+            return AiResult.error("MiniMax API Key 未配置");
+        }
+        if (config.getGroupId() == null || config.getGroupId().isBlank()) {
+            return AiResult.error("MiniMax group_id 未配置，请联系管理员设置");
         }
 
-        Map<String, Object> requestBody = new HashMap<>();
+        String url = buildUrl(config.getApiUrl(), "https://api.minimax.chat/v1/text/chatcompletion_v2", "/text/chatcompletion_v2");
+
+        Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", config.getModelName() != null ? config.getModelName() : "abab6.5s-chat");
         requestBody.put("messages", messages);
+        requestBody.put("group_id", config.getGroupId());
         if (config.getTemperature() != null) {
             requestBody.put("temperature", config.getTemperature());
         }
 
         try {
-            RestTemplate rt = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            var headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + config.getApiKey());
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> resp = rt.postForEntity(url, entity, Map.class);
+            var entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
+            var resp = restTemplate.postForEntity(url, entity, Map.class);
 
             if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
-                List<?> choices = (List<?>) resp.getBody().get("choices");
-                if (choices != null && !choices.isEmpty()) {
-                    Map<?, ?> choice = (Map<?, ?>) choices.get(0);
-                    Map<?, ?> msg = (Map<?, ?>) choice.get("message");
-                    return msg != null ? (String) msg.get("content") : "";
-                }
+                return parseResponse(resp.getBody());
             }
+            return AiResult.error("MiniMax 返回异常状态码: " + resp.getStatusCode());
+        } catch (HttpClientErrorException e) {
+            String detail = e.getResponseBodyAsString();
+            log.error("MiniMax API 客户端错误 {}: {}", e.getStatusCode(), detail);
+            return AiResult.error("MiniMax API 错误 " + e.getStatusCode() + ": " + detail);
         } catch (Exception e) {
-            log.error("MiniMax API 调用失败: {}", e.getMessage());
+            log.error("MiniMax API 调用失败: {}", e.getMessage(), e);
+            return AiResult.error("MiniMax API 调用失败: " + e.getMessage());
         }
-        return "";
+    }
+
+    private AiResult parseResponse(Map<String, Object> body) {
+        try {
+            Object choicesObj = body.get("choices");
+            if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
+                return AiResult.error("MiniMax 响应格式异常: choices 为空");
+            }
+            Object choice = choices.get(0);
+            if (!(choice instanceof Map<?, ?> choiceMap)) {
+                return AiResult.error("MiniMax 响应格式异常: choice 类型错误");
+            }
+            Object msgObj = choiceMap.get("message");
+            if (!(msgObj instanceof Map<?, ?> msg)) {
+                return AiResult.error("MiniMax 响应格式异常: message 类型错误");
+            }
+            Object content = msg.get("content");
+            if (content == null) {
+                return AiResult.error("MiniMax 响应 content 为空");
+            }
+            return AiResult.success((String) content);
+        } catch (Exception e) {
+            log.error("MiniMax 响应解析失败: {}", e.getMessage());
+            return AiResult.error("MiniMax 响应解析失败: " + e.getMessage());
+        }
+    }
+
+    String buildUrl(String configuredUrl, String defaultUrl, String suffix) {
+        if (configuredUrl == null || configuredUrl.isBlank()) {
+            return defaultUrl;
+        }
+        String trimmed = configuredUrl.replaceAll("/+$", "");
+        if (!trimmed.contains("/text/chatcompletion")) {
+            return trimmed + suffix;
+        }
+        return trimmed;
     }
 }

@@ -1,5 +1,7 @@
 package com.biaofan.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.util.List;
 
@@ -10,12 +12,15 @@ import java.util.List;
 @Data
 public class SopRequest {
     /** SOP标题 */
+    @NotBlank(message = "标题不能为空")
+    @Size(max = 200, message = "标题长度不能超过200")
     private String title;
     /** SOP描述说明 */
     private String description;
     /** SOP内容步骤列表 */
     private List<StepItem> content;
     /** SOP所属分类 */
+    @NotBlank(message = "分类不能为空")
     private String category;
     /** SOP标签列表，用于搜索和筛选 */
     private List<String> tags;

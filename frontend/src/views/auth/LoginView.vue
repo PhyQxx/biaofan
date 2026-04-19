@@ -48,11 +48,12 @@
  * - 登录成功后跳转到首页
  */
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(false)
 const rememberMe = ref(false)
@@ -68,7 +69,8 @@ const handleLogin = async () => {
   try {
     await authStore.login(form.phone, form.password)
     ElMessage.success('登录成功')
-    router.push('/')
+    const redirect = route.query.redirect as string
+    router.push(redirect || '/')
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '登录失败'
     ElMessage.error(msg)

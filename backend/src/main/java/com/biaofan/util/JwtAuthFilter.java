@@ -50,16 +50,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // validateToken 对过期JWT（签名有效）返回true，签名无效才false
+        // validateToken now rejects expired tokens (returns false for expired)
         if (!jwtUtil.validateToken(token)) {
-            chain.doFilter(request, response);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":401,\"message\":\"无效或已过期的token\",\"success\":false}");
             return;
         }
 
-        // getUserId 对过期JWT仍能解析（ExpiredJwtException中读claims）
+        // getUserId returns null only for truly invalid tokens (not expired ones, since we reject expired above)
         Long userId = jwtUtil.getUserId(token);
         if (userId == null) {
-            chain.doFilter(request, response);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":401,\"message\":\"无效的token\",\"success\":false}");
             return;
         }
 

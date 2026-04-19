@@ -20,9 +20,9 @@ public interface AiModel {
      * 发送对话请求
      * @param messages 消息列表，Map 包含 role 和 content
      * @param config 模型配置
-     * @return AI 返回的文本内容
+     * @return AI 返回的结果，包含成功内容或错误信息
      */
-    String chat(List<Map<String, String>> messages, AiModelConfig config);
+    AiResult chat(List<Map<String, String>> messages, AiModelConfig config);
 
     /**
      * 构建创建 SOP 的系统提示词
