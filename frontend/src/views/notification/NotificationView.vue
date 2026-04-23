@@ -125,36 +125,36 @@ onMounted(loadNotifications)
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 0; margin-bottom: 4px;
 }
-.filter-tabs { display: flex; gap: 0; background: #fff; padding: 8px 12px; border-radius: 12px; }
-.filter-tab { padding: 6px 16px; border: none; background: transparent; border-radius: 20px; font-size: 13px; color: #666; cursor: pointer; transition: all 0.15s; }
-.filter-tab.active { background: #E8ECFF; color: #5B7FFF; font-weight: 600; }
-.btn-read-all { height: 30px; padding: 0 12px; background: #fff; color: #5B7FFF; border: 1px solid #5B7FFF; border-radius: 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+.filter-tabs { display: flex; gap: 0; background: var(--color-bg-light-elevated); padding: 8px 12px; border-radius: var(--radius-xl); }
+.filter-tab { padding: 6px 16px; border: none; background: transparent; border-radius: var(--radius-full); font-size: var(--font-size-sm); color: var(--color-text-light-secondary); cursor: pointer; transition: var(--transition-fast); }
+.filter-tab.active { background: #E8ECFF; color: var(--color-primary); font-weight: 600; }
+.btn-read-all { height: 30px; padding: 0 12px; background: var(--color-bg-light-elevated); color: var(--color-primary); border: 1px solid var(--color-primary); border-radius: var(--radius-sm); font-size: var(--font-size-xs); cursor: pointer; flex-shrink: 0; }
 
 .notif-list { padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
 .notif-card {
-  background: #fff; border-radius: 12px; padding: 14px 16px;
+  background: var(--color-bg-light-elevated); border-radius: var(--radius-lg); padding: 14px 16px;
   display: flex; align-items: flex-start; gap: 12px;
-  cursor: pointer; transition: all 0.15s; position: relative;
+  cursor: pointer; transition: var(--transition-fast); position: relative;
   border: 1px solid transparent;
 }
 .notif-card:hover { background: #FAFBFF; border-color: #E8ECFF; }
-.notif-card.unread { border-left: 3px solid #5B7FFF; }
+.notif-card.unread { border-left: 3px solid var(--color-primary); }
 .notif-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
 .notif-body { flex: 1; }
 .notif-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-.notif-title { font-size: 14px; font-weight: 600; color: #333; flex: 1; }
-.notif-time { font-size: 11px; color: #999; flex-shrink: 0; margin-left: 8px; }
-.notif-content { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 6px; }
-.notif-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+.notif-title { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-light-primary); flex: 1; }
+.notif-time { font-size: var(--font-size-xs); color: var(--color-text-light-muted); flex-shrink: 0; margin-left: 8px; }
+.notif-content { font-size: var(--font-size-sm); color: var(--color-text-light-secondary); line-height: 1.5; margin-bottom: 6px; }
+.notif-tag { display: inline-block; font-size: var(--font-size-xs); padding: 1px 8px; border-radius: var(--radius-full); }
 .tag-blue { background: #E8F3FF; color: #1890FF; }
 .tag-red { background: #FFF1F0; color: #F5222D; }
 .tag-yellow { background: #FFFBE6; color: #FAAD14; }
-.tag-green { background: #F6FFED; color: #52C41A; }
-.tag-gray { background: #F5F5F5; color: #999; }
-.notif-unread-dot { width: 8px; height: 8px; background: #5B7FFF; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.tag-green { background: #F6FFED; color: var(--color-success); }
+.tag-gray { background: #F5F5F5; color: var(--color-text-light-muted); }
+.notif-unread-dot { width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
 
-.empty-state { text-align: center; padding: 80px 0; color: #999; }
+.empty-state { text-align: center; padding: 80px 0; color: var(--color-text-light-muted); }
 .empty-icon { font-size: 56px; margin-bottom: 16px; }
-.empty-state p { margin: 0 0 6px; font-size: 15px; }
-.empty-sub { font-size: 13px; }
+.empty-state p { margin: 0 0 6px; font-size: var(--font-size-lg); }
+.empty-sub { font-size: var(--font-size-sm); }
 </style>

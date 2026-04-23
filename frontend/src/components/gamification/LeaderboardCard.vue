@@ -26,23 +26,23 @@ defineProps<{ item: LeaderboardItem }>()
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #1a1d27;
-  border: 1px solid #2d3348;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 12px 16px;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 .lb-card:hover {
-  background: #22263a;
+  background: var(--color-bg-surface);
   transform: translateX(4px);
 }
 .lb-me {
   background: rgba(91, 127, 255, 0.08);
-  border-left: 3px solid #5b7fff;
+  border-left: 3px solid var(--color-primary);
 }
 .lb-rank {
-  font-size: 14px;
-  color: #8b90a0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
   font-weight: 600;
   min-width: 24px;
 }
@@ -50,7 +50,7 @@ defineProps<{ item: LeaderboardItem }>()
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b7fff, #3b5fdf);
+  background: linear-gradient(135deg, var(--color-primary), #3b5fdf);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,15 +60,15 @@ defineProps<{ item: LeaderboardItem }>()
 }
 .lb-info { flex: 1; }
 .lb-name {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
 }
-.lb-sub { font-size: 12px; color: #8b90a0; }
+.lb-sub { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .lb-count {
   font-size: 16px;
   font-weight: 700;
-  color: #5b7fff;
+  color: var(--color-primary);
   font-family: 'DIN Alternate', 'Roboto', monospace;
 }
 </style>

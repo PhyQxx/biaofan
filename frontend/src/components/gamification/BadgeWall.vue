@@ -55,35 +55,35 @@ const lockedBadges = computed(() => props.badges.filter((b) => !b.unlockedAt))
 </script>
 
 <style scoped>
-.badge-wall { padding: 4px 0; }
+.badge-wall { padding: var(--space-xs) 0; }
 .section-title {
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-weight: 600;
-  color: #e8eaf0;
-  margin-bottom: 16px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .badge-count-chip {
-  background: rgba(91, 127, 255, 0.15);
-  color: #5b7fff;
-  font-size: 12px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
   padding: 2px 8px;
   border-radius: 10px;
 }
-.locked-title { margin-top: 24px; }
+.locked-title { margin-top: var(--space-2xl); }
 .toggle-btn {
   background: none;
-  border: 1px solid #2d3348;
-  color: #8b90a0;
-  font-size: 12px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
   padding: 2px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
-.toggle-btn:hover { background: #1a1d27; color: #e8eaf0; }
+.toggle-btn:hover { background: var(--color-bg-elevated); color: var(--color-text-primary); }
 .badge-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -91,9 +91,9 @@ const lockedBadges = computed(() => props.badges.filter((b) => !b.unlockedAt))
 }
 .empty-badges {
   text-align: center;
-  padding: 32px;
-  color: #8b90a0;
+  padding: var(--space-2xl);
+  color: var(--color-text-secondary);
 }
-.empty-badges span { font-size: 40px; display: block; margin-bottom: 8px; }
-.empty-badges p { font-size: 14px; }
+.empty-badges span { font-size: 40px; display: block; margin-bottom: var(--space-sm); }
+.empty-badges p { font-size: var(--font-size-base); }
 </style>

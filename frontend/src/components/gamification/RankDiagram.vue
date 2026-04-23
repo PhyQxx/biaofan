@@ -68,12 +68,12 @@ const lineProgress = computed(() => {
 </script>
 
 <style scoped>
-.rank-diagram { margin-top: 8px; }
+.rank-diagram { margin-top: var(--space-sm); }
 .diagram-title {
   font-size: 13px;
   font-weight: 600;
-  color: #8b90a0;
-  margin-bottom: 16px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -90,13 +90,13 @@ const lineProgress = computed(() => {
   left: 24px;
   right: 24px;
   height: 4px;
-  background: #2d3348;
+  background: var(--color-border);
   border-radius: 2px;
   z-index: 0;
 }
 .rank-line-fill {
   height: 100%;
-  background: linear-gradient(90deg, #cd7f32, #c0c0c0, #ffd700, #b9f2ff, #ff6b35);
+  background: linear-gradient(90deg, var(--color-bronze), var(--color-silver), var(--color-gold), #b9f2ff, #ff6b35);
   border-radius: 2px;
   transition: width 0.8s ease-out;
 }
@@ -117,14 +117,14 @@ const lineProgress = computed(() => {
   font-size: 22px;
   position: relative;
   margin-bottom: 6px;
-  background: #2d3348;
-  border: 3px solid #2d3348;
+  background: var(--color-border);
+  border: 3px solid var(--color-border);
   transition: all 0.3s;
 }
 .rank-locked .rank-circle { opacity: 0.4; }
-.rank-active .rank-circle { background: rgba(91, 127, 255, 0.1); border-color: #5b7fff; }
+.rank-active .rank-circle { background: var(--color-primary-subtle); border-color: var(--color-primary); }
 .rank-current .rank-circle {
-  border-color: #ffd700;
+  border-color: var(--color-gold);
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);
   animation: current-pulse 1.5s ease-in-out infinite;
 }
@@ -145,18 +145,18 @@ const lineProgress = computed(() => {
   50% { transform: scale(1.15); opacity: 0; }
 }
 .rank-node-name {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   margin-bottom: 2px;
 }
-.rank-active .rank-node-name { color: #e8eaf0; }
-.rank-node-exp { font-size: 10px; color: #555a6e; }
-.rank-active .rank-node-exp { color: #8b90a0; }
+.rank-active .rank-node-name { color: var(--color-text-primary); }
+.rank-node-exp { font-size: 10px; color: var(--color-text-muted); }
+.rank-active .rank-node-exp { color: var(--color-text-secondary); }
 .rank-tip {
   text-align: center;
-  font-size: 12px;
-  color: #5b7fff;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
   margin-top: 14px;
   font-weight: 600;
 }

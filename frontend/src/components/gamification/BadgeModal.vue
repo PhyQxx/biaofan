@@ -79,18 +79,18 @@ const rarityText: Record<string, string> = {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--transition-normal);
 }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 .badge-modal {
   width: 400px;
   max-width: 90vw;
-  background: #1a1d27;
+  background: var(--color-bg-elevated);
   border-radius: 16px;
   padding: 32px 28px;
   position: relative;
   animation: scaleIn 0.25s ease;
-  border: 1px solid #2d3348;
+  border: 1px solid var(--color-border);
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -99,16 +99,16 @@ const rarityText: Record<string, string> = {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: #2d3348;
+  background: var(--color-border);
   border: none;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   width: 28px;
   height: 28px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size-base);
 }
-.close-btn:hover { background: #3d4255; color: #e8eaf0; }
+.close-btn:hover { background: #3d4255; color: var(--color-text-primary); }
 .modal-icon {
   width: 72px;
   height: 72px;
@@ -116,7 +116,7 @@ const rarityText: Record<string, string> = {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
+  margin: 0 auto var(--space-lg);
   font-size: 36px;
 }
 .modal-icon.rarity-bronze { background: rgba(205, 127, 50, 0.2); }
@@ -126,13 +126,13 @@ const rarityText: Record<string, string> = {
   text-align: center;
   font-size: 20px;
   font-weight: 700;
-  color: #e8eaf0;
-  margin-bottom: 8px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
 }
 .modal-rarity {
   text-align: center;
   font-size: 13px;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,26 +144,26 @@ const rarityText: Record<string, string> = {
   border-radius: 50%;
   display: inline-block;
 }
-.rarity-dot-bronze { background: #cd7f32; }
-.rarity-dot-silver { background: #c0c0c0; }
-.rarity-dot-gold { background: #ffd700; }
+.rarity-dot-bronze { background: var(--color-bronze); }
+.rarity-dot-silver { background: var(--color-silver); }
+.rarity-dot-gold { background: var(--color-gold); }
 .modal-divider {
   height: 1px;
-  background: #2d3348;
+  background: var(--color-border);
   margin: 20px 0;
 }
-.modal-section { margin-bottom: 16px; }
+.modal-section { margin-bottom: var(--space-lg); }
 .modal-label {
-  font-size: 12px;
-  color: #8b90a0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
   margin-bottom: 6px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 .modal-value {
-  font-size: 14px;
-  color: #e8eaf0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
   line-height: 1.5;
 }
 .modal-rewards {
@@ -171,8 +171,8 @@ const rarityText: Record<string, string> = {
   gap: 10px;
 }
 .reward-chip {
-  background: rgba(91, 127, 255, 0.15);
-  color: #5b7fff;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 13px;
@@ -180,7 +180,7 @@ const rarityText: Record<string, string> = {
 }
 .reward-score {
   background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
+  color: var(--color-gold);
 }
 .progress-bar-wrap {
   display: flex;
@@ -191,25 +191,25 @@ const rarityText: Record<string, string> = {
 .progress-bar {
   flex: 1;
   height: 8px;
-  background: #2d3348;
+  background: var(--color-border);
   border-radius: 4px;
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
-  background: #5b7fff;
+  background: var(--color-primary);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
-.progress-text { font-size: 13px; color: #e8eaf0; font-weight: 600; white-space: nowrap; }
-.progress-hint { font-size: 12px; color: #8b90a0; }
+.progress-text { font-size: 13px; color: var(--color-text-primary); font-weight: 600; white-space: nowrap; }
+.progress-hint { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
 .modal-tip {
   background: rgba(91, 127, 255, 0.08);
   border: 1px solid rgba(91, 127, 255, 0.2);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 10px 14px;
   font-size: 13px;
-  color: #8b90a0;
-  margin-top: 16px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-lg);
 }
 </style>

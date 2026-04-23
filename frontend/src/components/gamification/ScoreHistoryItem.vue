@@ -42,10 +42,10 @@ function formatDate(dateStr: string) {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #1a1d27;
+  background: var(--color-bg-elevated);
   border-radius: 10px;
   padding: 14px 16px;
-  border: 1px solid #2d3348;
+  border: 1px solid var(--color-border);
   margin-bottom: 10px;
   position: relative;
   overflow: hidden;
@@ -65,15 +65,15 @@ function formatDate(dateStr: string) {
 }
 .history-body { flex: 1; }
 .history-desc {
-  font-size: 14px;
-  color: #e8eaf0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
   margin-bottom: 4px;
 }
 .history-meta {
   display: flex;
   gap: 12px;
-  font-size: 12px;
-  color: #8b90a0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 .history-change {
   font-size: 16px;

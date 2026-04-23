@@ -29,7 +29,7 @@ const rankEmoji = computed(() => ['', '🥇', '🥈', '🥉'][props.item.rank] |
 
 <style scoped>
 .top3-card {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 16px 18px;
   position: relative;
   overflow: hidden;
@@ -37,19 +37,19 @@ const rankEmoji = computed(() => ['', '🥇', '🥈', '🥉'][props.item.rank] |
 }
 .rank-1 {
   background: linear-gradient(135deg, #2a2000, #3d2e00);
-  border: 2px solid #ffd700;
+  border: 2px solid var(--color-gold);
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   animation: gold-float 3s ease-in-out infinite;
 }
 .rank-2 {
   background: linear-gradient(135deg, #1a1a20, #252530);
-  border: 2px solid #c0c0c0;
+  border: 2px solid var(--color-silver);
   box-shadow: 0 0 12px rgba(192, 192, 192, 0.25);
   animation: silver-pulse 2.5s ease-in-out infinite;
 }
 .rank-3 {
   background: linear-gradient(135deg, #1a1208, #251a0c);
-  border: 2px solid #cd7f32;
+  border: 2px solid var(--color-bronze);
 }
 @keyframes gold-float {
   0%, 100% { transform: translateY(0); }
@@ -61,7 +61,7 @@ const rankEmoji = computed(() => ['', '🥇', '🥈', '🥉'][props.item.rank] |
 }
 .rank-medal {
   font-size: 28px;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-sm);
 }
 .rank-glow {
   position: absolute;
@@ -78,17 +78,17 @@ const rankEmoji = computed(() => ['', '🥇', '🥈', '🥉'][props.item.rank] |
 .top3-name {
   font-size: 16px;
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   margin-bottom: 4px;
 }
-.rank-1 .top3-name { color: #ffd700; }
+.rank-1 .top3-name { color: var(--color-gold); }
 .top3-count {
   font-size: 13px;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   margin-bottom: 2px;
 }
 .top3-streak {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: #ffa500;
 }
 .rank-decoration {
@@ -98,7 +98,7 @@ const rankEmoji = computed(() => ['', '🥇', '🥈', '🥉'][props.item.rank] |
   right: 0;
   height: 3px;
 }
-.rank-1 .rank-decoration { background: linear-gradient(90deg, transparent, #ffd700, transparent); }
-.rank-2 .rank-decoration { background: linear-gradient(90deg, transparent, #c0c0c0, transparent); }
-.rank-3 .rank-decoration { background: linear-gradient(90deg, transparent, #cd7f32, transparent); }
+.rank-1 .rank-decoration { background: linear-gradient(90deg, transparent, var(--color-gold), transparent); }
+.rank-2 .rank-decoration { background: linear-gradient(90deg, transparent, var(--color-silver), transparent); }
+.rank-3 .rank-decoration { background: linear-gradient(90deg, transparent, var(--color-bronze), transparent); }
 </style>

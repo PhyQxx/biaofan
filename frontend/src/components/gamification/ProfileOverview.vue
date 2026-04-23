@@ -66,19 +66,19 @@ defineProps<{
 <style scoped>
 .profile-overview {}
 .overview-card {
-  background: #1a1d27;
-  border: 1px solid #2d3348;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-lg);
 }
-.overview-left { display: flex; align-items: center; gap: 16px; }
+.overview-left { display: flex; align-items: center; gap: var(--space-lg); }
 .overview-avatar-wrap { position: relative; }
 .overview-avatar {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b7fff, #3b5fdf);
+  background: linear-gradient(135deg, var(--color-primary), #3b5fdf);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,44 +95,44 @@ defineProps<{
 .overview-name {
   font-size: 18px;
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   margin-bottom: 4px;
 }
 .overview-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   font-size: 13px;
-  color: #ffd700;
+  color: var(--color-gold);
   margin-bottom: 4px;
 }
-.title-expire { font-size: 11px; color: #8b90a0; }
+.title-expire { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
 .overview-meta {
   display: flex;
   gap: 12px;
-  font-size: 12px;
-  color: #8b90a0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 .overview-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-lg);
 }
 .stat-card {
-  background: #1a1d27;
-  border: 1px solid #2d3348;
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
   text-align: center;
 }
-.stat-icon { font-size: 24px; margin-bottom: 8px; }
+.stat-icon { font-size: 24px; margin-bottom: var(--space-sm); }
 .stat-val {
   font-size: 22px;
   font-weight: 800;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   font-family: 'DIN Alternate', monospace;
   margin-bottom: 4px;
 }
-.stat-lbl { font-size: 12px; color: #8b90a0; }
+.stat-lbl { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 </style>

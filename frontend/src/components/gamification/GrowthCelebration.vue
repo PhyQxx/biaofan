@@ -80,7 +80,7 @@ function particleStyle(i: number) {
 .celebration-box {
   width: 380px;
   max-width: 90vw;
-  background: linear-gradient(135deg, #1a1d27, #22263a);
+  background: linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg-surface));
   border-radius: 20px;
   padding: 36px 28px;
   text-align: center;
@@ -117,7 +117,7 @@ function particleStyle(i: number) {
 .celebration-title {
   font-size: 24px;
   font-weight: 800;
-  color: #ffd700;
+  color: var(--color-gold);
   margin-bottom: 16px;
   text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
@@ -131,17 +131,17 @@ function particleStyle(i: number) {
 .level-label {
   font-size: 40px;
   font-weight: 900;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   font-family: 'DIN Alternate', monospace;
 }
-.level-arrow { font-size: 14px; color: #ffd700; }
+.level-arrow { font-size: var(--font-size-base); color: var(--color-gold); }
 .celebration-rank {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 16px;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   margin-bottom: 14px;
 }
 .celebration-rewards {
@@ -151,34 +151,34 @@ function particleStyle(i: number) {
   margin-bottom: 24px;
 }
 .reward {
-  background: rgba(91, 127, 255, 0.15);
-  color: #5b7fff;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
   padding: 4px 14px;
   border-radius: 20px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-weight: 600;
 }
 .celebration-btns { display: flex; gap: 12px; justify-content: center; }
 .btn-primary {
   padding: 10px 24px;
-  background: #5b7fff;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 .btn-primary:hover { background: #4a6fee; }
 .btn-secondary {
   padding: 10px 24px;
   background: transparent;
-  border: 1px solid #2d3348;
-  color: #8b90a0;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   cursor: pointer;
 }
-.btn-secondary:hover { background: #1a1d27; color: #e8eaf0; }
+.btn-secondary:hover { background: var(--color-bg-elevated); color: var(--color-text-primary); }
 </style>

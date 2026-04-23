@@ -19,6 +19,10 @@ import 'element-plus/dist/index.css'
 import router from './router'
 // 引入 Pinia 状态管理库（Vue 3 推荐的全局状态管理方案）
 import { createPinia } from 'pinia'
+// 引入全局样式（设计令牌 + CSS reset）
+import './style.css'
+// 引入共享动画
+import './assets/animations.css'
 // 引入根组件 App.vue
 import App from './App.vue'
 

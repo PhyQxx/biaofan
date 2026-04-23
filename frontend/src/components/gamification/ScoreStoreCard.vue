@@ -76,22 +76,22 @@ function handleRedeem() {
 <style scoped>
 .store-card {
   width: 160px;
-  background: #1a1d27;
-  border: 2px solid #2d3348;
-  border-radius: 12px;
+  background: var(--color-bg-elevated);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 .store-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  background: #22263a;
+  background: var(--color-bg-surface);
 }
 .store-card.rarity-available {
-  border-color: #2d3348;
+  border-color: var(--color-border);
 }
 .store-icon-wrap {
   position: relative;
@@ -105,7 +105,7 @@ function handleRedeem() {
   position: absolute;
   bottom: -4px;
   right: -8px;
-  background: #5b7fff;
+  background: var(--color-primary);
   color: white;
   font-size: 10px;
   padding: 1px 5px;
@@ -114,7 +114,7 @@ function handleRedeem() {
 .store-name {
   font-size: 13px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--color-text-primary);
   text-align: center;
   margin-bottom: 6px;
   line-height: 1.3;
@@ -128,30 +128,30 @@ function handleRedeem() {
 .price-num {
   font-size: 18px;
   font-weight: 700;
-  color: #5b7fff;
+  color: var(--color-primary);
   font-family: 'DIN Alternate', monospace;
 }
-.price-unit { font-size: 11px; color: #8b90a0; }
+.price-unit { font-size: 11px; color: var(--color-text-secondary); }
 .store-duration {
   font-size: 11px;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 .store-stock {
   font-size: 11px;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
   margin-bottom: 10px;
 }
 .store-btn {
   width: 100%;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: none;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  background: #5b7fff;
+  transition: all var(--transition-normal);
+  background: var(--color-primary);
   color: white;
 }
 .store-btn:hover:not(:disabled) { background: #4a6fee; }
@@ -163,8 +163,8 @@ function handleRedeem() {
   cursor: not-allowed;
 }
 .btn-owned {
-  background: #2d3348 !important;
-  color: #8b90a0;
+  background: var(--color-border) !important;
+  color: var(--color-text-secondary);
   cursor: default;
 }
 .btn-equipped {

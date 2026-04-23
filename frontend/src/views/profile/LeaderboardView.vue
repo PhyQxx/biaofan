@@ -129,37 +129,37 @@ async function loadLeaderboard() {
 .leaderboard-page {
   padding: 0;
 }
-.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.page-header h1 { font-size: 22px; font-weight: 700; color: #e8eaf0; }
-.lb-range { font-size: 13px; color: #8b90a0; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl); }
+.page-header h1 { font-size: var(--font-size-4xl); font-weight: 700; color: var(--color-text-primary); }
+.lb-range { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .lb-tabs {
-  display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
-  background: #1a1d27; border-radius: 10px; padding: 6px;
-  border: 1px solid #2d3348;
+  display: flex; gap: 6px; margin-bottom: var(--space-2xl); flex-wrap: wrap;
+  background: var(--color-bg-elevated); border-radius: 10px; padding: 6px;
+  border: 1px solid var(--color-border);
 }
 .lb-tab {
   padding: 7px 14px; background: transparent; border: none;
-  color: #8b90a0; border-radius: 8px; cursor: pointer;
-  font-size: 13px; transition: all 0.2s; white-space: nowrap;
+  color: var(--color-text-secondary); border-radius: var(--radius-md); cursor: pointer;
+  font-size: var(--font-size-sm); transition: var(--transition-normal); white-space: nowrap;
 }
-.lb-tab:hover { background: #22263a; color: #e8eaf0; }
-.lb-tab.active { background: #5b7fff; color: white; font-weight: 600; }
+.lb-tab:hover { background: var(--color-bg-surface); color: var(--color-text-primary); }
+.lb-tab.active { background: var(--color-primary); color: white; font-weight: 600; }
 .loading-state { display: flex; justify-content: center; padding: 40px; }
 .loading-spinner {
-  width: 36px; height: 36px; border: 3px solid #2d3348;
-  border-top-color: #5b7fff; border-radius: 50%;
+  width: 36px; height: 36px; border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary); border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.top3-section { margin-bottom: 16px; }
-.lb-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-.my-rank-section { margin-top: 20px; }
-.my-rank-label { font-size: 13px; color: #8b90a0; margin-bottom: 8px; font-weight: 600; }
+.top3-section { margin-bottom: var(--space-lg); }
+.lb-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--space-xl); }
+.my-rank-section { margin-top: var(--space-xl); }
+.my-rank-label { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 8px; font-weight: 600; }
 .my-rank-card {
   background: rgba(91, 127, 255, 0.08);
   border: 1px solid rgba(91, 127, 255, 0.3);
-  border-left: 3px solid #5b7fff;
-  border-radius: 10px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
   padding: 14px 18px;
   animation: my-pulse 2.5s ease-in-out infinite;
 }
@@ -168,12 +168,12 @@ async function loadLeaderboard() {
   50% { box-shadow: 0 0 12px rgba(91, 127, 255, 0.15); }
 }
 .my-rank-info { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
-.my-rank-num { font-size: 18px; font-weight: 800; color: #5b7fff; font-family: 'DIN Alternate', monospace; }
-.my-rank-count { font-size: 14px; color: #8b90a0; }
-.my-rank-percent { font-size: 13px; color: #4ade80; font-weight: 600; }
-.empty-state { text-align: center; padding: 48px; color: #8b90a0; }
+.my-rank-num { font-size: var(--font-size-3xl); font-weight: 800; color: var(--color-primary); font-family: 'DIN Alternate', monospace; }
+.my-rank-count { font-size: var(--font-size-base); color: var(--color-text-secondary); }
+.my-rank-percent { font-size: var(--font-size-sm); color: #4ade80; font-weight: 600; }
+.empty-state { text-align: center; padding: 48px; color: var(--color-text-secondary); }
 .empty-state span { font-size: 40px; display: block; margin-bottom: 8px; }
-.empty-state p { font-size: 14px; }
+.empty-state p { font-size: var(--font-size-base); }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .main-content { padding: 16px; }

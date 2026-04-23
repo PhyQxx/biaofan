@@ -50,8 +50,8 @@ function formatDate(dateStr?: string) {
 .badge-card {
   width: 120px;
   height: 160px;
-  background: #1a1d27;
-  border-radius: 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
   padding: 14px 10px 12px;
   display: flex;
   flex-direction: column;
@@ -59,28 +59,28 @@ function formatDate(dateStr?: string) {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
   border: 2px solid transparent;
 }
 .badge-card:hover {
   transform: translateY(-4px);
 }
 .badge-unlocked.rarity-bronze {
-  border-color: #cd7f32;
+  border-color: var(--color-bronze);
 }
 .badge-unlocked.rarity-silver {
-  border-color: #c0c0c0;
+  border-color: var(--color-silver);
   box-shadow: 0 0 12px rgba(192, 192, 192, 0.3);
 }
 .badge-unlocked.rarity-gold {
-  border-color: #ffd700;
+  border-color: var(--color-gold);
   box-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
 }
 .badge-unlocked:hover {
   box-shadow: 0 8px 24px rgba(91, 127, 255, 0.3);
 }
 .badge-locked {
-  border: 2px dashed #2d3348;
+  border: 2px dashed var(--color-border);
   opacity: 0.7;
 }
 .badge-locked:hover {
@@ -93,43 +93,43 @@ function formatDate(dateStr?: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-sm);
 }
 .badge-unlocked.rarity-bronze .badge-icon-wrap { background: rgba(205, 127, 50, 0.15); }
 .badge-unlocked.rarity-silver .badge-icon-wrap { background: rgba(192, 192, 192, 0.15); }
-.badge-unlocked.rarity-gold .badge-icon-wrap { background: rgba(255, 215, 0, 0.15); }
+.badge-unlocked.rarity-gold .badge-icon-wrap { background: var(--color-gold-subtle); }
 .badge-locked .badge-icon-wrap { background: rgba(45, 51, 72, 0.5); }
 .badge-icon {
   font-size: 28px;
   line-height: 1;
 }
 .badge-name {
-  font-size: 12px;
-  color: #e8eaf0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
   text-align: center;
   font-weight: 600;
   line-height: 1.3;
   margin-bottom: 4px;
 }
 .badge-locked .badge-name {
-  color: #8b90a0;
+  color: var(--color-text-secondary);
 }
 .badge-date {
-  font-size: 11px;
-  color: #8b90a0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
   margin-bottom: 4px;
 }
 .badge-progress-bar {
   width: 80%;
   height: 4px;
-  background: #2d3348;
+  background: var(--color-border);
   border-radius: 2px;
   margin-bottom: 4px;
   overflow: hidden;
 }
 .badge-progress-fill {
   height: 100%;
-  background: #5b7fff;
+  background: var(--color-primary);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -140,7 +140,7 @@ function formatDate(dateStr?: string) {
   right: 0;
   height: 3px;
 }
-.rarity-line-bronze { background: #cd7f32; }
-.rarity-line-silver { background: linear-gradient(90deg, #c0c0c0, #e8e8e8); }
-.rarity-line-gold { background: linear-gradient(90deg, #ffa500, #ffd700); }
+.rarity-line-bronze { background: var(--color-bronze); }
+.rarity-line-silver { background: linear-gradient(90deg, var(--color-silver), #e8e8e8); }
+.rarity-line-gold { background: linear-gradient(90deg, #ffa500, var(--color-gold)); }
 </style>

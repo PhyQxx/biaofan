@@ -50,9 +50,9 @@ const badgeStyle = computed(() => ({
   position: relative;
   border: 2px solid transparent;
 }
-.rank-bronze { background: rgba(205, 127, 50, 0.2); border-color: #cd7f32; }
-.rank-silver { background: rgba(192, 192, 192, 0.2); border-color: #c0c0c0; box-shadow: 0 0 6px rgba(192, 192, 192, 0.3); }
-.rank-gold { background: rgba(255, 215, 0, 0.2); border-color: #ffd700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.35); }
+.rank-bronze { background: rgba(205, 127, 50, 0.2); border-color: var(--color-bronze); }
+.rank-silver { background: rgba(192, 192, 192, 0.2); border-color: var(--color-silver); box-shadow: 0 0 6px rgba(192, 192, 192, 0.3); }
+.rank-gold { background: rgba(255, 215, 0, 0.2); border-color: var(--color-gold); box-shadow: 0 0 8px rgba(255, 215, 0, 0.35); }
 .rank-diamond { background: rgba(185, 242, 255, 0.2); border-color: #b9f2ff; box-shadow: 0 0 10px rgba(185, 242, 255, 0.4); }
 .rank-king {
   background: rgba(255, 107, 53, 0.25);
@@ -72,6 +72,6 @@ const badgeStyle = computed(() => ({
   transform: translateX(-50%);
   font-size: 10px;
   white-space: nowrap;
-  color: #8b90a0;
+  color: var(--color-text-secondary);
 }
 </style>

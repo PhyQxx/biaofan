@@ -442,22 +442,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.editor-page { min-height: 100vh; background: #F5F7FA; }
+.editor-page { min-height: 100vh; background: var(--color-bg-light); }
 .editor-topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 24px; background: #fff;
-  border-bottom: 1px solid #E8E8E8; gap: 16px;
+  padding: 12px 24px; background: var(--color-bg-light-elevated);
+  border-bottom: 1px solid var(--color-border-light); gap: 16px;
 }
 .editor-body {
   display: flex;
   gap: 24px;
   align-items: flex-start;
-  margin: 72px 24px 24px;
+  margin: var(--space-xl) var(--space-xl) var(--space-xl);
   padding: 0;
 }
 .title-input {

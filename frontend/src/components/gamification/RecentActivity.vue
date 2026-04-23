@@ -50,10 +50,10 @@ function formatTime(dateStr: string) {
 <style scoped>
 .recent-activity {}
 .activity-title {
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-weight: 600;
-  color: #e8eaf0;
-  margin-bottom: 14px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-md);
 }
 .activity-list {}
 .activity-item {
@@ -61,35 +61,35 @@ function formatTime(dateStr: string) {
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #2d3348;
+  border-bottom: 1px solid var(--color-border);
 }
 .activity-item:last-child { border-bottom: none; }
 .activity-icon { font-size: 20px; flex-shrink: 0; }
 .activity-body { flex: 1; }
-.activity-desc { font-size: 13px; color: #e8eaf0; margin-bottom: 2px; }
-.activity-time { font-size: 11px; color: #8b90a0; }
+.activity-desc { font-size: 13px; color: var(--color-text-primary); margin-bottom: 2px; }
+.activity-time { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
 .activity-rewards { display: flex; gap: 6px; flex-shrink: 0; }
 .reward-exp {
-  background: rgba(91, 127, 255, 0.15);
-  color: #5b7fff;
-  font-size: 11px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
   padding: 2px 7px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
 }
 .reward-score {
   background: rgba(255, 215, 0, 0.1);
-  color: #ffd700;
-  font-size: 11px;
+  color: var(--color-gold);
+  font-size: var(--font-size-xs);
   padding: 2px 7px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
 }
 .empty-activity {
   text-align: center;
-  padding: 24px;
-  color: #8b90a0;
+  padding: var(--space-xl);
+  color: var(--color-text-secondary);
 }
-.empty-activity span { font-size: 32px; display: block; margin-bottom: 8px; }
+.empty-activity span { font-size: 32px; display: block; margin-bottom: var(--space-sm); }
 .empty-activity p { font-size: 13px; }
 </style>

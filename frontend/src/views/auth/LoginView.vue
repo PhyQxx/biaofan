@@ -86,7 +86,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F0F3FF 0%, #E8ECFF 100%);
+  background: linear-gradient(135deg, var(--color-bg-light) 0%, var(--color-bg-light) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -95,7 +95,7 @@ const handleLogin = async () => {
   position: absolute;
   width: 500px; height: 500px;
   background: rgba(91,127,255,0.07);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   top: -150px; right: -80px;
 }
 .login-page::after {
@@ -103,12 +103,12 @@ const handleLogin = async () => {
   position: absolute;
   width: 350px; height: 350px;
   background: rgba(91,127,255,0.05);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   bottom: -80px; left: -40px;
 }
 .auth-card {
-  background: #fff;
-  border-radius: 16px;
+  background: var(--color-bg-light-elevated);
+  border-radius: var(--radius-lg);
   box-shadow: 0 4px 12px rgba(91,127,255,0.08);
   padding: 40px;
   width: 400px;
@@ -117,39 +117,39 @@ const handleLogin = async () => {
 }
 .auth-logo { text-align: center; margin-bottom: 28px; }
 .auth-logo .logo-icon { font-size: 40px; margin-bottom: 8px; }
-.auth-logo h1 { font-size: 24px; font-weight: 600; color: #212121; margin-bottom: 4px; }
-.auth-logo p { font-size: 14px; color: #666; }
+.auth-logo h1 { font-size: var(--font-size-4xl); font-weight: 600; color: var(--color-text-light-primary); margin-bottom: 4px; }
+.auth-logo p { font-size: var(--font-size-base); color: var(--color-text-light-secondary); }
 .form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: 13px; font-weight: 500; color: #666; margin-bottom: 6px; }
+.form-group label { display: block; font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-light-secondary); margin-bottom: 6px; }
 .input-wrap { position: relative; }
 .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
 .form-input {
   width: 100%; height: 46px;
   padding: 0 14px 0 40px;
-  border: 1.5px solid #E8E8E8;
-  border-radius: 8px;
-  font-size: 15px;
+  border: 1.5px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-lg);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: var(--transition-normal);
   box-sizing: border-box;
 }
 .form-input:focus {
-  border-color: #5B7FFF;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(91,127,255,0.10);
 }
-.form-input::placeholder { color: #999; }
-.auth-links { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 6px; font-size: 13px; }
+.form-input::placeholder { color: var(--color-text-light-muted); }
+.auth-links { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 6px; font-size: var(--font-size-sm); }
 .checkbox-row { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.checkbox-row input { width: 16px; height: 16px; accent-color: #5B7FFF; cursor: pointer; }
-.auth-links a { color: #5B7FFF; text-decoration: none; }
+.checkbox-row input { width: 16px; height: 16px; accent-color: var(--color-primary); cursor: pointer; }
+.auth-links a { color: var(--color-primary); text-decoration: none; }
 .auth-links a:hover { text-decoration: underline; }
 .btn-primary {
   width: 100%; height: 46px;
-  background: #5B7FFF; color: white;
-  border: none; border-radius: 8px;
-  font-size: 16px; font-weight: 600;
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius-md);
+  font-size: var(--font-size-xl); font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: var(--transition-normal);
   margin-top: 6px;
 }
 .btn-primary:hover { background: #7994FF; }
