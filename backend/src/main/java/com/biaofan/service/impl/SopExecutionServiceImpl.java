@@ -210,6 +210,8 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             notif.setCreatedAt(LocalDateTime.now());
             notificationMapper.insert(notif);
             notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+            // Update gamification: points, exp, badges, streak
+            gamificationService.onExecutionCompleted(userId, exec.getSopId());
         } else {
             exec.setCurrentStep(stepIndex + 1);
             Notification notif = new Notification();
