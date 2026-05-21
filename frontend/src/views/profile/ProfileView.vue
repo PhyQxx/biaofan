@@ -445,7 +445,7 @@ async function saveProfile() {
     const res: any = await request.put('/user/profile', { username: settingsForm.username })
     if (res.code === 200) { ElMessage.success('用户名已更新'); authStore.fetchMe() }
     else ElMessage.error(res.message || '更新失败')
-  } catch (e: any) { ElMessage.error(e.message || '更新失败') }
+  } catch (e: unknown) { const msg = e instanceof Error ? e.message : '更新失败'; ElMessage.error(msg) }
 }
 
 async function savePassword() {
@@ -456,7 +456,7 @@ async function savePassword() {
     const res: any = await request.put('/user/password', { oldPassword: settingsForm.oldPassword, newPassword: settingsForm.newPassword })
     if (res.code === 200) { ElMessage.success('密码已更新'); settingsForm.oldPassword = ''; settingsForm.newPassword = ''; settingsForm.confirmPassword = '' }
     else ElMessage.error(res.message || '修改失败')
-  } catch (e: any) { ElMessage.error(e.message || '修改失败') }
+  } catch (e: unknown) { const msg = e instanceof Error ? e.message : '修改失败'; ElMessage.error(msg) }
 }
 
 async function savePhone() {
@@ -465,7 +465,7 @@ async function savePhone() {
     const res: any = await request.put('/user/phone', { phone: settingsForm.phone })
     if (res.code === 200) { ElMessage.success('手机号已更新'); authStore.fetchMe() }
     else ElMessage.error(res.message || '更新失败')
-  } catch (e: any) { ElMessage.error(e.message || '更新失败') }
+  } catch (e: unknown) { const msg = e instanceof Error ? e.message : '更新失败'; ElMessage.error(msg) }
 }
 
 async function saveWebhook() {
@@ -479,7 +479,7 @@ async function saveWebhook() {
     })
     if (res.code === 200) ElMessage.success('Webhook 已保存')
     else ElMessage.error(res.message || '保存失败')
-  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
+  } catch (e: unknown) { const msg = e instanceof Error ? e.message : '保存失败'; ElMessage.error(msg) }
 }
 
 async function saveEmail() {
@@ -494,7 +494,7 @@ async function saveEmail() {
     })
     if (res.code === 200) ElMessage.success('邮箱已保存')
     else ElMessage.error(res.message || '保存失败')
-  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
+  } catch (e: unknown) { const msg = e instanceof Error ? e.message : '保存失败'; ElMessage.error(msg) }
 }
 </script>
 

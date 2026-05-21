@@ -105,9 +105,20 @@ public class AiServiceImpl implements AiService {
             throw new RuntimeException("AI调用次数已达上限，请稍后再试");
         }
 
-        AiModelConfig config = getEffectiveConfig(userId);
+        AiModelConfig cached = getEffectiveConfig(userId);
 
-        // 请求级覆盖
+        // 请求级覆盖（在副本上修改，避免污染缓存）
+        AiModelConfig config = new AiModelConfig();
+        config.setId(cached.getId());
+        config.setUserId(cached.getUserId());
+        config.setModelType(cached.getModelType());
+        config.setApiUrl(cached.getApiUrl());
+        config.setApiKey(cached.getApiKey());
+        config.setModelName(cached.getModelName());
+        config.setSystemPrompt(cached.getSystemPrompt());
+        config.setEnabled(cached.getEnabled());
+        config.setTemperature(cached.getTemperature());
+
         if (request.getModelType() != null) config.setModelType(request.getModelType());
         if (request.getApiUrl() != null) config.setApiUrl(request.getApiUrl());
         if (request.getApiKey() != null) config.setApiKey(request.getApiKey());

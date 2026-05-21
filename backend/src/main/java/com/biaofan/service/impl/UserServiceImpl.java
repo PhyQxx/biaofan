@@ -79,9 +79,11 @@ public class UserServiceImpl implements UserService {
             redisTemplate.delete(key);
             return jwtUtil.generateToken(user.getId(), user.getUsername());
         } catch (RuntimeException e) {
-            // Login failed - increment counter
-            redisTemplate.opsForValue().increment(key);
-            redisTemplate.expire(key, LOCKOUT_DURATION);
+            // Login failed - increment counter (atomic)
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1) {
+                redisTemplate.expire(key, LOCKOUT_DURATION);
+            }
             throw e;
         }
     }
@@ -93,6 +95,15 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public Map<String, Object> loginWithRefreshToken(LoginRequest req) {
+        String key = "failed_login:" + req.getPhone();
+
+        // Check if locked
+        String failedCount = redisTemplate.opsForValue().get(key);
+        if (failedCount != null && Integer.parseInt(failedCount) >= MAX_FAILED_ATTEMPTS) {
+            throw new RuntimeException("账号已锁定，请15分钟后再试");
+        }
+
+        try {
         User user = userMapper.selectOne(
             new LambdaQueryWrapper<User>().eq(User::getPhone, req.getPhone())
         );
@@ -102,6 +113,9 @@ public class UserServiceImpl implements UserService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误");
         }
+
+        // Login success - clear failed attempts
+        redisTemplate.delete(key);
 
         // 生成 access token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
@@ -122,6 +136,14 @@ public class UserServiceImpl implements UserService {
             "refreshToken", refreshToken,
             "expiresIn", 86400000  // 24小时，单位毫秒
         );
+        } catch (RuntimeException e) {
+            // Login failed - increment counter (atomic)
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1) {
+                redisTemplate.expire(key, LOCKOUT_DURATION);
+            }
+            throw e;
+        }
     }
 
     /**
@@ -147,14 +169,13 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("用户不存在");
         }
 
-        // Atomic: delete only if expired (prevents race condition in token rotation)
+        // Atomic: consume valid (not expired) token, prevents reuse
         int deleted = authRefreshTokenMapper.delete(
             new LambdaQueryWrapper<AuthRefreshToken>()
                 .eq(AuthRefreshToken::getToken, refreshToken)
-                .lt(AuthRefreshToken::getExpiresAt, LocalDateTime.now())
+                .ge(AuthRefreshToken::getExpiresAt, LocalDateTime.now())
         );
         if (deleted == 0) {
-            // Token exists but not expired — reject (shouldn't happen in normal rotation)
             throw new RuntimeException("刷新令牌已过期");
         }
 

@@ -160,7 +160,7 @@
               :class="{ 'has-value': notes, 'empty': !notes }"
               @click="notesEditing = true"
             >
-              <span v-if="notes" v-html="marked.parse(notes)"></span>
+              <span v-if="notes" v-html="DOMPurify.sanitize(marked.parse(notes) as string)"></span>
               <span v-else class="placeholder">记录执行过程中的备注、问题或心得...</span>
             </div>
             <div v-if="currentGuidance" class="guidance-history-hint" @click="showAi = true">
@@ -251,6 +251,7 @@ import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import request from '@/api'
 import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'

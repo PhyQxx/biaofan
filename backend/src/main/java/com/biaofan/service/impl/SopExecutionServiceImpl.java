@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.GamificationService;
-import com.biaofan.service.NotificationDispatcher;
+import com.biaofan.service.NotificationService;
 import com.biaofan.service.SopExecutionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -43,8 +43,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     private final SopExecutionMapper executionMapper;
     private final SopMapper sopMapper;
     private final ExecutionStepRecordMapper stepRecordMapper;
-    private final NotificationMapper notificationMapper;
-    private final NotificationDispatcher notificationDispatcher;
+    private final NotificationService notificationService;
     private final GamificationService gamificationService;
     private final ObjectMapper objectMapper;
 
@@ -52,16 +51,15 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             SopExecutionMapper executionMapper,
             SopMapper sopMapper,
             ExecutionStepRecordMapper stepRecordMapper,
-            NotificationMapper notificationMapper,
-            NotificationDispatcher notificationDispatcher,
-            GamificationService gamificationService) {
+            NotificationService notificationService,
+            GamificationService gamificationService,
+            ObjectMapper objectMapper) {
         this.executionMapper = executionMapper;
         this.sopMapper = sopMapper;
         this.stepRecordMapper = stepRecordMapper;
-        this.notificationMapper = notificationMapper;
-        this.notificationDispatcher = notificationDispatcher;
+        this.notificationService = notificationService;
         this.gamificationService = gamificationService;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -117,17 +115,8 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         e.setUpdatedAt(LocalDateTime.now());
         executionMapper.insert(e);
 
-        Notification notif = new Notification();
-        notif.setUserId(userId);
-        notif.setType("execution_started");
-        notif.setTitle("SOP 开始执行");
-        notif.setContent("您已开始执行 SOP《" + sop.getTitle() + "》，记得完成所有步骤哦！");
-        notif.setSourceType("sop");
-        notif.setSourceId(sop.getId());
-        notif.setIsRead(0);
-        notif.setCreatedAt(LocalDateTime.now());
-        notificationMapper.insert(notif);
-        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+        notificationService.createAndDispatch(userId, "execution_started",
+                "SOP 开始执行", "您已开始执行 SOP《" + sop.getTitle() + "》，记得完成所有步骤哦！", "sop", sop.getId());
 
         return e;
     }
@@ -199,32 +188,14 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             exec.setStatus("completed");
             exec.setCompletedAt(LocalDateTime.now());
             exec.setCurrentStep(stepIndex);
-            Notification notif = new Notification();
-            notif.setUserId(userId);
-            notif.setType("execution_completed");
-            notif.setTitle("SOP 执行完成");
-            notif.setContent("您执行的 SOP《" + sop.getTitle() + "》已全部完成，干得漂亮！");
-            notif.setSourceType("sop");
-            notif.setSourceId(sop.getId());
-            notif.setIsRead(0);
-            notif.setCreatedAt(LocalDateTime.now());
-            notificationMapper.insert(notif);
-            notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+            notificationService.createAndDispatch(userId, "execution_completed",
+                    "SOP 执行完成", "您执行的 SOP《" + sop.getTitle() + "》已全部完成，干得漂亮！", "sop", sop.getId());
             // Update gamification: points, exp, badges, streak
             gamificationService.onExecutionCompleted(userId, exec.getSopId());
         } else {
             exec.setCurrentStep(stepIndex + 1);
-            Notification notif = new Notification();
-            notif.setUserId(userId);
-            notif.setType("step_completed");
-            notif.setTitle("步骤完成");
-            notif.setContent("SOP《" + sop.getTitle() + "》第 " + stepIndex + " 步已完成，继续加油！");
-            notif.setSourceType("sop");
-            notif.setSourceId(sop.getId());
-            notif.setIsRead(0);
-            notif.setCreatedAt(LocalDateTime.now());
-            notificationMapper.insert(notif);
-            notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+            notificationService.createAndDispatch(userId, "step_completed",
+                    "步骤完成", "SOP《" + sop.getTitle() + "》第 " + stepIndex + " 步已完成，继续加油！", "sop", sop.getId());
         }
         exec.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(exec);
@@ -278,17 +249,8 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         exec.setCompletedAt(LocalDateTime.now());
         exec.setUpdatedAt(LocalDateTime.now());
         executionMapper.updateById(exec);
-        Notification notif = new Notification();
-        notif.setUserId(userId);
-        notif.setType("execution_completed");
-        notif.setTitle("SOP 执行完成");
-        notif.setContent("SOP《" + sop.getTitle() + "》已标记完成！");
-        notif.setSourceType("sop");
-        notif.setSourceId(sop.getId());
-        notif.setIsRead(0);
-        notif.setCreatedAt(LocalDateTime.now());
-        notificationMapper.insert(notif);
-        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+        notificationService.createAndDispatch(userId, "execution_completed",
+                "SOP 执行完成", "SOP《" + sop.getTitle() + "》已标记完成！", "sop", sop.getId());
 
         // Update gamification: points, exp, badges, streak
         gamificationService.onExecutionCompleted(userId, exec.getSopId());

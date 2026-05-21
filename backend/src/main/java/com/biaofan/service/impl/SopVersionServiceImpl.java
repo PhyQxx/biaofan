@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.SopVersionService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +23,6 @@ public class SopVersionServiceImpl implements SopVersionService {
 
     private final SopVersionMapper versionMapper;
     private final SopMapper sopMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 获取SOP的所有历史版本

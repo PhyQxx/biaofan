@@ -333,8 +333,9 @@ const saveSchedule = async () => {
     await sopStore.saveScheduleTask(Number(route.params.id), cron)
     ElMessage.success('定时任务保存成功')
     await loadSchedule()
-  } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '保存失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -345,8 +346,9 @@ const resetSchedule = async () => {
     ElMessage.success('定时任务已删除')
     scheduleTask.current = null
     scheduleTask.enabled = false
-  } catch (e: any) {
-    ElMessage.error(e.message || '删除失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '删除失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -358,8 +360,9 @@ const toggleSchedule = async () => {
     scheduleTask.current.enabled = newEnabled
     scheduleTask.enabled = newEnabled === 1
     ElMessage.success(newEnabled ? '定时任务已启用' : '定时任务已停用')
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '操作失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -381,9 +384,10 @@ const handleDelete = async () => {
     await sopStore.deleteSop(Number(route.params.id))
     ElMessage.success('SOP 已删除')
     router.push('/')
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel') {
-      ElMessage.error(e.message || '删除失败')
+      const msg = e instanceof Error ? e.message : '删除失败'
+      ElMessage.error(msg)
     }
   }
 }
@@ -419,8 +423,9 @@ const handleSave = async (status: string) => {
       ElMessage.success(isEdit ? '保存成功' : '创建成功')
     }
     router.push('/')
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '操作失败'
+    ElMessage.error(msg)
   }
 }
 

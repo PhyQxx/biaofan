@@ -46,7 +46,7 @@ public class SopServiceImpl implements SopService {
     private final ScheduleTaskMapper scheduleTaskMapper;
     private final SopDraftMapper draftMapper;
     private final SopExceptionMapper exceptionMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     /**
      * 分页查询当前用户的SOP列表
@@ -194,8 +194,7 @@ public class SopServiceImpl implements SopService {
         // Validate content size before insert
         String content = sop.getContent();
         if (content != null && content.length() > 60_000) {
-            log.warn("SOP内容过大 ({} bytes)，截断保存 sopId={}", content.length(), sop.getId());
-            content = content.substring(0, 60_000);
+            throw new RuntimeException("SOP内容过大（" + content.length() + " 字符，上限 60000），请精简后重试");
         }
         nv.setContent(content);
         nv.setIsCurrent(1);
@@ -218,8 +217,6 @@ public class SopServiceImpl implements SopService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("序列化失败");
         }
-        if (req.getStatus() != null) {
-            sop.setStatus(req.getStatus());
-        }
+        // status 由 publish() 方法控制，不允许客户端直接设置
     }
 }

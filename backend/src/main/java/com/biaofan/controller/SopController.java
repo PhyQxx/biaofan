@@ -38,6 +38,8 @@ public class SopController {
             @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if (size > 100) size = 100;
+        if (page < 1) page = 1;
         return Result.ok(sopService.getMySops(userId, page, size));
     }
 

@@ -101,4 +101,19 @@ public class NotificationServiceImpl implements NotificationService {
         notificationMapper.insert(n);
         notificationDispatcher.dispatch(userId, title, content);
     }
+
+    @Override
+    public void createAndDispatch(Long userId, String type, String title, String content, String sourceType, Long sourceId) {
+        Notification n = new Notification();
+        n.setUserId(userId);
+        n.setType(type);
+        n.setTitle(title);
+        n.setContent(content);
+        n.setSourceType(sourceType);
+        n.setSourceId(sourceId);
+        n.setIsRead(0);
+        n.setCreatedAt(java.time.LocalDateTime.now());
+        notificationMapper.insert(n);
+        notificationDispatcher.dispatch(userId, title, content);
+    }
 }

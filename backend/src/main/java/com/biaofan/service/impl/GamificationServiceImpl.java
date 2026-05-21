@@ -236,12 +236,11 @@ public class GamificationServiceImpl implements GamificationService {
      */
     @Override
     public Map<String, Object> getLeaderboardOverview() {
-        List<Map<String, Object>> weekly = getLeaderboard("weekly");
-        List<Map<String, Object>> monthly = getLeaderboard("monthly");
+        // period 参数当前未区分，只查一次避免重复查询
         List<Map<String, Object>> all = getLeaderboard("all");
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("weekly", weekly.stream().limit(3).toList());
-        r.put("monthly", monthly.stream().limit(3).toList());
+        r.put("weekly", all.stream().limit(3).toList());
+        r.put("monthly", all.stream().limit(3).toList());
         r.put("all", all.stream().limit(3).toList());
         return r;
     }

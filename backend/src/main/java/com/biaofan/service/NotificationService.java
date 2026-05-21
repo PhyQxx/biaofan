@@ -46,4 +46,15 @@ public interface NotificationService {
      * @param content 通知内容
      */
     void create(Long userId, String type, String title, String content);
+
+    /**
+     * 创建一条通知（带来源信息）并发送推送
+     * @param userId 通知所属用户ID
+     * @param type 通知类型
+     * @param title 通知标题
+     * @param content 通知内容
+     * @param sourceType 来源类型（如 "sop"）
+     * @param sourceId 来源ID
+     */
+    void createAndDispatch(Long userId, String type, String title, String content, String sourceType, Long sourceId);
 }

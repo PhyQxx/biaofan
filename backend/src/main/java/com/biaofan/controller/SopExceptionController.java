@@ -4,6 +4,7 @@ import com.biaofan.dto.Result;
 import com.biaofan.entity.SopException;
 import com.biaofan.service.SopExceptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,7 +76,8 @@ public class SopExceptionController {
      * @param body   请求体，包含resolution（处理说明）
      * @return 操作结果
      */
-    /** 标记异常已处理 - H-06: 仅管理员可操作 */
+    /** 标记异常已处理 - 仅管理员可操作 */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/resolve")
     public Result<Void> resolve(
             @PathVariable Long id,

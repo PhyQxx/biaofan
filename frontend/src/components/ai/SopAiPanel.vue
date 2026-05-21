@@ -228,8 +228,9 @@ async function handleGenerate() {
     } else {
       generateError.value = res.message || '生成失败'
     }
-  } catch (e: any) {
-    generateError.value = e.message || '请求失败'
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '请求失败'
+    generateError.value = msg
   } finally {
     generateLoading.value = false
   }
@@ -262,8 +263,9 @@ async function handleGuidance() {
     } else {
       guidanceError.value = res.message || '指导失败'
     }
-  } catch (e: any) {
-    guidanceError.value = e.message || '请求失败'
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '请求失败'
+    guidanceError.value = msg
   } finally {
     guidanceLoading.value = false
   }
@@ -309,8 +311,9 @@ async function handleReview() {
     } else {
       reviewError.value = res.message || '审核失败'
     }
-  } catch (e: any) {
-    reviewError.value = e.message || '请求失败'
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '请求失败'
+    reviewError.value = msg
   } finally {
     reviewLoading.value = false
   }

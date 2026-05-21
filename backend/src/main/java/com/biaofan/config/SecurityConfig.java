@@ -25,7 +25,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
 /**
-
+ * Spring Security 安全配置
 /**
  * Spring Security 安全配置
  * - 禁用 CSRF（前后端分离项目）
@@ -74,7 +74,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // SOP 公开接口（无需登录即可查看）
                 .requestMatchers("/api/sop/templates", "/api/sop/categories", "/api/sop/category", "/api/sop/public/**").permitAll()
-                .requestMatchers("/api/ai/**").permitAll()
+                .requestMatchers("/api/ai/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

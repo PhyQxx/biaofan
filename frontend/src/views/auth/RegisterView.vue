@@ -84,8 +84,9 @@ const handleRegister = async () => {
     await authStore.register(form)
     ElMessage.success('注册成功')
     router.push('/login')
-  } catch (e: any) {
-    ElMessage.error(e.message || '注册失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '注册失败'
+    ElMessage.error(msg)
   } finally {
     loading.value = false
   }

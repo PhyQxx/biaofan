@@ -34,6 +34,9 @@ public class AdminEmailConfigController {
         EmailConfig config = emailConfigMapper.selectOne(
             new LambdaQueryWrapper<EmailConfig>().last("LIMIT 1")
         );
+        if (config != null) {
+            config.setPassword(null);
+        }
         return Result.ok(config);
     }
 

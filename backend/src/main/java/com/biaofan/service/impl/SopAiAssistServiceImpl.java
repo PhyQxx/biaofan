@@ -31,7 +31,7 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
     private final AiService aiService;
     private final AiModelFactory aiModelFactory;
     private final SopAiReviewMapper reviewMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     // ==================== AI 创建 SOP ====================
 

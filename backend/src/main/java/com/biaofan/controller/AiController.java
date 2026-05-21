@@ -11,8 +11,11 @@ import com.biaofan.dto.ai.SopAiCreateRequest;
 import com.biaofan.service.AiService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 /**
  * SOP AI 辅助接口
@@ -26,6 +29,23 @@ public class AiController {
     private final SopAiAssistService sopAiAssistService;
     private final AiService aiService;
     private final SopMapper sopMapper;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String AI_RATE_PREFIX = "ai_rate:";
+    private static final int AI_RATE_LIMIT = 10; // 每用户每分钟 10 次
+    private static final Duration AI_RATE_WINDOW = Duration.ofMinutes(1);
+
+    /**
+     * AI 接口限流检查，超限返回 true
+     */
+    private boolean isAiRateLimited(Long userId) {
+        String key = AI_RATE_PREFIX + userId;
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redisTemplate.expire(key, AI_RATE_WINDOW);
+        }
+        return count != null && count > AI_RATE_LIMIT;
+    }
 
     /**
      * AI 辅助创建 SOP
@@ -37,6 +57,9 @@ public class AiController {
     @PostMapping("/sop/generate")
     public Result<String> generateSop(@AuthenticationPrincipal Long userId,
                                      @Valid @RequestBody SopAiCreateRequest request) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
         String sopJson = sopAiAssistService.generateSop(userId, request);
         return Result.ok(sopJson);
     }
@@ -51,6 +74,9 @@ public class AiController {
     @PostMapping("/sop/execute/guidance")
     public Result<String> getExecuteGuidance(@AuthenticationPrincipal Long userId,
                                               @Valid @RequestBody SopAiAssistRequest request) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
         String guidance = sopAiAssistService.getExecuteGuidance(userId, request);
         return Result.ok(guidance);
     }
@@ -84,6 +110,9 @@ public class AiController {
     @PostMapping("/chat")
     public Result<String> chat(@AuthenticationPrincipal Long userId,
                                @Valid @RequestBody AiChatRequest request) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
         String reply = aiService.chat(userId, request);
         return Result.ok(reply);
     }

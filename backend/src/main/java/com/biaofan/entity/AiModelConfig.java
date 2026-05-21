@@ -3,6 +3,7 @@ package com.biaofan.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -21,7 +22,8 @@ public class AiModelConfig {
     private String modelType;
     /** API 地址 */
     private String apiUrl;
-    /** API Key（加密存储） */
+    /** API Key（不返回给前端） */
+    @JsonIgnore
     private String apiKey;
     /** 模型名称，如 deepseek-chat / glm-4-flash / abab6.5s-chat */
     private String modelName;

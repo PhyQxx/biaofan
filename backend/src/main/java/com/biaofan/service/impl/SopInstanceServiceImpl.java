@@ -13,7 +13,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.GamificationService;
-import com.biaofan.service.NotificationDispatcher;
+import com.biaofan.service.NotificationService;
 import com.biaofan.service.SopInstanceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,8 +43,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
     private final SopMapper sopMapper;
     private final SopExecutionMapper executionMapper;
     private final ExecutionStepRecordMapper stepRecordMapper;
-    private final NotificationMapper notificationMapper;
-    private final NotificationDispatcher notificationDispatcher;
+    private final NotificationService notificationService;
     private final GamificationService gamificationService;
     private final ObjectMapper objectMapper;
 
@@ -128,17 +127,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         executionMapper.insert(exec);
 
         Sop sop = sopMapper.selectById(inst.getSopId());
-        Notification notif = new Notification();
-        notif.setUserId(userId);
-        notif.setType("execution_started");
-        notif.setTitle("SOP 开始执行");
-        notif.setContent("您已开始执行 SOP《" + (sop != null ? sop.getTitle() : "") + "》");
-        notif.setSourceType("sop");
-        notif.setSourceId(inst.getSopId());
-        notif.setIsRead(0);
-        notif.setCreatedAt(LocalDateTime.now());
-        notificationMapper.insert(notif);
-        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+        notificationService.createAndDispatch(
+                userId,
+                "execution_started",
+                "SOP 开始执行",
+                "您已开始执行 SOP《" + (sop != null ? sop.getTitle() : "") + "》",
+                "sop",
+                inst.getSopId());
     }
 
     /**
@@ -225,17 +220,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                 latestExec.setUpdatedAt(LocalDateTime.now());
                 executionMapper.updateById(latestExec);
             }
-            Notification notif = new Notification();
-            notif.setUserId(userId);
-            notif.setType("execution_completed");
-            notif.setTitle("SOP 执行完成");
-            notif.setContent("您执行的 SOP《" + (sop != null ? sop.getTitle() : "已删除SOP") + "》已全部完成！");
-            notif.setSourceType("sop");
-            notif.setSourceId(sop.getId());
-            notif.setIsRead(0);
-            notif.setCreatedAt(LocalDateTime.now());
-            notificationMapper.insert(notif);
-            notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+            notificationService.createAndDispatch(
+                    userId,
+                    "execution_completed",
+                    "SOP 执行完成",
+                    "您执行的 SOP《" + (sop != null ? sop.getTitle() : "已删除SOP") + "》已全部完成！",
+                    "sop",
+                    sop.getId());
         } else {
             inst.setCurrentStep(stepIndex + 1);
             if (latestExec != null) {
@@ -274,17 +265,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         instanceMapper.updateById(inst);
 
         Sop sop = sopMapper.selectById(inst.getSopId());
-        Notification notif = new Notification();
-        notif.setUserId(userId);
-        notif.setType("execution_completed");
-        notif.setTitle("SOP 执行完成");
-        notif.setContent("SOP《" + (sop != null ? sop.getTitle() : "") + "》已标记完成！");
-        notif.setSourceType("sop");
-        notif.setSourceId(inst.getSopId());
-        notif.setIsRead(0);
-        notif.setCreatedAt(LocalDateTime.now());
-        notificationMapper.insert(notif);
-        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+        notificationService.createAndDispatch(
+                userId,
+                "execution_completed",
+                "SOP 执行完成",
+                "SOP《" + (sop != null ? sop.getTitle() : "") + "》已标记完成！",
+                "sop",
+                inst.getSopId());
 
         // Update gamification: points, exp, badges, streak
         gamificationService.onExecutionCompleted(userId, inst.getSopId());
@@ -410,17 +397,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             return;
         }
 
-        Notification notif = new Notification();
-        notif.setUserId(userId);
-        notif.setType("schedule_triggered");
-        notif.setTitle("SOP 待执行提醒");
-        notif.setContent("您的 " + categoryLabel(category) + " SOP《" + sop.getTitle() + "》已生成，请在 " + periodEnd.toLocalDate() + " 前完成。");
-        notif.setSourceType("sop");
-        notif.setSourceId(sop.getId());
-        notif.setIsRead(0);
-        notif.setCreatedAt(LocalDateTime.now());
-        notificationMapper.insert(notif);
-        notificationDispatcher.dispatch(userId, notif.getTitle(), notif.getContent());
+        notificationService.createAndDispatch(
+                userId,
+                "schedule_triggered",
+                "SOP 待执行提醒",
+                "您的 " + categoryLabel(category) + " SOP《" + sop.getTitle() + "》已生成，请在 " + periodEnd.toLocalDate() + " 前完成。",
+                "sop",
+                sop.getId());
 
         log.info("生成实例: sopId={} category={} period={}~{}", sop.getId(), category, periodStart, periodEnd);
     }
@@ -443,20 +426,16 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             instanceMapper.updateById(inst);
 
             Sop sop = sopMapper.selectById(inst.getSopId());
-            Notification notif = new Notification();
-            notif.setUserId(inst.getExecutorId());
-            notif.setType("execution_overdue");
-            notif.setTitle("SOP 执行逾期");
-            notif.setContent("SOP《" + (sop != null ? sop.getTitle() : "（已删除）") + "》已超过执行期限");
             if (sop == null) {
                 log.warn("SOP {} 已删除，实例 {} 仍被标记为逾期", inst.getSopId(), inst.getId());
             }
-            notif.setSourceType("sop");
-            notif.setSourceId(inst.getSopId());
-            notif.setIsRead(0);
-            notif.setCreatedAt(LocalDateTime.now());
-            notificationMapper.insert(notif);
-            notificationDispatcher.dispatch(inst.getExecutorId(), notif.getTitle(), notif.getContent());
+            notificationService.createAndDispatch(
+                    inst.getExecutorId(),
+                    "execution_overdue",
+                    "SOP 执行逾期",
+                    "SOP《" + (sop != null ? sop.getTitle() : "（已删除）") + "》已超过执行期限",
+                    "sop",
+                    inst.getSopId());
         }
 
         if (!overdue.isEmpty()) {

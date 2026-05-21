@@ -165,8 +165,9 @@ const doPublish = async () => {
     } else {
       ElMessage.error(res.message || '发布失败')
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || '发布失败')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '发布失败'
+    ElMessage.error(msg)
   } finally {
     publishing.value = false
   }
@@ -187,8 +188,11 @@ const confirmRollback = async (v: any) => {
     } else {
       ElMessage.error(res.message || '回滚失败')
     }
-  } catch (e: any) {
-    if (e !== 'cancel') ElMessage.error(e.message || '回滚失败')
+  } catch (e: unknown) {
+    if (e !== 'cancel') {
+      const msg = e instanceof Error ? e.message : '回滚失败'
+      ElMessage.error(msg)
+    }
   }
 }
 

@@ -163,8 +163,15 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
         String lower = host.toLowerCase();
         // Block localhost
         if (lower.equals("localhost") || lower.equals("127.0.0.1") || lower.equals("0.0.0.0")) return true;
-        // Block internal ranges
-        if (lower.startsWith("192.168.") || lower.startsWith("10.") || lower.startsWith("172.16.")) return true;
+        // Block internal ranges (RFC 1918: 10/8, 172.16/12, 192.168/16)
+        if (lower.startsWith("192.168.") || lower.startsWith("10.")) return true;
+        if (lower.startsWith("172.")) {
+            // 172.16.0.0/12 covers 172.16.x.x through 172.31.x.x
+            try {
+                int second = Integer.parseInt(lower.substring(4, lower.indexOf('.', 4)));
+                if (second >= 16 && second <= 31) return true;
+            } catch (Exception ignored) {}
+        }
         if (lower.startsWith("127.") || lower.startsWith("169.254.")) return true;
         // Block IPv6 localhost
         if (lower.equals("::1") || lower.equals("0:0:0:0:0:0:0:1")) return true;

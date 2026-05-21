@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * AI 模型工厂
@@ -21,8 +20,6 @@ public class AiModelFactory {
     private final DeepSeekModel deepSeekModel;
     private final GlmModel glmModel;
     private final MiniMaxModel miniMaxModel;
-
-    private static final Map<String, AiModel> MODEL_MAP = new ConcurrentHashMap<>();
 
     /**
      * 根据模型类型获取对应的 AI 模型实例

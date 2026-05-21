@@ -59,7 +59,7 @@ public class UploadController {
 
     // H-08: 扩展名白名单校验
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
     );
     
     // Issue 28: Static date formatter to avoid per-request SimpleDateFormat allocation

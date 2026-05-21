@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,7 +25,7 @@ import java.util.List;
  * JWT 认证过滤器 — 纯 JWT 自包含认证
  * - 不依赖 Redis / Session 作为认证必要条件
  * - 不校验 JWT 是否过期，只验证签名有效性
- * - 解密出 userId 后查库重建用户上下文
+ * - 解密出 userId 后查库重建用户上下文（带 Redis 缓存）
  *
  * @author biaofan
  */
@@ -34,6 +36,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserService userService;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String USER_CACHE_PREFIX = "user:cache:";
+    private static final Duration USER_CACHE_TTL = Duration.ofMinutes(10);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -67,8 +73,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 查库验证用户有效性
-        User user = userService.getUserById(userId);
+        // 查库验证用户有效性（带 Redis 缓存）
+        User user = getCachedUser(userId);
         if (user == null) {
             chain.doFilter(request, response);
             return;
@@ -95,5 +101,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return header.substring(7);
         }
         return null;
+    }
+
+    /**
+     * 带缓存的用户查询，避免每次请求都查库
+     */
+    private User getCachedUser(Long userId) {
+        String key = USER_CACHE_PREFIX + userId;
+        try {
+            String cachedRole = redisTemplate.opsForValue().get(key);
+            if (cachedRole != null) {
+                User user = new User();
+                user.setId(userId);
+                user.setRole(cachedRole);
+                return user;
+            }
+        } catch (Exception e) {
+            log.debug("Redis 缓存读取失败，降级为查库: {}", e.getMessage());
+        }
+
+        User user = userService.getUserById(userId);
+        if (user != null) {
+            try {
+                redisTemplate.opsForValue().set(key, user.getRole() != null ? user.getRole() : "", USER_CACHE_TTL);
+            } catch (Exception e) {
+                log.debug("Redis 缓存写入失败: {}", e.getMessage());
+            }
+        }
+        return user;
     }
 }
