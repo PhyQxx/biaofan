@@ -85,6 +85,7 @@ public class AuthController {
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpRequest) {
         String ip = getClientIp(httpRequest);
+        log.info("[Auth] 登录请求尝试: phone={}, ip={}", req.getPhone(), ip);
         String rateKey = LOGIN_RATE_KEY + ip;
 
         try {
@@ -93,6 +94,7 @@ public class AuthController {
                 redisTemplate.expire(rateKey, LOGIN_RATE_WINDOW);
             }
             if (attempts != null && attempts > LOGIN_RATE_LIMIT) {
+                log.warn("[Auth] 登录频率超限: phone={}, ip={}", req.getPhone(), ip);
                 return Result.fail(429, "请求过于频繁，请稍后再试");
             }
         } catch (Exception e) {
@@ -102,8 +104,10 @@ public class AuthController {
 
         try {
             String token = userService.login(req);
+            log.info("[Auth] 登录成功: phone={}", req.getPhone());
             return Result.ok(Map.of("token", token));
         } catch (RuntimeException e) {
+            log.warn("[Auth] 登录失败: phone={}, reason={}", req.getPhone(), e.getMessage());
             return Result.fail(401, e.getMessage());
         }
     }

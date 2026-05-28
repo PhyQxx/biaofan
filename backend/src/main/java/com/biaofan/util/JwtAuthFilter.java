@@ -56,41 +56,32 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // validateToken now rejects expired tokens (returns false for expired)
-        if (!jwtUtil.validateToken(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"message\":\"无效或已过期的token\",\"success\":false}");
-            return;
+        // 如果 token 存在，尝试校验并提取信息
+        // 注意：即使校验失败，也不在此处直接返回 401，而是交由 SecurityConfig 处理权限
+        try {
+            if (jwtUtil.validateToken(token)) {
+                Long userId = jwtUtil.getUserId(token);
+                if (userId != null) {
+                    // 查库验证用户有效性（带 Redis 缓存）
+                    User user = getCachedUser(userId);
+                    if (user != null) {
+                        // 构建权限
+                        List<String> roles = user.getRole() != null
+                                ? List.of(user.getRole().split(","))
+                                : Collections.emptyList();
+                        List<SimpleGrantedAuthority> authorities = roles.stream()
+                                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.trim().toUpperCase()))
+                                .toList();
+
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("JWT 校验过程中发生异常: {}", e.getMessage());
         }
-
-        // getUserId returns null only for truly invalid tokens (not expired ones, since we reject expired above)
-        Long userId = jwtUtil.getUserId(token);
-        if (userId == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"message\":\"无效的token\",\"success\":false}");
-            return;
-        }
-
-        // 查库验证用户有效性（带 Redis 缓存）
-        User user = getCachedUser(userId);
-        if (user == null) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // 构建权限
-        List<String> roles = user.getRole() != null
-                ? List.of(user.getRole().split(","))
-                : Collections.emptyList();
-        List<SimpleGrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.trim().toUpperCase()))
-                .toList();
-
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(userId, null, authorities);
-        SecurityContextHolder.getContext().setAuthentication(auth);
 
         chain.doFilter(request, response);
     }
