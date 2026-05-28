@@ -2,6 +2,7 @@ package com.biaofan.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.biaofan.entity.PushToken;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -25,4 +26,9 @@ public interface PushTokenMapper extends BaseMapper<PushToken> {
      */
     @Select("SELECT * FROM push_token WHERE user_id = #{userId} LIMIT 1")
     PushToken findByUserId(@Param("userId") Long userId);
+
+    @Insert("INSERT INTO push_token (user_id, client_id, platform, created_at, updated_at) " +
+            "VALUES (#{userId}, #{clientId}, #{platform}, #{createdAt}, #{updatedAt}) " +
+            "ON DUPLICATE KEY UPDATE client_id = VALUES(client_id), platform = VALUES(platform), updated_at = VALUES(updated_at)")
+    void insertOrUpdate(PushToken token);
 }

@@ -84,10 +84,17 @@ export default {
       loading: false,
       sending: false,
       countdown: 0,
-      showPassword: false
+      showPassword: false,
+      countdownTimer: null
     }
   },
   
+  beforeUnmount() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer)
+    }
+  },
+
   methods: {
     validatePhone(phone) {
       return /^1[3-9]\d{9}$/.test(phone)
@@ -104,9 +111,9 @@ export default {
         await api.auth.sendCode(this.phone)
         uni.showToast({ title: '验证码已发送', icon: 'success' })
         this.countdown = 60
-        const timer = setInterval(() => {
+        this.countdownTimer = setInterval(() => {
           this.countdown--
-          if (this.countdown <= 0) clearInterval(timer)
+          if (this.countdown <= 0) clearInterval(this.countdownTimer)
         }, 1000)
       } catch (e) {
         uni.showToast({ title: e.message || '发送失败', icon: 'none' })

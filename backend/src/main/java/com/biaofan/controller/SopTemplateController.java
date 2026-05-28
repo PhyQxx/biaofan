@@ -75,7 +75,7 @@ public class SopTemplateController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody SopRequest req) {
         try {
-            sopService.create(userId, req);
+            sopService.create(userId, null, req);
             return Result.ok();
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());

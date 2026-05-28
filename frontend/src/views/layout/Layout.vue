@@ -7,6 +7,39 @@
           <span class="logo-icon">🚀</span>
           <span class="logo-text">标帆 SOP</span>
         </div>
+
+        <!-- Space Switcher -->
+        <div class="space-switcher" v-if="user">
+          <div class="current-space" @click="showSpaceMenu = !showSpaceMenu">
+            <span class="space-icon">{{ currentOrg ? '🏢' : '👤' }}</span>
+            <span class="space-name">{{ currentOrg ? currentOrg.name : '个人空间' }}</span>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="space-menu" v-if="showSpaceMenu" @mouseleave="showSpaceMenu = false">
+            <div class="menu-label">切换空间</div>
+            <div 
+              class="space-item" 
+              :class="{ active: !currentOrgId }"
+              @click="handleSwitchOrg(null)"
+            >
+              <span class="item-icon">👤</span> 个人私有空间
+            </div>
+            <div class="menu-divider" v-if="userOrganizations.length > 0"></div>
+            <div 
+              v-for="org in userOrganizations" 
+              :key="org.id" 
+              class="space-item"
+              :class="{ active: currentOrgId === org.id }"
+              @click="handleSwitchOrg(org.id)"
+            >
+              <span class="item-icon">🏢</span> {{ org.name }}
+            </div>
+            <div class="menu-divider"></div>
+            <div class="space-item join-org" @click="router.push('/org/join'); showSpaceMenu = false">
+              <span class="item-icon">➕</span> 加入/创建组织
+            </div>
+          </div>
+        </div>
       </div>
       <div class="header-right">
         <button v-if="isAdmin" class="btn-admin" @click="isAdminRoute ? router.push('/') : router.push('/admin/badges')" aria-label="管理后台">
@@ -79,6 +112,10 @@
             <span class="sidebar-icon">📈</span>
             <span>统计</span>
           </div>
+          <div class="sidebar-item" v-if="currentOrgId" :class="{ active: isActive('/org/approvals') }" @click="router.push('/org/approvals')" role="button" aria-label="审核中心">
+            <span class="sidebar-icon">📝</span>
+            <span>审核中心</span>
+          </div>
           <div class="sidebar-item" :class="{ active: isActive('/notification') }" @click="router.push('/notification')" role="button" aria-label="通知">
             <span class="sidebar-icon">🔔</span>
             <span>通知</span>
@@ -103,6 +140,9 @@
         <RouterView />
       </main>
     </div>
+
+    <!-- AI Knowledge Assistant -->
+    <OrgKnowledgeAssistant v-if="user" />
   </div>
 </template>
 
@@ -111,24 +151,25 @@
 
 /**
  * PC 端主布局组件
- * - 顶部 Header：Logo、新建 SOP 按钮、通知铃铛、用户头像
- * - 左侧 Sidebar：工作台 / 执行台 / 统计 / 通知 / 个人中心 / 排行榜
- * - 主内容区：<RouterView />
- * - 根据路由切换亮色/暗色主题（/admin、/profile、/leaderboard 走暗色）
- * - 未读通知数量实时显示
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
+import OrgKnowledgeAssistant from '@/components/ai/OrgKnowledgeAssistant.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const notifStore = useNotificationStore()
 const showUserMenu = ref(false)
+const showSpaceMenu = ref(false)
 
 const user = computed(() => authStore.userInfo)
+const userOrganizations = computed(() => authStore.userOrganizations)
+const currentOrgId = computed(() => authStore.currentOrgId)
+const currentOrg = computed(() => authStore.currentOrg)
+
 const isAdmin = computed(() => user.value?.role === 'admin')
 const userInitial = computed(() => user.value?.username?.charAt(0)?.toUpperCase() || 'U')
 const unreadNotif = computed(() => notifStore.unreadCount)
@@ -150,7 +191,20 @@ function handleLogout() {
   router.push('/login')
 }
 
-onMounted(notifStore.fetchUnreadCount)
+function handleSwitchOrg(id: number | null) {
+  authStore.switchOrg(id)
+  showSpaceMenu.value = false
+  // 刷新当前页面数据，通过注入一个随机 time 参数强制重载
+  router.replace({ path: route.path, query: { ...route.query, _t: Date.now() } })
+}
+
+onMounted(() => {
+  notifStore.fetchUnreadCount()
+  if (authStore.token) {
+    authStore.fetchMyOrgs()
+  }
+})
+
 watch(() => route.path, (newPath) => {
   if (['/execution', '/instance', '/notification'].some(p => newPath.startsWith(p))) {
     notifStore.fetchUnreadCount()
@@ -196,6 +250,7 @@ watch(() => route.path, (newPath) => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 24px;
 }
 
 .logo {
@@ -222,15 +277,123 @@ watch(() => route.path, (newPath) => {
   color: #e8eaf0;
 }
 
-.app-layout.dark-mode .btn-admin {
-  background: #22263a;
-  border-color: #2d3348;
-  color: #8b90a0;
+/* Space Switcher */
+.space-switcher {
+  position: relative;
+  margin-left: 8px;
+  padding-left: 16px;
+  border-left: 1px solid #eee;
 }
-.app-layout.dark-mode .btn-admin:hover {
-  background: #2d3348;
+
+.app-layout.dark-mode .space-switcher {
+  border-left-color: #2d3348;
+}
+
+.current-space {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.app-layout.dark-mode .current-space {
+  background: #22263a;
+}
+
+.current-space:hover {
+  background: #edf0f5;
+}
+
+.space-icon { font-size: 16px; }
+.space-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-layout.dark-mode .space-name {
   color: #e8eaf0;
 }
+
+.chevron {
+  font-size: 12px;
+  color: #999;
+}
+
+.space-menu {
+  position: absolute;
+  top: 42px;
+  left: 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  min-width: 200px;
+  padding: 8px 0;
+  z-index: 200;
+  border: 1px solid #eee;
+}
+
+.app-layout.dark-mode .space-menu {
+  background: #1a1d27;
+  border-color: #2d3348;
+}
+
+.menu-label {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.space-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app-layout.dark-mode .space-item {
+  color: #8b90a0;
+}
+
+.space-item:hover {
+  background: #F5F7FA;
+}
+
+.app-layout.dark-mode .space-item:hover {
+  background: #22263a;
+}
+
+.space-item.active {
+  color: #4f46e5;
+  background: #eef2ff;
+  font-weight: 600;
+}
+
+.app-layout.dark-mode .space-item.active {
+  color: #5b7fff;
+  background: rgba(91, 127, 255, 0.1);
+}
+
+.join-org {
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.item-icon { font-size: 16px; width: 20px; text-align: center; }
 
 .header-right {
   display: flex;
@@ -442,15 +605,6 @@ watch(() => route.path, (newPath) => {
   color: #aaa;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-}
-
-.logout-item {
-  color: #999;
-}
-
-.logout-item:hover {
-  color: #ef4444;
-  background: #fef2f2;
 }
 
 /* Dark sidebar */

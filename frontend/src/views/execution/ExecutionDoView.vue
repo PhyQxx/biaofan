@@ -7,7 +7,7 @@
           <button class="exec-back" @click="handleBack">←</button>
           <div class="exec-title">{{ execution?.sopTitle || 'SOP 执行' }}</div>
           <div class="exec-steps-count" v-if="totalSteps">{{ currentStep }}/{{ totalSteps }}</div>
-          <button v-if="stepsLoaded && sop" class="btn-ai" @click="showAi = !showAi">🤖 AI</button>
+          <button v-if="stepsLoaded" class="btn-ai" @click="showAi = !showAi">🤖 AI</button>
         </div>
 
         <!-- Step Dots Progress -->
@@ -226,7 +226,7 @@
           :visible-tabs="['execute']"
           :auto-fill-execute="aiAutoFill"
           @guidance-ready="onGuidanceReady"
-          @notes-ready="(n) => notes = n"
+          @notes-ready="onNotesReady"
         />
       </div>
     </div>
@@ -235,278 +235,127 @@
 
 <script setup lang="ts">
 
-
 /**
  * PC 端 SOP 执行详情页（逐步执行）
- * - 顶部：返回按钮 + SOP 标题 + 步骤进度
- * - 步骤圆点进度条（点击已完成步骤可切换回去查看）
- * - 当前步骤卡片：标题 + 描述 + 预计时长
- * - 下一步预览
- * - 检查项（支持 checkbox/text/number/date/select 类型，必填校验）
- * - 执行笔记（选填）
- * - 上一步 / 完成本步 按钮
- * - 最后一步完成后显示完成统计（总步骤数、用时）
+ *
+ * Unique to this view:
+ * - Toggle-able AI panel (showAi button)
+ * - Fetches execution + SOP via parallel requests
+ *
+ * Shared logic lives in useExecutionStep composable.
  */
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import request from '@/api'
-import type { Execution, Sop, StepData, CheckItem, ApiResponse } from '@/types'
+import type { Execution, Sop, ApiResponse } from '@/types'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'
+import { useExecutionStep } from '@/composables/useExecutionStep'
 
-const route = useRoute()
-const router = useRouter()
-const executionId = Number(route.params.id)
+const {
+  route,
+  router,
+  entityId,
 
-const execution = ref<Execution | null>(null)
-const sop = ref<Sop | null>(null)
-const steps = ref<StepData[]>([])
-const currentStep = ref(1)
-const notes = ref('')
-const notesEditing = ref(false)
-const notesTextareaRef = ref<HTMLTextAreaElement | null>(null)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const checkData = ref<Record<string, any>>({})
-const isSubmitting = ref(false)
-const justCompleted = ref(false)
-const completionTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
-const stepsLoaded = ref(false)
-const showAi = ref(false)
-const currentGuidance = ref('')  // 当前步骤的 AI 指导
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const stepGuidanceHistory = ref<Record<number, any>>({})  // stepIndex -> guidance
+  execution,
+  steps,
+  currentStep,
+  notes,
+  notesEditing,
+  checkData,
+  isSubmitting,
+  justCompleted,
+  stepsLoaded,
+  showAi,
+  currentGuidance,
 
-// 自动聚焦 notes textarea
-watch(notesEditing, (editing) => {
-  if (editing) {
-    nextTick(() => notesTextareaRef.value?.focus())
-  }
-})
+  sopId,
+  totalSteps,
+  currentStepData,
+  progressPercent,
+  isCompleted,
+  aiAutoFill,
+  checkItems,
+  completedCheckCount,
 
-const sopId = computed(() => execution.value?.sopId)
-const aiAutoFill = computed(() => {
-  if (!currentStepData.value) return undefined
-  return {
-    stepTitle: currentStepData.value.title || '',
-    stepDescription: currentStepData.value.description || '',
-    stepIndex: currentStep.value,
-    totalSteps: totalSteps.value,
-  }
-})
+  navigateToStep,
+  prevStep,
+  onGuidanceReady,
+  onNotesReady,
+  handleBack,
+  handleComplete,
 
-const totalSteps = computed(() => steps.value.length || 0)
-const currentStepData = computed(() => steps.value[currentStep.value - 1])
-const progressPercent = computed(() => totalSteps.value ? Math.round((currentStep.value / totalSteps.value) * 100) : 0)
-const isCompleted = computed(() => execution.value?.status === 'completed')
+  DOMPurify,
+  marked,
+} = useExecutionStep({
+  logLabel: 'ExecutionDoView',
 
-const completedCheckCount = computed(() => {
-  return checkItems.value.filter((_: CheckItem, idx: number) => {
-    const val = checkData.value[String(idx)]
-    if (val === true || (typeof val === 'string' && val.trim())) return true
-    return false
-  }).length
-})
+  buildCompleteUrl: (id, step) => `/execution/${id}/step/${step}`,
+  buildRefreshUrl: (id) => `/execution/${id}`,
+  parseRefreshResponse: (data) => data as Execution,
 
-const checkItems = computed(() => {
-  if (!currentStepData.value) return []
-  const ci = currentStepData.value.checkItems
-  if (!ci) return []
-  if (Array.isArray(ci)) return ci
-  try { return (ci && ci !== 'null' && ci !== 'undefined') ? JSON.parse(ci) : [] } catch { return [] }
-})
-
-const prevStep = () => {
-  if (currentStep.value > 1) {
-    navigateToStep(currentStep.value - 1)
-  }
-}
-
-function navigateToStep(n: number) {
-  if (n >= currentStep.value) return
-  if (currentGuidance.value) {
-    stepGuidanceHistory.value[currentStep.value] = currentGuidance.value
-  }
-  currentGuidance.value = ''
-  notes.value = ''
-  checkData.value = {}
-  currentStep.value = n
-  if (stepGuidanceHistory.value[n]) {
-    currentGuidance.value = stepGuidanceHistory.value[n]
-  }
-}
-
-function onGuidanceReady(guidance: string) {
-  currentGuidance.value = guidance
-  stepGuidanceHistory.value[currentStep.value] = guidance
-}
-
-const handleBack = () => {
-  if (currentStep.value > 1 && !isCompleted.value) {
-    ElMessageBox.confirm('当前步骤尚未完成，确定要退出吗？退出后进度将保留。', '确认退出', {
-      confirmButtonText: '确定退出',
-      cancelButtonText: '继续执行',
-      type: 'warning',
-    }).then(() => {
-      router.push('/execution')
-    }).catch(() => {}) // ignore — user cancelled confirm dialog
-  } else {
-    router.push('/execution')
-  }
-}
-
-const handleComplete = () => {
-  // Validate required check items
-  for (let i = 0; i < checkItems.value.length; i++) {
-    const item = checkItems.value[i]
-    if (item.isRequired) {
-      const val = checkData.value[String(i)]
-      if (val === undefined || val === null || val === '' || val === false) {
-        ElMessage.warning(`请完成检查项：${item.label}`)
-        return
-      }
-    }
-  }
-
-  const isLastStep = currentStep.value >= totalSteps.value
-  const confirmMsg = isLastStep
-    ? `确定要完成 SOP「${execution.value?.sopTitle}」吗？完成后将无法再修改执行记录。`
-    : `确定要完成步骤 ${currentStep.value}「${currentStepData.value?.title}」吗？`
-
-  ElMessageBox.confirm(confirmMsg, isLastStep ? '确认完成 SOP' : '确认完成步骤', {
-    confirmButtonText: isLastStep ? '✓ 完成 SOP' : '✓ 完成本步',
-    cancelButtonText: '取消',
-    type: 'info',
-  }).then(() => {
-    completeStep()
-  }).catch(() => {}) // ignore — user cancelled confirm dialog
-}
-
-const completeStep = async () => {
-  isSubmitting.value = true
-  try {
-    const dataMap: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(checkData.value)) {
-      dataMap[k] = { value: v }
-    }
-
-    const res = await request.post<unknown, ApiResponse<{ completed?: boolean }>>(`/execution/${executionId}/step/${currentStep.value}`, {
-      notes: notes.value,
-      checkData: dataMap,
-      guidance: currentGuidance.value || null,
-    })
-
-    if (res?.code === 200) {
-      // H-17: Re-fetch execution status from server after step submission
-      try {
-        const execRes = await request.get<unknown, ApiResponse<Execution>>(`/execution/${executionId}`)
-        if (execRes?.code === 200) {
-          execution.value = execRes.data
-        }
-      } catch (e) {
-        console.error('[ExecutionDoView] re-fetch execution status failed:', e)
-      }
-
-      // Flash animation — clear any existing timeout to prevent stale resets
-      justCompleted.value = true
-      if (completionTimeout.value) clearTimeout(completionTimeout.value)
-      completionTimeout.value = setTimeout(() => {
-        justCompleted.value = false
-        completionTimeout.value = null
-      }, 600)
-
-      const completed = res.data?.completed || execution.value?.status === 'completed'
-      if (completed || currentStep.value >= totalSteps.value) {
-        if (execution.value) execution.value.status = 'completed'
-        ElMessage.success('🎉 SOP 执行完成！')
-      } else {
-        // 保存当前步骤 guidance 再进入下一步
-        if (currentGuidance.value) {
-          stepGuidanceHistory.value[currentStep.value] = currentGuidance.value
-        }
-        currentGuidance.value = ''
-        currentStep.value = execution.value?.currentStep || currentStep.value + 1
-        notes.value = ''
-        checkData.value = {}
-        ElMessage({ message: '✓ 步骤完成，已自动进入下一步', type: 'success', duration: 2000 })
-      }
-    } else {
-      ElMessage.error(res.message || '提交失败')
-    }
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '操作失败'
-    ElMessage.error(msg)
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-onBeforeUnmount(() => {
-  if (completionTimeout.value) {
-    clearTimeout(completionTimeout.value)
-    completionTimeout.value = null
-  }
-})
-
-onMounted(async () => {
-  try {
+  fetchInitial: async () => {
+    const id = entityId
     const [execRes, sopRes] = await Promise.all([
-      request.get<unknown, ApiResponse<Execution>>(`/execution/${executionId}`),
-      request.get<unknown, ApiResponse<Sop>>(`/execution/${executionId}/sop`),
+      request.get<unknown, ApiResponse<Execution>>(`/execution/${id}`),
+      request.get<unknown, ApiResponse<Sop>>(`/execution/${id}/sop`),
     ])
 
-    if (execRes?.code === 200) {
-      execution.value = execRes.data
-      if (execution.value) {
-        execution.value.sopTitle = ''
-        currentStep.value = execution.value.currentStep || 1
+    let exec: Execution | null = null
+    let sopTitle = ''
 
-        if (execution.value.status === 'pending') {
-          await request.post(`/execution/${executionId}/activate`)
-          execution.value.status = 'in_progress'
-          execution.value.currentStep = 1
-          currentStep.value = 1
+    if (execRes?.code === 200) {
+      exec = execRes.data
+      if (exec) {
+        exec.sopTitle = ''
+        if (exec.status === 'pending') {
+          await request.post(`/execution/${id}/activate`)
+          exec.status = 'in_progress'
+          exec.currentStep = 1
         }
       }
     }
 
+    let parsedSteps: import('@/types').StepData[] = []
+    let fetchedSopId = 0
+
     if (sopRes?.code === 200 && sopRes.data) {
-      sop.value = sopRes.data
-      if (execution.value) execution.value.sopTitle = sop.value.title
+      fetchedSopId = sopRes.data.id
+      sopTitle = sopRes.data.title
       try {
-        const raw = sop.value.content
-        steps.value = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
-      } catch { steps.value = [] }
-      stepsLoaded.value = true
+        const raw = sopRes.data.content
+        parsedSteps = (raw && raw !== 'null' && raw !== 'undefined') ? JSON.parse(raw) : []
+      } catch { parsedSteps = [] }
     }
 
-    // 加载历史 guidance（等 currentStep 确定后再填充）
+    // Load history guidance
+    let initialNotes = ''
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const guidanceHistory: Record<number, string> = {}
     try {
-      const recordsRes = await request.get<unknown, ApiResponse<any[]>>(`/execution/${executionId}/records`)
+      const recordsRes = await request.get<unknown, ApiResponse<any[]>>(`/execution/${id}/records`)
       if (recordsRes?.code === 200 && recordsRes.data) {
         for (const rec of recordsRes.data) {
           if (rec.guidance) {
-            stepGuidanceHistory.value[rec.stepIndex] = rec.guidance
+            guidanceHistory[rec.stepIndex] = rec.guidance
           }
         }
-        // 当前步骤的 guidance
-        if (stepGuidanceHistory.value[currentStep.value]) {
-          currentGuidance.value = stepGuidanceHistory.value[currentStep.value]
-        }
-        // 当前步骤的 notes
-        const currentRec = recordsRes.data.find((r: any) => r.stepIndex === currentStep.value)
+        const currentStepIndex = exec?.currentStep || 1
+        const currentRec = recordsRes.data.find((r: any) => r.stepIndex === currentStepIndex)
         if (currentRec?.notes) {
-          notes.value = currentRec.notes
+          initialNotes = currentRec.notes
         }
       }
     } catch (e) {
       console.error('[ExecutionDoView] load records failed:', e)
     }
-  } catch (e) {
-    ElMessage.error('加载失败')
-    router.push('/execution')
-  }
+
+    return {
+      execution: exec,
+      steps: parsedSteps,
+      sopId: fetchedSopId,
+      sopTitle,
+      initialNotes,
+      guidanceHistory,
+    }
+  },
 })
 </script>
 

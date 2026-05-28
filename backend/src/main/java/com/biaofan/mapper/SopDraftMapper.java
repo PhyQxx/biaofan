@@ -2,6 +2,7 @@ package com.biaofan.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.biaofan.entity.SopDraft;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -25,4 +26,10 @@ public interface SopDraftMapper extends BaseMapper<SopDraft> {
      */
     @Select("SELECT * FROM sop_draft WHERE executor_id = #{executorId} AND sop_id = #{sopId} LIMIT 1")
     SopDraft findByExecutorAndSop(@Param("executorId") Long executorId, @Param("sopId") Long sopId);
+
+    @Insert("INSERT INTO sop_draft (executor_id, sop_id, draft_data, client_updated_at, synced_at, created_at, updated_at) " +
+            "VALUES (#{executorId}, #{sopId}, #{draftData}, #{clientUpdatedAt}, #{syncedAt}, #{createdAt}, #{updatedAt}) " +
+            "ON DUPLICATE KEY UPDATE draft_data = VALUES(draft_data), client_updated_at = VALUES(client_updated_at), " +
+            "synced_at = VALUES(synced_at), updated_at = VALUES(updated_at)")
+    void insertOrUpdate(SopDraft draft);
 }

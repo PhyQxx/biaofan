@@ -1,79 +1,56 @@
 # 标帆 SOP 系统
 
-标帆 SOP — 企业标准化操作流程管理系统，同时支持 PC Web 和移动端（UniApp）。
+标帆 SOP — 企业级标准化操作流程管理系统。通过“个人+组织”双轨制架构，集成 AI 深度辅助与游戏化激励，助力企业实现知识沉淀与高效执行。
 
-## 项目结构
+## 🌟 核心亮点
 
-```
-biaofan/
-├── backend/          # SpringBoot 3.2 后端（Java 17）
-│   ├── src/
-│   └── pom.xml
-├── frontend/         # Vue3 + Vite PC 前端
-│   ├── src/
-│   └── package.json
-├── mobile/          # UniApp 移动端（支持 H5 / 小程序 / Android）
-│   ├── src/
-│   └── package.json
-└── docker/          # Docker 部署配置
-```
+- **双轨制隔离空间**: 支持个人私有空间与组织协同空间无缝切换，数据物理隔离，保护个人隐私的同时支持团队协作。
+- **AI 全链路辅助**: 
+    - **智能生成**: 从目标一键生成完整 SOP。
+    - **步骤补全**: 根据上下文自动预测后续操作步骤。
+    - **质量审计**: 自动识别流程漏洞并给出修改建议。
+    - **组织问答**: 基于 RAG 技术，AI 随时解答关于本组织 SOP 的各种疑问。
+- **闭环审核体系**: 组织级 SOP 需经过提审、审批、发布流转，确保流程的权威性与合规性。
+- **极致编辑体验**: 支持步骤拖拽排序、一键克隆、快捷键操作、步骤折叠，轻松驾驭百步长流程。
+- **游戏化成长**: 独立的组织级排行榜、等级体系与勋章墙，让标准化执行充满竞技乐趣。
+- **全平台支持**: 提供 PC Web 管理端与 UniApp 移动执行端。
 
-## 技术栈
+## 🚀 快速启动
 
-| 端 | 技术 |
-|----|------|
-| 后端 | SpringBoot 3.2 / MySQL / Redis / JWT |
-| PC 前端 | Vue3 + Vite + Element Plus |
-| 移动端 | UniApp + Vue3 + Pinia |
-
-## 快速启动
-
-### 后端
-
+### 后端 (Spring Boot 3.2)
 ```bash
 cd backend
 mvn spring-boot:run
-# 端口：8013
+# 默认端口：8013
 ```
 
-### PC 前端
-
+### 前端 (Vue 3 + TS)
 ```bash
 cd frontend
 npm install
 npm run dev
-# 端口：8011
+# 默认端口：8011
 ```
 
-### 移动端 H5
+## 📊 演示数据与账号
 
-```bash
-cd mobile
-npm install
-npm run dev:h5
-# 端口：8080
+系统已预置丰富的演示场景数据，涵盖餐饮消杀、IT 运维、Git 规范等。
+
+| 角色 | 手机号 | 密码 | 场景建议 |
+|----|------|------|----------|
+| **超级管理员** | `13800138000` | `test123` | 全局系统配置、邮件/AI/徽章管理 |
+| **组织所有者** | `13800138001` | `test123` | 管理“研发中心”、审核下属 SOP、查看内部榜单 |
+| **团队执行员** | `13800138002` | `test123` | 加入组织、执行 SOP 赚取积分、在空间内协作 |
+
+## 📁 项目结构
+
+```
+biaofan/
+├── backend/          # SpringBoot 3.2 后端（Java 17 / MyBatis-Plus）
+├── frontend/         # Vue3 + Vite PC 前端（TS / Element Plus / Draggable）
+├── mobile/           # UniApp 移动执行端（支持 H5 / 小程序 / App）
+└── docker/           # 容器化部署脚本
 ```
 
-### 移动端小程序
-
-```bash
-cd mobile
-npm run build:mp-weixin
-# 产物在 dist/build/mp-weixin/
-# 导入微信开发者工具
-```
-
-## API 地址
-
-- 开发环境后端：http://localhost:8013
-- PC 前端：http://localhost:8011
-- 移动端 H5：http://localhost:8080
-
-## 测试账号
-
-- 手机号：`13800138000`
-- 密码：`test123`
-
-## GitHub
-
-https://github.com/PhyQxx/biaofan
+---
+© 2026 标帆软件。

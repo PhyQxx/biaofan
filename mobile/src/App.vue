@@ -26,7 +26,11 @@ export default {
     // 检查登录状态
     const auth = useAuthStore()
     if (!auth.isLoggedIn) {
-      uni.reLaunch({ url: '/pages/login/login' })
+      const pages = getCurrentPages()
+      const currentPage = pages.length > 0 ? pages[pages.length - 1]?.route : ''
+      if (currentPage !== 'pages/login/login' && currentPage !== 'pages/register/register') {
+        uni.reLaunch({ url: '/pages/login/login' })
+      }
       return
     }
     // 同步离线草稿（移到 onShow，确保 Pinia 已初始化）

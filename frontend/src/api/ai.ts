@@ -73,6 +73,22 @@ export interface AiReviewResponse {
 export const reviewSopByAi = (data: AiReviewRequest) =>
   request.post<any, ApiResponse<AiReviewResponse>>('/ai/sop/review', data)
 
+/** AI 步骤智能补全 */
+export interface AiPredictNextRequest {
+  title: string
+  existingStepsJson: string
+}
+export const predictNextSteps = (data: AiPredictNextRequest) =>
+  request.post<any, ApiResponse<string>>('/ai/sop/predict-next', data)
+
+/** 组织级智能 Q&A */
+export interface AiOrgQaRequest {
+  orgId: number
+  question: string
+}
+export const getOrgQa = (data: AiOrgQaRequest) =>
+  request.post<any, ApiResponse<string>>('/ai/org/qa', data)
+
 // ========== 通用对话 ==========
 
 export interface AiChatRequest {

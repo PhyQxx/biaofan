@@ -15,11 +15,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 执行统计服务实现类
  * 提供SOP执行数据的统计查询，包括个人统计和全局统计
- * 自动确保每个SOP都有对应的统计记录
+ * 使用批量查询替代逐条查询，减少数据库往返次数
  *
  * @author biaofan
  */
@@ -49,19 +51,38 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
         List<Sop> sops = sopMapper.selectList(
             new LambdaQueryWrapper<Sop>().eq(Sop::getUserId, userId)
         );
-        for (Sop sop : sops) {
-            ensureStat(sop.getId());
-        }
+        if (sops.isEmpty()) return Collections.emptyList();
+
         List<Long> sopIds = sops.stream().map(Sop::getId).toList();
-        if (sopIds.isEmpty()) return Collections.emptyList();
+        Map<Long, String> sopTitleMap = sops.stream()
+            .collect(Collectors.toMap(Sop::getId, Sop::getTitle));
+
+        // Batch fetch existing stats
+        Map<Long, ExecutionStat> existingStats = statMapper.selectList(
+            new LambdaQueryWrapper<ExecutionStat>().in(ExecutionStat::getSopId, sopIds)
+        ).stream().collect(Collectors.toMap(ExecutionStat::getSopId, s -> s));
+
+        // Batch fetch all executions for these SOPs
+        Map<Long, List<SopExecution>> execsBySop = executionMapper.selectList(
+            new LambdaQueryWrapper<SopExecution>().in(SopExecution::getSopId, sopIds)
+        ).stream().collect(Collectors.groupingBy(SopExecution::getSopId));
+
+        // Batch fetch all instances for these SOPs
+        Map<Long, List<SopInstance>> instancesBySop = instanceMapper.selectList(
+            new LambdaQueryWrapper<SopInstance>().in(SopInstance::getSopId, sopIds)
+        ).stream().collect(Collectors.groupingBy(SopInstance::getSopId));
+
+        // Compute stats in memory
+        for (Long sopId : sopIds) {
+            computeAndSaveStat(sopId, existingStats.get(sopId),
+                execsBySop.getOrDefault(sopId, Collections.emptyList()),
+                instancesBySop.getOrDefault(sopId, Collections.emptyList()));
+        }
+
         List<ExecutionStat> stats = statMapper.selectList(
             new LambdaQueryWrapper<ExecutionStat>()
                 .in(ExecutionStat::getSopId, sopIds)
-                .orderByDesc(ExecutionStat::getLastExecutedAt)
-        );
-        // 填充 sopTitle - 使用Map进行O(1)查找，避免嵌套循环
-        java.util.Map<Long, String> sopTitleMap = sops.stream()
-            .collect(java.util.stream.Collectors.toMap(Sop::getId, Sop::getTitle));
+                .orderByDesc(ExecutionStat::getLastExecutedAt));
         for (ExecutionStat stat : stats) {
             stat.setSopTitle(sopTitleMap.get(stat.getSopId()));
         }
@@ -74,17 +95,40 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
      */
     @Override
     public List<ExecutionStat> getGlobalStats() {
-        List<Sop> allSops = sopMapper.selectList(null);
-        for (Sop sop : allSops) {
-            ensureStat(sop.getId());
+        List<Sop> allSops = sopMapper.selectList(
+            new LambdaQueryWrapper<Sop>().last("LIMIT 10000"));
+        if (allSops.isEmpty()) return Collections.emptyList();
+
+        List<Long> sopIds = allSops.stream().map(Sop::getId).toList();
+        Map<Long, String> sopTitleMap = allSops.stream()
+            .collect(Collectors.toMap(Sop::getId, Sop::getTitle));
+
+        // Batch fetch existing stats
+        Map<Long, ExecutionStat> existingStats = statMapper.selectList(
+            new LambdaQueryWrapper<ExecutionStat>().in(ExecutionStat::getSopId, sopIds)
+        ).stream().collect(Collectors.toMap(ExecutionStat::getSopId, s -> s));
+
+        // Batch fetch all executions for these SOPs
+        Map<Long, List<SopExecution>> execsBySop = executionMapper.selectList(
+            new LambdaQueryWrapper<SopExecution>().in(SopExecution::getSopId, sopIds)
+        ).stream().collect(Collectors.groupingBy(SopExecution::getSopId));
+
+        // Batch fetch all instances for these SOPs
+        Map<Long, List<SopInstance>> instancesBySop = instanceMapper.selectList(
+            new LambdaQueryWrapper<SopInstance>().in(SopInstance::getSopId, sopIds)
+        ).stream().collect(Collectors.groupingBy(SopInstance::getSopId));
+
+        // Compute stats in memory
+        for (Long sopId : sopIds) {
+            computeAndSaveStat(sopId, existingStats.get(sopId),
+                execsBySop.getOrDefault(sopId, Collections.emptyList()),
+                instancesBySop.getOrDefault(sopId, Collections.emptyList()));
         }
+
         List<ExecutionStat> stats = statMapper.selectList(
             new LambdaQueryWrapper<ExecutionStat>()
-                .orderByDesc(ExecutionStat::getLastExecutedAt)
-        );
-        // 填充 sopTitle - 使用Map进行O(1)查找，避免嵌套循环
-        java.util.Map<Long, String> sopTitleMap = allSops.stream()
-            .collect(java.util.stream.Collectors.toMap(Sop::getId, Sop::getTitle));
+                .in(ExecutionStat::getSopId, sopIds)
+                .orderByDesc(ExecutionStat::getLastExecutedAt));
         for (ExecutionStat stat : stats) {
             stat.setSopTitle(sopTitleMap.get(stat.getSopId()));
         }
@@ -92,24 +136,16 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
     }
 
     /**
-     * 确保SOP存在统计记录，如不存在则创建，存在则更新
-     * 优化：合并多个单独查询为批量查询，减少数据库往返
+     * 根据预取的数据计算并保存单个SOP的统计记录
+     * 接收批量查询的预取列表，避免N+1查询
+     *
+     * @param sopId SOP ID
+     * @param existingStat 已存在的统计记录（可能为null）
+     * @param allExecs 该SOP的所有执行记录
+     * @param allInstances 该SOP的所有实例记录
      */
-    private void ensureStat(Long sopId) {
-        ExecutionStat existingStat = statMapper.selectOne(
-            new LambdaQueryWrapper<ExecutionStat>().eq(ExecutionStat::getSopId, sopId)
-        );
-
-        // 合并查询：一次查询获取所有SopExecution和SopInstance数据，在内存中统计
-        // 使用in查询配合sopId列表（此处为单个sopId，可扩展为批量）
-        List<SopExecution> allExecs = executionMapper.selectList(
-            new LambdaQueryWrapper<SopExecution>().eq(SopExecution::getSopId, sopId)
-        );
-        List<SopInstance> allInstances = instanceMapper.selectList(
-            new LambdaQueryWrapper<SopInstance>().eq(SopInstance::getSopId, sopId)
-        );
-
-        // 在内存中过滤已完成的执行
+    private void computeAndSaveStat(Long sopId, ExecutionStat existingStat,
+                                     List<SopExecution> allExecs, List<SopInstance> allInstances) {
         List<SopExecution> completedExecs = allExecs.stream()
             .filter(e -> "completed".equals(e.getStatus()))
             .toList();
@@ -138,7 +174,6 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
             .orElse(null);
 
         if (existingStat == null) {
-            // 新建统计记录
             ExecutionStat newStat = new ExecutionStat();
             newStat.setSopId(sopId);
             newStat.setTotalCount(totalCount);
@@ -147,7 +182,6 @@ public class ExecutionStatServiceImpl implements ExecutionStatService {
             newStat.setLastExecutedAt(lastExecutedAt);
             statMapper.insert(newStat);
         } else {
-            // 更新已有记录
             existingStat.setTotalCount(totalCount);
             existingStat.setCompletedCount(completedCount);
             existingStat.setAvgDurationMinutes(avgDuration);

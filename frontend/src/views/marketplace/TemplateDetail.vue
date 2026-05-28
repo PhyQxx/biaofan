@@ -160,15 +160,12 @@ import {
   type TemplateStep,
   type Review
 } from '@/api/marketplace'
-import { useAuthStore } from '@/stores/auth'
 import StarRating from './StarRating.vue'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
 
 const templateId = computed(() => route.params.template_id as string)
-const userId = computed(() => authStore.getUserId())
 
 const template = ref<Template | null>(null)
 const steps = ref<TemplateStep[]>([])
@@ -228,7 +225,7 @@ const fetchDetail = async () => {
 const fetchReviews = async () => {
   reviewsLoading.value = true
   try {
-    const res = await getReviews(templateId.value, { page_size: 50 })
+    const res = await getReviews(templateId.value, { pageSize: 50 })
     if (res.success) {
       reviews.value = { total: res.data?.total || 0, reviews: res.data?.reviews || [] }
     }
@@ -242,11 +239,11 @@ const fetchReviews = async () => {
 const toggleFavorite = async () => {
   try {
     if (isFavorited.value) {
-      await unfavoriteTemplate(templateId.value, { user_id: userId.value })
+      await unfavoriteTemplate(templateId.value)
       isFavorited.value = false
       ElMessage.success('已取消收藏')
     } else {
-      await favoriteTemplate(templateId.value, { user_id: userId.value })
+      await favoriteTemplate(templateId.value)
       isFavorited.value = true
       ElMessage.success('已收藏')
     }
@@ -264,8 +261,7 @@ const confirmUse = async () => {
   using.value = true
   try {
     const res = await useTemplateApi(templateId.value, {
-      user_id: userId.value,
-      sop_name: useForm.value.sop_name || template.value?.title,
+      sopName: useForm.value.sop_name || template.value?.title,
     })
     if (res.success) {
       ElMessage.success('模板已复制到您的草稿，请在执行台查看')
@@ -289,7 +285,6 @@ const submitReview = async () => {
   submitting.value = true
   try {
     const res = await submitReviewApi(templateId.value, {
-      user_id: userId.value,
       rating: reviewForm.value.rating,
       comment: reviewForm.value.comment,
     })

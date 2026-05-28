@@ -1,14 +1,6 @@
 package com.biaofan.service.impl;
 
-
-/**
- * 周期实例服务实现
- * - SopInstance 的创建、激活、完成
- * - 步骤打卡（针对周期实例）
- * - 定时任务 ScheduleTaskJob 调用本服务创建实例
- */
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
@@ -29,10 +21,6 @@ import java.util.*;
 
 /**
  * SOP实例服务实现类
- * 管理周期性SOP（每日/每周/每月/每年）的自动实例生成
- * 支持实例激活、步骤完成、逾期标记等操作，完成后触发积分化
- *
- * @author biaofan
  */
 @Slf4j
 @Service
@@ -47,14 +35,6 @@ public class SopInstanceServiceImpl implements SopInstanceService {
     private final GamificationService gamificationService;
     private final ObjectMapper objectMapper;
 
-    /**
-     * 查询当前用户的周期性实例列表
-     * @param userId 用户ID
-     * @param status 状态过滤（可选）
-     * @param page 页码
-     * @param pageSize 每页数量
-     * @return 实例分页列表
-     */
     @Override
     public Page<SopInstance> getMyInstances(Long userId, String status, int page, int pageSize) {
         LambdaQueryWrapper<SopInstance> q = new LambdaQueryWrapper<SopInstance>()
@@ -67,47 +47,26 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         return instanceMapper.selectPage(p, q);
     }
 
-    /**
-     * 获取实例详情
-     * @param instanceId 实例ID
-     * @return 实例实体
-     */
     @Override
     @Transactional(readOnly = true)
     public SopInstance getInstance(Long instanceId) {
         SopInstance inst = instanceMapper.selectById(instanceId);
-        if (inst == null) {
-            throw new RuntimeException("实例不存在");
-        }
+        if (inst == null) throw new RuntimeException("实例不存在");
         return inst;
     }
 
-    /**
-     * 根据实例ID获取关联的SOP信息
-     * @param instanceId 实例ID
-     * @return SOP实体
-     */
     @Override
     public Sop getSopByInstanceId(Long instanceId) {
         SopInstance inst = getInstance(instanceId);
         return sopMapper.selectById(inst.getSopId());
     }
 
-    /**
-     * 激活实例并创建执行记录
-     * @param userId 执行人ID
-     * @param instanceId 实例ID
-     */
     @Override
     @Transactional
     public void activateInstance(Long userId, Long instanceId) {
         SopInstance inst = getInstance(instanceId);
-        if (!inst.getExecutorId().equals(userId)) {
-            throw new RuntimeException("无权操作");
-        }
-        if (!"pending".equals(inst.getStatus())) {
-            return;
-        }
+        if (!inst.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if (!"pending".equals(inst.getStatus())) return;
 
         inst.setStatus("in_progress");
         inst.setCurrentStep(1);
@@ -116,6 +75,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         instanceMapper.updateById(inst);
 
         SopExecution exec = new SopExecution();
+        exec.setOrgId(inst.getOrgId()); // Set OrgId
         exec.setSopId(inst.getSopId());
         exec.setSopVersion(inst.getSopVersion());
         exec.setExecutorId(userId);
@@ -136,128 +96,77 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                 inst.getSopId());
     }
 
-    /**
-     * 完成实例中的步骤
-     * @param userId 执行人ID
-     * @param instanceId 实例ID
-     * @param stepIndex 步骤序号（从1开始）
-     * @param notes 步骤备注
-     * @param checkData 校验数据
-     * @param guidance AI 指导结果（可选）
-     * @return 是否全部完成
-     */
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes,
                                  Map<String, Object> checkData, String guidance) {
         SopInstance inst = getInstance(instanceId);
-        if (!inst.getExecutorId().equals(userId)) {
-            throw new RuntimeException("无权操作");
-        }
-        if (!"in_progress".equals(inst.getStatus())) {
-            throw new RuntimeException("实例状态不允许操作");
-        }
+        if (!inst.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if (!"in_progress".equals(inst.getStatus())) throw new RuntimeException("实例状态不允许操作");
 
         Sop sop = sopMapper.selectById(inst.getSopId());
-        if (sop == null) {
-            log.warn("SOP {} 已删除，无法完成步骤", inst.getSopId());
-            throw new RuntimeException("SOP已删除");
-        }
+        if (sop == null) throw new RuntimeException("SOP已删除");
         List<?> steps = parseJson(sop.getContent(), List.class);
-        if (stepIndex < 1 || stepIndex > steps.size()) {
-            throw new RuntimeException("步骤序号无效: " + stepIndex);
-        }
+        if (stepIndex < 1 || stepIndex > steps.size()) throw new RuntimeException("步骤序号无效: " + stepIndex);
 
-        // Idempotency check: skip if step already completed
         SopExecution latestExec = getLatestExecution(userId, inst.getSopId());
-        if (latestExec == null) {
-            throw new RuntimeException("无执行记录");
-        }
+        if (latestExec == null) throw new RuntimeException("无执行记录");
+        
         ExecutionStepRecord existing = stepRecordMapper.selectOne(
             new LambdaQueryWrapper<ExecutionStepRecord>()
                 .eq(ExecutionStepRecord::getExecutionId, latestExec.getId())
                 .eq(ExecutionStepRecord::getStepIndex, stepIndex)
         );
-        if (existing != null) {
-            log.info("步骤已完成，跳过 instanceId={}, stepIndex={}", instanceId, stepIndex);
-            return stepIndex >= steps.size();
-        }
+        if (existing != null) return stepIndex >= steps.size();
 
-        if (latestExec != null) {
-            ExecutionStepRecord record = new ExecutionStepRecord();
-            record.setExecutionId(latestExec.getId());
-            record.setStepIndex(stepIndex);
-            if (stepIndex >= 1 && stepIndex <= steps.size()) {
-                Object stepObj = steps.get(stepIndex - 1);
-                if (!(stepObj instanceof Map)) {
-                    throw new RuntimeException("步骤数据格式错误，请重新打开SOP");
-                }
-                Map<?, ?> step = (Map<?, ?>) stepObj;
-                record.setStepTitle((String) step.get("title"));
-            }
-            record.setCompletedAt(LocalDateTime.now());
-            record.setNotes(notes);
-            record.setGuidance(guidance);
-            if (checkData != null) {
-                try {
-                    record.setCheckData(objectMapper.writeValueAsString(checkData));
-                } catch (Exception e) {
-                    record.setCheckData("{}");
-                }
-            }
-            stepRecordMapper.insert(record);
+        ExecutionStepRecord record = new ExecutionStepRecord();
+        record.setExecutionId(latestExec.getId());
+        record.setStepIndex(stepIndex);
+        Object stepObj = steps.get(stepIndex - 1);
+        if (stepObj instanceof Map) {
+            record.setStepTitle((String) ((Map<?, ?>) stepObj).get("title"));
         }
+        record.setCompletedAt(LocalDateTime.now());
+        record.setNotes(notes);
+        record.setGuidance(guidance);
+        if (checkData != null) {
+            try { record.setCheckData(objectMapper.writeValueAsString(checkData)); } catch (Exception e) { record.setCheckData("{}"); }
+        }
+        stepRecordMapper.insert(record);
 
         boolean completed = stepIndex >= steps.size();
         if (completed) {
             inst.setStatus("completed");
             inst.setCompletedAt(LocalDateTime.now());
             inst.setCurrentStep(stepIndex);
-            if (latestExec != null) {
-                latestExec.setStatus("completed");
-                latestExec.setCompletedAt(LocalDateTime.now());
-                latestExec.setCurrentStep(stepIndex);
-                latestExec.setUpdatedAt(LocalDateTime.now());
-                executionMapper.updateById(latestExec);
-            }
-            notificationService.createAndDispatch(
-                    userId,
-                    "execution_completed",
-                    "SOP 执行完成",
-                    "您执行的 SOP《" + (sop != null ? sop.getTitle() : "已删除SOP") + "》已全部完成！",
-                    "sop",
-                    sop.getId());
+            latestExec.setStatus("completed");
+            latestExec.setCompletedAt(LocalDateTime.now());
+            latestExec.setCurrentStep(stepIndex);
+            latestExec.setUpdatedAt(LocalDateTime.now());
+            executionMapper.updateById(latestExec);
+            
+            notificationService.createAndDispatch(userId, "execution_completed", "SOP 执行完成",
+                    "您执行的 SOP《" + (sop != null ? sop.getTitle() : "已删除SOP") + "》已全部完成！", "sop", sop.getId());
+            
+            // Trigger gamification on last step
+            gamificationService.onExecutionCompleted(userId, inst.getOrgId(), inst.getSopId());
         } else {
             inst.setCurrentStep(stepIndex + 1);
-            if (latestExec != null) {
-                latestExec.setCurrentStep(stepIndex + 1);
-                latestExec.setUpdatedAt(LocalDateTime.now());
-                executionMapper.updateById(latestExec);
-            }
+            latestExec.setCurrentStep(stepIndex + 1);
+            latestExec.setUpdatedAt(LocalDateTime.now());
+            executionMapper.updateById(latestExec);
         }
         inst.setUpdatedAt(LocalDateTime.now());
         instanceMapper.updateById(inst);
         return completed;
     }
 
-    /**
-     * 手动标记实例完成
-     * @param userId 执行人ID
-     * @param instanceId 实例ID
-     */
     @Override
     @Transactional
     public void finishInstance(Long userId, Long instanceId) {
         SopInstance inst = getInstance(instanceId);
-        if (!inst.getExecutorId().equals(userId)) {
-            throw new RuntimeException("无权操作");
-        }
-        
-        // Idempotency check: if already completed, skip gamification award
-        if ("completed".equals(inst.getStatus())) {
-            log.info("实例已完结，跳过重复奖励 instanceId={}", instanceId);
-            return;
-        }
+        if (!inst.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if ("completed".equals(inst.getStatus())) return;
         
         inst.setStatus("completed");
         inst.setCompletedAt(LocalDateTime.now());
@@ -265,39 +174,21 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         instanceMapper.updateById(inst);
 
         Sop sop = sopMapper.selectById(inst.getSopId());
-        notificationService.createAndDispatch(
-                userId,
-                "execution_completed",
-                "SOP 执行完成",
-                "SOP《" + (sop != null ? sop.getTitle() : "") + "》已标记完成！",
-                "sop",
-                inst.getSopId());
+        notificationService.createAndDispatch(userId, "execution_completed", "SOP 执行完成",
+                "SOP《" + (sop != null ? sop.getTitle() : "") + "》已标记完成！", "sop", inst.getSopId());
 
-        // Update gamification: points, exp, badges, streak
-        gamificationService.onExecutionCompleted(userId, inst.getSopId());
+        gamificationService.onExecutionCompleted(userId, inst.getOrgId(), inst.getSopId());
     }
 
-    /**
-     * 撤销实例的上一步
-     * @param userId 执行人ID
-     * @param instanceId 实例ID
-     * @return 被撤销的 stepIndex，0 表示没有可撤销的步骤
-     */
     @Override
     @Transactional
     public int undoLastStep(Long userId, Long instanceId) {
         SopInstance inst = getInstance(instanceId);
-        if (!inst.getExecutorId().equals(userId)) {
-            throw new RuntimeException("无权操作");
-        }
-        if (!"in_progress".equals(inst.getStatus())) {
-            throw new RuntimeException("当前状态不允许撤销");
-        }
+        if (!inst.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
+        if (!"in_progress".equals(inst.getStatus())) throw new RuntimeException("当前状态不允许撤销");
 
         SopExecution latestExec = getLatestExecution(userId, inst.getSopId());
-        if (latestExec == null) {
-            return 0;
-        }
+        if (latestExec == null) return 0;
 
         ExecutionStepRecord lastRecord = stepRecordMapper.selectOne(
             new LambdaQueryWrapper<ExecutionStepRecord>()
@@ -305,17 +196,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                 .orderByDesc(ExecutionStepRecord::getStepIndex)
                 .last("LIMIT 1")
         );
-
-        if (lastRecord == null) {
-            return 0;
-        }
+        if (lastRecord == null) return 0;
 
         int undoneStepIndex = lastRecord.getStepIndex();
         stepRecordMapper.deleteById(lastRecord.getId());
-        int newStep = undoneStepIndex - 1;
-        if (newStep < 1) {
-            newStep = 1;
-        }
+        int newStep = Math.max(1, undoneStepIndex - 1);
         inst.setCurrentStep(newStep);
         inst.setUpdatedAt(LocalDateTime.now());
         instanceMapper.updateById(inst);
@@ -327,10 +212,6 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         return undoneStepIndex;
     }
 
-    /**
-     * 生成周期性实例（每日/每周/每月/每年）
-     * 根据SOP分类生成对应周期的实例，已存在则跳过
-     */
     @Override
     @Transactional
     public void generatePeriodicInstances() {
@@ -345,43 +226,24 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         }
     }
 
-    /**
-     * 为单个SOP生成实例
-     * @param sop SOP实体
-     * @param date 参考日期
-     */
     private void generateForSop(Sop sop, LocalDate date) {
         String category = sop.getCategory();
         LocalDateTime periodStart;
         LocalDateTime periodEnd;
 
         switch (category) {
-            case "daily":
-                periodStart = date.atStartOfDay();
-                periodEnd = date.atTime(23, 59, 59);
-                break;
-            case "weekly":
-                periodStart = date.with(DayOfWeek.MONDAY).atStartOfDay();
-                periodEnd = date.with(DayOfWeek.SUNDAY).atTime(23, 59, 59);
-                break;
-            case "monthly":
-                periodStart = date.withDayOfMonth(1).atStartOfDay();
-                periodEnd = date.with(TemporalAdjusters.lastDayOfMonth()).atTime(23, 59, 59);
-                break;
-            case "yearly":
-                periodStart = date.withDayOfYear(1).atStartOfDay();
-                periodEnd = date.with(TemporalAdjusters.lastDayOfYear()).atTime(23, 59, 59);
-                break;
-            default:
-                return;
+            case "daily": periodStart = date.atStartOfDay(); periodEnd = date.atTime(23, 59, 59); break;
+            case "weekly": periodStart = date.with(DayOfWeek.MONDAY).atStartOfDay(); periodEnd = date.with(DayOfWeek.SUNDAY).atTime(23, 59, 59); break;
+            case "monthly": periodStart = date.withDayOfMonth(1).atStartOfDay(); periodEnd = date.with(TemporalAdjusters.lastDayOfMonth()).atTime(23, 59, 59); break;
+            case "yearly": periodStart = date.withDayOfYear(1).atStartOfDay(); periodEnd = date.with(TemporalAdjusters.lastDayOfYear()).atTime(23, 59, 59); break;
+            default: return;
         }
 
-        Long userId = sop.getUserId();
-
         SopInstance inst = new SopInstance();
+        inst.setOrgId(sop.getOrgId()); // Copy OrgId from SOP
         inst.setSopId(sop.getId());
         inst.setSopVersion(sop.getVersion() != null ? sop.getVersion() : 1);
-        inst.setExecutorId(userId);
+        inst.setExecutorId(sop.getUserId());
         inst.setPeriodStart(periodStart);
         inst.setPeriodEnd(periodEnd);
         inst.setStatus("pending");
@@ -389,29 +251,13 @@ public class SopInstanceServiceImpl implements SopInstanceService {
         inst.setCreatedAt(LocalDateTime.now());
         inst.setUpdatedAt(LocalDateTime.now());
         
-        // Use INSERT IGNORE to prevent race condition duplicates
-        int inserted = instanceMapper.insertIgnore(inst);
-        if (inserted == 0) {
-            log.info("实例已存在，跳过 sopId={}, executorId={}, periodStart={}", 
-                sop.getId(), userId, periodStart);
-            return;
-        }
+        if (instanceMapper.insertIgnore(inst) == 0) return;
 
-        notificationService.createAndDispatch(
-                userId,
-                "schedule_triggered",
-                "SOP 待执行提醒",
+        notificationService.createAndDispatch(sop.getUserId(), "schedule_triggered", "SOP 待执行提醒",
                 "您的 " + categoryLabel(category) + " SOP《" + sop.getTitle() + "》已生成，请在 " + periodEnd.toLocalDate() + " 前完成。",
-                "sop",
-                sop.getId());
-
-        log.info("生成实例: sopId={} category={} period={}~{}", sop.getId(), category, periodStart, periodEnd);
+                "sop", sop.getId());
     }
 
-    /**
-     * 标记逾期实例
-     * 将periodEnd已过但状态仍为pending/in_progress的实例标记为overdue
-     */
     @Override
     @Transactional
     public void markOverdueInstances() {
@@ -426,26 +272,11 @@ public class SopInstanceServiceImpl implements SopInstanceService {
             instanceMapper.updateById(inst);
 
             Sop sop = sopMapper.selectById(inst.getSopId());
-            if (sop == null) {
-                log.warn("SOP {} 已删除，实例 {} 仍被标记为逾期", inst.getSopId(), inst.getId());
-            }
-            notificationService.createAndDispatch(
-                    inst.getExecutorId(),
-                    "execution_overdue",
-                    "SOP 执行逾期",
-                    "SOP《" + (sop != null ? sop.getTitle() : "（已删除）") + "》已超过执行期限",
-                    "sop",
-                    inst.getSopId());
-        }
-
-        if (!overdue.isEmpty()) {
-            log.info("标记 {} 条逾期实例", overdue.size());
+            notificationService.createAndDispatch(inst.getExecutorId(), "execution_overdue", "SOP 执行逾期",
+                    "SOP《" + (sop != null ? sop.getTitle() : "（已删除）") + "》已超过执行期限", "sop", inst.getSopId());
         }
     }
 
-    /**
-     * 获取用户对指定SOP的最新执行记录
-     */
     private SopExecution getLatestExecution(Long userId, Long sopId) {
         return executionMapper.selectOne(
                 new LambdaQueryWrapper<SopExecution>()
@@ -455,30 +286,12 @@ public class SopInstanceServiceImpl implements SopInstanceService {
                         .last("LIMIT 1"));
     }
 
-    /**
-     * 获取周期分类的中文标签
-     */
     private String categoryLabel(String category) {
-        return switch (category) {
-            case "daily" -> "日";
-            case "weekly" -> "周";
-            case "monthly" -> "月";
-            case "yearly" -> "年";
-            default -> "";
-        };
+        return switch (category) { case "daily" -> "日"; case "weekly" -> "周"; case "monthly" -> "月"; case "yearly" -> "年"; default -> ""; };
     }
 
-    /**
-     * 解析JSON字符串
-     */
     private <T> T parseJson(String json, Class<T> clazz) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json, clazz);
-        } catch (Exception e) {
-            return null;
-        }
+        if (json == null || json.isBlank()) return null;
+        try { return objectMapper.readValue(json, clazz); } catch (Exception e) { return null; }
     }
 }

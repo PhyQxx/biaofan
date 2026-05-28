@@ -13,16 +13,21 @@
     <el-skeleton :rows="6" animated />
   </div>
   <div v-else>
-    <div class="welcome-card">
+    <div class="welcome-card" :class="{ 'org-mode': !!currentOrgId }">
       <h2>{{ greeting }}，{{ user?.username || '朋友' }} 👋</h2>
-      <p>开始管理你的 SOP 流程，让每一步都有标准</p>
-      <button class="btn-primary" @click="router.push('/sop/new')">创建第一个 SOP</button>
+      <p v-if="currentOrg">当前正在浏览：<strong>{{ currentOrg.name }}</strong> 组织空间</p>
+      <p v-else>开始管理你的个人 SOP 流程，让每一步都有标准</p>
+      <button class="btn-primary" @click="router.push('/sop/new')">
+        {{ currentOrg ? '创建组织 SOP' : '创建第一个 SOP' }}
+      </button>
     </div>
 
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-num">{{ total }}</div>
-        <div class="stat-label">我的 SOP</div>
+        <div class="stat-label">
+          {{ currentOrg ? '组织 SOP' : '我的 SOP' }}
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-num blue">{{ pendingExec }}</div>
@@ -39,7 +44,7 @@
     </div>
 
     <div class="section-header">
-      <h3>最近编辑</h3>
+      <h3>{{ currentOrg ? '组织最近编辑' : '最近编辑' }}</h3>
       <button class="btn-secondary" @click="router.push('/sops')">查看全部</button>
     </div>
 
@@ -60,7 +65,8 @@
       </div>
     </div>
     <div v-else class="empty-state">
-      <p>还没有 SOP，创建一个开始吧！</p>
+      <p v-if="currentOrg">该组织暂无 SOP，创建一个开始协作吧！</p>
+      <p v-else>还没有 SOP，创建一个开始吧！</p>
     </div>
   </div>
 </template>
@@ -70,11 +76,8 @@
 
 /**
  * PC 端工作台首页
- * - 今日任务统计卡片
- * - 最近执行的 SOP 列表
- * - 快捷操作入口
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSopStore } from '@/stores/sop'
@@ -86,6 +89,9 @@ const sopStore = useSopStore()
 
 const loading = ref(true)
 const user = computed(() => authStore.userInfo)
+const currentOrgId = computed(() => authStore.currentOrgId)
+const currentOrg = computed(() => authStore.currentOrg)
+
 const sops = ref<any[]>([])
 const total = ref(0)
 const pendingExec = ref(0)
@@ -105,16 +111,16 @@ const formatDate = (d: string) => {
   return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`
 }
 
-onMounted(async () => {
+const fetchData = async () => {
+  loading.value = true
   try {
-    await authStore.fetchMe()
-    const res: any = await sopStore.fetchMySops(1, 6)
+    const res: any = await sopStore.fetchMySops(1, 6, currentOrgId.value)
     if (res.code === 200) {
       sops.value = res.data.records || []
       total.value = res.data.total || 0
     }
     try {
-      const instRes: any = await request.get('/instance/my')
+      const instRes: any = await request.get('/instance/my', { params: { orgId: currentOrgId.value } })
       if (instRes.code === 200) {
         const insts = Array.isArray(instRes.data?.records) ? instRes.data.records : []
         pendingExec.value = insts.filter((e: any) => e.status === 'pending').length
@@ -128,14 +134,28 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  if (!authStore.userInfo) {
+    await authStore.fetchMe()
+  }
+  await fetchData()
+})
+
+// 监听组织切换
+watch(() => currentOrgId.value, () => {
+  fetchData()
 })
 </script>
 
 <style scoped>
-.welcome-card { background: linear-gradient(135deg, var(--color-primary), #7994FF); border-radius: var(--radius-lg); padding: 32px; color: white; margin-bottom: var(--space-xl); }
+.welcome-card { background: linear-gradient(135deg, var(--color-primary), #7994FF); border-radius: var(--radius-lg); padding: 32px; color: white; margin-bottom: var(--space-xl); transition: background 0.3s; }
+.welcome-card.org-mode { background: linear-gradient(135deg, #00b4d8, #0077b6); }
 .welcome-card h2 { margin: 0 0 8px 0; font-size: var(--font-size-4xl); font-weight: 600; }
 .welcome-card p { margin: 0 0 20px 0; font-size: var(--font-size-base); opacity: 0.9; }
 .btn-primary { height: 40px; padding: 0 24px; background: white; color: var(--color-primary); border: none; border-radius: var(--radius-md); font-size: var(--font-size-lg); font-weight: 600; cursor: pointer; }
+.welcome-card.org-mode .btn-primary { color: #0077b6; }
 .stats-row { display: flex; gap: 14px; margin-bottom: var(--space-xl); }
 .stat-card { flex: 1; background: var(--color-bg-light-elevated); border-radius: var(--radius-lg); padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .stat-num { font-size: 28px; font-weight: 700; color: var(--color-text-light-primary); }

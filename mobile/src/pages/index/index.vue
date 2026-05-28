@@ -166,16 +166,19 @@ export default {
         uni.setStorageSync('last_fetch_instances', now)
 
         const sopIds = [...new Set(this.allInstances.map(e => e.sopId))]
-        // 并发请求所有 SOP 详情，避免串行等待
+        // 并发请求所有 SOP 详情，每批 5 个，避免瞬间发出大量请求
         const sopMap = {}
-        await Promise.all(
-          sopIds.map(async (sopId) => {
-            try {
-              const r = await api.sop.detail(sopId)
-              if (r.code === 200) sopMap[sopId] = r.data
-            } catch {}
-          })
-        )
+        for (let i = 0; i < sopIds.length; i += 5) {
+          const batch = sopIds.slice(i, i + 5)
+          await Promise.all(
+            batch.map(async (sopId) => {
+              try {
+                const r = await api.sop.detail(sopId)
+                if (r.code === 200) sopMap[sopId] = r.data
+              } catch {}
+            })
+          )
+        }
 
         for (const inst of this.allInstances) {
           const sop = sopMap[inst.sopId]

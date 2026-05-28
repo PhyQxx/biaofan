@@ -38,24 +38,39 @@ cd docker && docker compose up biaofan-backend && docker compose up biaofan-fron
 
 ## 后端关键约定
 
-- **包路径**：`com.biaofan.{controller, service, service.impl, mapper, entity, dto, util, job}`
+- **包路径**：`com.biaofan.{controller, service, service.impl, mapper, entity, dto, util, job, ai}`
 - **统一响应**：所有 Controller 返回 `Result<T>`，字段：`code / message / data / success / timestamp`
-- **API 前缀**：所有路径以 `/api/` 开头（如 `/api/auth`、`/api/sop`）
-- **认证**：`JwtAuthFilter`（在 util 包），Spring Security + JWT，token TTL 24h。Controller 中用 `@AuthenticationPrincipal Long userId` 获取当前用户
-- **ORM**：MyBatis-Plus，实体 `@TableName` + `@Data`，ID 策略 `IdType.AUTO`。简单 CRUD 靠自动生成，复杂 SQL 用 `resources/mapper/*.xml`
-- **验证码**：Redis key `sms:code:{phone}`，5 分钟有效，开发环境打印到控制台
-- **构建产物**：`target/biaofan-backend-1.0.0.jar`
-- **无单元测试**（无 src/test 目录）
+- **AI 模块**：
+  - `AiModelFactory`: 处理多模型（GPT/Claude/DeepSeek）适配。
+  - `SopAiAssistService`: 提供 SOP 辅助生成与优化接口。
+  - 配置表：`ai_model_config`。
+- **游戏化模块**：
+  - 核心：`Score / Level / Badge / Rank`。
+  - 规则引擎：`AdminRules` 配置触发条件（如：完成 SOP +10 分）。
+- **市场模块**：
+  - `MarketplaceController`: 模板浏览、购买、收藏。
+  - 审核流程：用户上传 → 管理员审核 → 上架。
+- **API 前缀**：所有路径以 `/api/` 开头。
+- **认证**：Spring Security + JWT。Controller 中用 `@AuthenticationPrincipal Long userId` 获取。
+- **ORM**：MyBatis-Plus。简单 CRUD 靠自动生成，复杂 SQL 用 `resources/mapper/*.xml`。
+- **无单元测试**：目前无 src/test 目录。
 
 ## PC 前端关键约定
 
-- **TypeScript strict 模式**，`noUnusedLocals` + `noUnusedParameters` 已开启
-- **路径别名**：`@/` → `src/`
-- **UI**：Element Plus 全局注册，直接用 `<el-*>`
-- **状态管理**：Pinia Composition API（`defineStore('name', () => {...})`）
-- **HTTP**：axios 实例在 `src/api/index.ts`，baseURL `/api`，自动附加 `Authorization: Bearer {token}`
-- **Token 存储**：`localStorage.getItem('bf_token')`
-- **构建**：`vue-tsc -b && vite build`（先类型检查再打包）
+- **TypeScript strict 模式**，`noUnusedLocals` + `noUnusedParameters` 已开启。
+- **模块化路由**：
+  - `/execution`: 逐步执行。
+  - `/sop`: 编辑与版本控制。
+  - `/marketplace`: 模板市场。
+  - `/admin`: 后台管理（AI/Email/游戏化/市场）。
+- **组件规范**：
+  - `src/components/common`: 通用 UI。
+  - `src/components/gamification`: 游戏化专用组件。
+  - `src/views/layout`: 侧边栏与导航。
+- **UI**：Element Plus。
+- **状态管理**：Pinia Composition API。
+- **HTTP**：axios 实例在 `src/api/index.ts`，自动附加 `Authorization`。
+- **构建**：`vue-tsc -b && vite build`。
 
 ## 移动端关键约定
 

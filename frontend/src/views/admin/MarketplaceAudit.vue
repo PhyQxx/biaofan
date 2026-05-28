@@ -179,7 +179,7 @@ const fetchList = async () => {
       pendingList.value = res.data?.templates || []
     }
     const status = filterStatus.value || undefined
-    const res = await getAuditList({ status, page: page.value, page_size: PAGE_SIZE })
+    const res = await getAuditList({ status, page: page.value, pageSize: PAGE_SIZE })
     if (res.success) {
       auditList.value = res.data?.templates || []
       total.value = res.data?.total || 0
@@ -218,7 +218,7 @@ const confirmReject = async () => {
   rejecting.value = true
   try {
     const id = selectedTemplate.value.templateId || String(selectedTemplate.value.id)
-    const res = await auditTemplate(id, { status: 'rejected', reject_reason: rejectForm.value.reason })
+    const res = await auditTemplate(id, { status: 'rejected', rejectReason: rejectForm.value.reason })
     if (res.success) {
       ElMessage.success('已驳回')
       rejectDialogVisible.value = false

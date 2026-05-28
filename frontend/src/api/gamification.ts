@@ -143,12 +143,12 @@ export const gamificationApi = {
   getBadge: (badgeId: string) => request.get<any, Badge>(`/gamification/badges/${badgeId}`),
 
   // 获取排行榜
-  getLeaderboard: (type = 'weekly') => request.get<any, LeaderboardOverview>(`/gamification/leaderboard?type=${type}`).then((res: any) => {
+  getLeaderboard: (period = 'weekly') => request.get<any, LeaderboardOverview>(`/gamification/leaderboard?period=${period}`).then((res: any) => {
       // res 是 { code, data: [...] } 格式，data 才是数组
-      const arr = Array.isArray(res) ? res : (res?.data?.data ?? (Array.isArray(res?.data) ? res.data : []))
+      const arr = Array.isArray(res) ? res : (res?.data ?? (Array.isArray(res) ? res : []))
       return {
-        type,
-        label: type === 'weekly' ? '周榜' : type === 'monthly' ? '月榜' : type,
+        type: period,
+        label: period === 'weekly' ? '周榜' : period === 'monthly' ? '月榜' : '总榜',
         startDate: '',
         endDate: '',
         totalParticipants: arr.length,
@@ -164,16 +164,24 @@ export const gamificationApi = {
   // 获取当前积分
   getScore: () => request.get<any, { total: number }>('/gamification/score'),
   // 获取积分历史记录
-  getScoreHistory: (page = 1, pageSize = 20) =>
-    request.get<any, { items: ScoreHistory[]; total: number; page: number; pageSize: number }>(
-      `/gamification/score/history?page=${page}&pageSize=${pageSize}`
+  getScoreHistory: (page = 1, size = 20) =>
+    request.get<any, { items: ScoreHistory[]; total: number; page: number; size: number }>(
+      `/gamification/score/history?page=${page}&size=${size}`
     ),
   // 兑换商品
-  redeem: (productId: number) => request.post<any, RedeemResult>('/gamification/score/redeem', { productId }),
+  redeem: (productId: number) => request.post<any, any>('/gamification/score/redeem', { productId }).then((res: any) => {
+    const data = res.data || res;
+    return {
+      success: true,
+      productName: data.productName,
+      newBalance: data.remainingScore,
+      productId: data.productId
+    } as RedeemResult
+  }),
 
   // 获取商城商品列表
-  getStore: (category?: string) =>
-    request.get<any, StoreProduct[]>(`/gamification/store${category ? `?category=${category}` : ''}`),
+  getStore: (page = 1, size = 20) =>
+    request.get<any, any>(`/gamification/store?page=${page}&size=${size}`),
 
   // 获取成长进度
   getProgress: () => request.get<any, any>('/gamification/progress'),

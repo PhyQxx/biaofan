@@ -86,16 +86,21 @@ export interface ReviewListData {
 
 /**
  * 获取模板列表（支持分类/搜索/排序/分页）
- * @param params 查询参数：category分类、keyword关键词、sort排序、page页码、page_size每页数量
+ * @param params 查询参数：category分类、keyword关键词、sort排序、page页码、pageSize每页数量
  */
 export const getTemplates = (params: {
   category?: string
   keyword?: string
   sort?: string
   page?: number
-  page_size?: number
+  pageSize?: number
 }) =>
-  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates', { params })
+  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates', {
+    params: {
+      ...params,
+      pageSize: params.pageSize || 20
+    }
+  })
 
 /**
  * 获取模板详情（含步骤、收藏状态）
@@ -107,78 +112,92 @@ export const getTemplateDetail = (templateId: string) =>
 /**
  * 使用模板（复制为用户 SOP）
  * @param templateId 模板ID
- * @param data user_id用户ID、sop_name新的SOP名称
+ * @param data sopName新的SOP名称
  */
-export const useTemplate = (templateId: string, data: { user_id: string; sop_name?: string }) =>
+export const useTemplate = (templateId: string, data: { sopName?: string }) =>
   request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/use`, data)
 
 /**
  * 收藏模板
  * @param templateId 模板ID
- * @param data user_id用户ID
  */
-export const favoriteTemplate = (templateId: string, data: { user_id: string }) =>
-  request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`, data)
+export const favoriteTemplate = (templateId: string) =>
+  request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`)
 
 /**
  * 取消收藏
  * @param templateId 模板ID
- * @param data user_id用户ID
  */
-export const unfavoriteTemplate = (templateId: string, data: { user_id: string }) =>
-  request.delete<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`, { data })
+export const unfavoriteTemplate = (templateId: string) =>
+  request.delete<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/favorite`)
 
 /**
  * 获取我的收藏列表
- * @param params user_id用户ID、page页码、page_size每页数量
+ * @param params page页码、pageSize每页数量
  */
-export const getFavorites = (params: { user_id: string; page?: number; page_size?: number }) =>
-  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates/favorites', { params })
+export const getFavorites = (params: { page?: number; pageSize?: number }) =>
+  request.get<unknown, ApiResponse<TemplateListData>>('/marketplace/templates/favorites', {
+    params: {
+      page: params.page || 1,
+      pageSize: params.pageSize || 20
+    }
+  })
 
 /**
  * 提交模板审核
- * @param data sop_id关联SOP ID、title标题、description描述、category类别、sub_category子类别
+ * @param data sopId关联SOP ID、title标题、description描述、category类别、subCategory子类别
  */
 export const submitTemplate = (data: {
-  sop_id: string
+  sopId: string
   title: string
   description?: string
   category: string
-  sub_category?: string
+  subCategory?: string
+  coverUrl?: string
 }) =>
   request.post<unknown, ApiResponse<unknown>>('/marketplace/templates', data)
 
 /**
  * 获取评价列表
  * @param templateId 模板ID
- * @param params page页码、page_size每页数量
+ * @param params page页码、pageSize每页数量
  */
-export const getReviews = (templateId: string, params?: { page?: number; page_size?: number }) =>
-  request.get<unknown, ApiResponse<ReviewListData>>(`/marketplace/templates/${templateId}/reviews`, { params })
+export const getReviews = (templateId: string, params?: { page?: number; pageSize?: number }) =>
+  request.get<unknown, ApiResponse<ReviewListData>>(`/marketplace/templates/${templateId}/reviews`, {
+    params: {
+      page: params?.page || 1,
+      pageSize: params?.pageSize || 10
+    }
+  })
 
 /**
  * 提交评价
  * @param templateId 模板ID
- * @param data user_id用户ID、rating评分、comment评论内容
+ * @param data rating评分、comment评论内容
  */
-export const submitReview = (templateId: string, data: { user_id: string; rating: number; comment?: string }) =>
+export const submitReview = (templateId: string, data: { rating: number; comment?: string }) =>
   request.post<unknown, ApiResponse<unknown>>(`/marketplace/templates/${templateId}/reviews`, data)
 
 // ============ 管理端 API ============
 
 /**
  * 获取审核列表
- * @param params status审核状态、page页码、page_size每页数量
+ * @param params status审核状态、page页码、pageSize每页数量
  */
-export const getAuditList = (params?: { status?: string; page?: number; page_size?: number }) =>
-  request.get<unknown, ApiResponse<TemplateListData>>('/admin/marketplace/templates', { params })
+export const getAuditList = (params?: { status?: string; page?: number; pageSize?: number }) =>
+  request.get<unknown, ApiResponse<TemplateListData>>('/admin/marketplace/templates', {
+    params: {
+      ...params,
+      pageSize: params?.pageSize || 20
+    }
+  })
 
 /**
  * 审核操作（通过/驳回）
  * @param templateId 模板ID
- * @param data status状态、reject_reason驳回原因
+ * @param data status状态、rejectReason驳回原因
  */
-export const auditTemplate = (templateId: string, data: { status: string; reject_reason?: string }) =>
+export const auditTemplate = (templateId: string, data: { status: string; rejectReason?: string }) =>
   request.put<unknown, ApiResponse<unknown>>(`/admin/marketplace/templates/${templateId}/audit`, data)
 
 /**

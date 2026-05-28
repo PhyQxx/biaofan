@@ -11,9 +11,10 @@ public interface GamificationService {
     /**
      * 获取用户成长档案
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @return 包含等级、积分、进度等信息的Map
      */
-    Map<String, Object> getProfile(Long userId);
+    Map<String, Object> getProfile(Long userId, Long orgId);
 
     /**
      * 获取用户的徽章列表
@@ -32,40 +33,45 @@ public interface GamificationService {
 
     /**
      * 获取排行榜
-     * @param period 周期（如daily、weekly、monthly、all）
+     * @param period 周期
+     * @param orgId 组织ID（可选）
      * @return 排行榜列表
      */
-    List<Map<String, Object>> getLeaderboard(String period);
+    List<Map<String, Object>> getLeaderboard(String period, Long orgId);
 
     /**
      * 获取排行榜概览
+     * @param orgId 组织ID（可选）
      * @return 包含当前排名、人数等概览信息
      */
-    Map<String, Object> getLeaderboardOverview();
+    Map<String, Object> getLeaderboardOverview(Long orgId);
 
     /**
      * 获取用户积分
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @return 积分信息
      */
-    Map<String, Object> getScore(Long userId);
+    Map<String, Object> getScore(Long userId, Long orgId);
 
     /**
      * 获取积分历史
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @param page 页码
      * @param size 每页数量
      * @return 积分变动历史列表
      */
-    List<Map<String, Object>> getScoreHistory(Long userId, int page, int size);
+    List<Map<String, Object>> getScoreHistory(Long userId, Long orgId, int page, int size);
 
     /**
      * 兑换商品
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @param productId 商品ID
      * @return 兑换结果信息
      */
-    Map<String, Object> redeemProduct(Long userId, Long productId);
+    Map<String, Object> redeemProduct(Long userId, Long orgId, Long productId);
 
     /**
      * 获取积分商城商品列表
@@ -78,21 +84,24 @@ public interface GamificationService {
     /**
      * 获取用户成长进度
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @return 进度信息（当前等级、距离下一级所需等）
      */
-    Map<String, Object> getProgress(Long userId);
+    Map<String, Object> getProgress(Long userId, Long orgId);
 
     /**
      * 获取等级排行榜
+     * @param orgId 组织ID（可选）
      * @return 按等级排序的用户列表
      */
-    List<Map<String, Object>> getLevelRanking();
+    List<Map<String, Object>> getLevelRanking(Long orgId);
 
     /**
      * SOP执行完成事件触发
      * 记录用户完成SOP的积分/成就奖励
      * @param userId 用户ID
+     * @param orgId 组织ID（可选）
      * @param sopId SOP ID
      */
-    void onExecutionCompleted(Long userId, Long sopId);
+    void onExecutionCompleted(Long userId, Long orgId, Long sopId);
 }

@@ -81,12 +81,9 @@ import {
   useTemplate as useTemplateApi,
   type Template
 } from '@/api/marketplace'
-import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const PAGE_SIZE = 12
-const userId = computed(() => authStore.getUserId())
 
 const favorites = ref<Template[]>([])
 const total = ref(0)
@@ -102,7 +99,7 @@ const useForm = ref({ sop_name: '' })
 const fetchFavorites = async () => {
   loading.value = true
   try {
-    const res = await getFavorites({ user_id: userId.value, page: page.value, page_size: PAGE_SIZE })
+    const res = await getFavorites({ page: page.value, pageSize: PAGE_SIZE })
     if (res.success) {
       favorites.value = res.data?.templates || []
       total.value = res.data?.total || 0
@@ -121,7 +118,7 @@ const goDetail = (item: Template) => {
 
 const handleUnfavorite = async (item: Template) => {
   try {
-    await unfavoriteTemplate(item.templateId || String(item.id), { user_id: userId.value })
+    await unfavoriteTemplate(item.templateId || String(item.id))
     ElMessage.success('已取消收藏')
     fetchFavorites()
   } catch (e) {
@@ -140,8 +137,7 @@ const confirmUse = async () => {
   using.value = true
   try {
     const res = await useTemplateApi(selectedTemplate.value.templateId || String(selectedTemplate.value.id), {
-      user_id: userId.value,
-      sop_name: useForm.value.sop_name || selectedTemplate.value.title,
+      sopName: useForm.value.sop_name || selectedTemplate.value.title,
     })
     if (res.success) {
       ElMessage.success('模板已复制到您的草稿')

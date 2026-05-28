@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 public class Sop {
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    private Long orgId;
+
     private String title;
     private String description;
     private String content; // JSON string

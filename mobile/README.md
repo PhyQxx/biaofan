@@ -117,6 +117,8 @@ docker-compose up -d
 - [x] 离线草稿（网络恢复自动同步）
 - [x] 异常上报（拍照 + 描述）
 - [x] 个人中心
+- [x] AI 执行指导 (AI Assist)
+- [x] 游戏化个人中心 (Level & Badges)
 
 ### P1 可选功能 🔲 待开发
 
@@ -127,7 +129,7 @@ docker-compose up -d
 
 ## 🔒 认证
 
-移动端使用与 Web 端相同的 JWT Token 认证，Token 存储在 localStorage 中。
+移动端使用与 Web 端相同的 JWT Token 认证，Token 存储在 `uni.getStorageSync('bf_token')` 中，与 PC 端保持一致。
 
 ## 📝 开发注意事项
 

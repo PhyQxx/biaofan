@@ -23,6 +23,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -157,6 +158,7 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
 
     /**
      * 检查主机名是否为私有或内部地址
+     * 先做字符串检查，再通过DNS解析检查实际IP是否为内网地址
      */
     private boolean isPrivateOrInternalHost(String host) {
         if (host == null) return true;
@@ -177,6 +179,40 @@ public class NotificationDispatcherImpl implements NotificationDispatcher {
         if (lower.equals("::1") || lower.equals("0:0:0:0:0:0:0:1")) return true;
         // Block hostnames that resolve to private IPs (basic check)
         if (lower.endsWith(".local") || lower.endsWith(".internal") || lower.endsWith(".private")) return true;
+
+        // DNS resolution check: resolve host to IP and verify it's not private
+        try {
+            InetAddress resolved = InetAddress.getByName(host);
+            String ip = resolved.getHostAddress();
+            if (isPrivateIp(ip)) {
+                log.warn("[Webhook] DNS解析到内网IP host={} ip={}", host, ip);
+                return true;
+            }
+        } catch (Exception e) {
+            // DNS resolution failed - block the request for safety
+            log.warn("[Webhook] DNS解析失败，已阻止请求 host={} error={}", host, e.getMessage());
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 检查IP地址是否为私有/内网地址
+     * 覆盖: 10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x
+     */
+    private boolean isPrivateIp(String ip) {
+        if (ip == null) return true;
+        // IPv6 loopback
+        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) return true;
+        // IPv4 checks
+        if (ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("169.254.")) return true;
+        if (ip.startsWith("172.")) {
+            try {
+                int second = Integer.parseInt(ip.substring(4, ip.indexOf('.', 4)));
+                if (second >= 16 && second <= 31) return true;
+            } catch (Exception ignored) {}
+        }
         return false;
     }
 

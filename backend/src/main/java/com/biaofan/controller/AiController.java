@@ -104,6 +104,39 @@ public class AiController {
     }
 
     /**
+     * AI 步骤智能补全
+     * POST /api/ai/sop/predict-next
+     *
+     * Body: { title, existingStepsJson }
+     */
+    @PostMapping("/sop/predict-next")
+    public Result<String> predictNextSteps(@AuthenticationPrincipal Long userId,
+                                            @Valid @RequestBody PredictNextRequest request) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
+        String stepsJson = sopAiAssistService.predictNextSteps(userId, request.getTitle(), request.getExistingStepsJson());
+        return Result.ok(stepsJson);
+    }
+
+    /**
+     * 组织级智能 Q&A
+     * POST /api/ai/org/qa
+     */
+    @PostMapping("/org/qa")
+    public Result<String> getOrgQa(@AuthenticationPrincipal Long userId,
+                                   @Valid @RequestBody OrgQaRequest request) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
+        if (request.getOrgId() == null) {
+            return Result.fail(400, "orgId 不能为空");
+        }
+        String reply = sopAiAssistService.getOrgQa(userId, request.getOrgId(), request.getQuestion());
+        return Result.ok(reply);
+    }
+
+    /**
      * 通用 AI 对话（自由对话）
      * POST /api/ai/chat
      */
@@ -122,5 +155,17 @@ public class AiController {
     @lombok.Data
     public static class SopAiReviewRequest {
         private Long sopId;
+    }
+
+    @lombok.Data
+    public static class PredictNextRequest {
+        private String title;
+        private String existingStepsJson;
+    }
+
+    @lombok.Data
+    public static class OrgQaRequest {
+        private Long orgId;
+        private String question;
     }
 }

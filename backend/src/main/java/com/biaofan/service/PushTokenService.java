@@ -24,22 +24,13 @@ public class PushTokenService {
      * @param platform 平台类型（如android、ios）
      */
     public void registerToken(Long userId, String clientId, String platform) {
-        PushToken existing = pushTokenMapper.findByUserId(userId);
+        PushToken token = new PushToken();
+        token.setUserId(userId);
+        token.setClientId(clientId);
+        token.setPlatform(platform);
         LocalDateTime now = LocalDateTime.now();
-
-        if (existing != null) {
-            existing.setClientId(clientId);
-            existing.setPlatform(platform);
-            existing.setUpdatedAt(now);
-            pushTokenMapper.updateById(existing);
-        } else {
-            PushToken token = new PushToken();
-            token.setUserId(userId);
-            token.setClientId(clientId);
-            token.setPlatform(platform);
-            token.setCreatedAt(now);
-            token.setUpdatedAt(now);
-            pushTokenMapper.insert(token);
-        }
+        token.setCreatedAt(now);
+        token.setUpdatedAt(now);
+        pushTokenMapper.insertOrUpdate(token);
     }
 }

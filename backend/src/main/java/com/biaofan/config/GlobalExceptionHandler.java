@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleRuntime(RuntimeException e) {
         log.error("Runtime error", e);
-        return Result.fail(500, "系统错误: " + e.getMessage());
+        return Result.fail(500, "系统错误，请稍后重试");
     }
 
     @ExceptionHandler(Exception.class)

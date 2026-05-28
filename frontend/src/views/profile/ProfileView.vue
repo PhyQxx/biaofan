@@ -357,12 +357,11 @@ async function loadHistory() {
     loadingHistory.value = false
   }
 }
-
 async function loadStore() {
   loadingStore.value = true
   try {
-    const res: any = await gamificationApi.getStore(activeCategory.value || undefined)
-    storeProducts.value = Array.isArray(res) ? res : (res?.data || [])
+    const res: any = await gamificationApi.getStore(1, 50)
+    storeProducts.value = res.data?.records || res.records || []
   } catch {
     ElMessage.error('加载商城失败')
   } finally {

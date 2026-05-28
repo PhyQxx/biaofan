@@ -29,27 +29,16 @@ public class SopDraftService {
      * @return syncedAt 同步时间
      */
     public SopDraft syncDraft(Long executorId, Long sopId, String draftData, Long clientUpdatedAt) {
-        SopDraft existing = draftMapper.findByExecutorAndSop(executorId, sopId);
+        SopDraft draft = new SopDraft();
+        draft.setExecutorId(executorId);
+        draft.setSopId(sopId);
+        draft.setDraftData(draftData);
+        draft.setClientUpdatedAt(clientUpdatedAt);
         LocalDateTime now = LocalDateTime.now();
-        long syncedAt = System.currentTimeMillis();
-
-        if (existing != null) {
-            existing.setDraftData(draftData);
-            existing.setClientUpdatedAt(clientUpdatedAt);
-            existing.setSyncedAt(now);
-            draftMapper.updateById(existing);
-            return existing;
-        } else {
-            SopDraft draft = new SopDraft();
-            draft.setExecutorId(executorId);
-            draft.setSopId(sopId);
-            draft.setDraftData(draftData);
-            draft.setClientUpdatedAt(clientUpdatedAt);
-            draft.setSyncedAt(now);
-            draft.setCreatedAt(now);
-            draft.setUpdatedAt(now);
-            draftMapper.insert(draft);
-            return draft;
-        }
+        draft.setSyncedAt(now);
+        draft.setCreatedAt(now);
+        draft.setUpdatedAt(now);
+        draftMapper.insertOrUpdate(draft);
+        return draft;
     }
 }

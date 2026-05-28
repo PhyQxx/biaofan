@@ -1,11 +1,14 @@
 package com.biaofan.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.ai.AiModel;
 import com.biaofan.ai.AiModelFactory;
 import com.biaofan.ai.AiResult;
 import com.biaofan.entity.AiModelConfig;
+import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopAiReview;
 import com.biaofan.mapper.SopAiReviewMapper;
+import com.biaofan.mapper.SopMapper;
 import com.biaofan.service.AiService;
 import com.biaofan.service.SopAiAssistService;
 import com.biaofan.dto.ai.SopAiAssistRequest;
@@ -31,6 +34,7 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
     private final AiService aiService;
     private final AiModelFactory aiModelFactory;
     private final SopAiReviewMapper reviewMapper;
+    private final SopMapper sopMapper;
     private final ObjectMapper objectMapper;
 
     // ==================== AI 创建 SOP ====================
@@ -166,6 +170,61 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
         return review;
     }
 
+    @Override
+    public String predictNextSteps(Long userId, String title, String existingStepsJson) {
+        AiModelConfig config = aiService.getEffectiveConfig(userId);
+        AiModel model = aiModelFactory.getModel(config.getModelType());
+        
+        String systemPrompt = model.buildPredictSystemPrompt();
+        String userPrompt = String.format("SOP 标题：%s\n当前已有步骤：\n%s\n\n请预测接下来的 3 个步骤。", 
+                title, existingStepsJson);
+
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)
+        );
+
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 预测步骤失败: " + result.getError());
+        }
+        return extractJson(result.getContent());
+    }
+
+    @Override
+    public String getOrgQa(Long userId, Long orgId, String question) {
+        AiModelConfig config = aiService.getEffectiveConfig(userId);
+        AiModel model = aiModelFactory.getModel(config.getModelType());
+        
+        // 1. 获取组织内所有的 SOP (简单全文聚合)
+        List<Sop> sops = sopMapper.selectList(new LambdaQueryWrapper<Sop>()
+                .eq(Sop::getOrgId, orgId)
+                .eq(Sop::getStatus, "published"));
+        
+        StringBuilder context = new StringBuilder("以下是该组织的 SOP 知识库：\n\n");
+        for (Sop sop : sops) {
+            context.append("### ").append(sop.getTitle()).append("\n");
+            context.append("描述：").append(sop.getDescription()).append("\n");
+            context.append("内容：").append(sop.getContent()).append("\n\n");
+            // 简单截断防止上下文超限
+            if (context.length() > 30_000) break; 
+        }
+
+        String systemPrompt = model.buildOrgQaSystemPrompt();
+        String userPrompt = context.toString() + "\n---\n用户提问：" + question;
+
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)
+        );
+
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 知识问答失败: " + result.getError());
+        }
+        return result.getContent();
+    }
+
     private void parseAndSaveReview(String raw, SopAiReview review) {
         try {
             String json = extractJson(raw);
@@ -187,36 +246,21 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
         }
     }
 
-    /**
-     * 从 AI 返回内容中提取 JSON（处理 Markdown 代码块）
-     */
     private String extractJson(String response) {
-        if (response == null || response.isBlank()) {
-            log.warn("AI 返回内容为空，无法提取 JSON");
-            return "{}";
-        }
+        if (response == null || response.isBlank()) return "{}";
         String trimmed = response.trim();
-        // Try to find a ```json code block first
         int jsonStart = trimmed.indexOf("```json");
         if (jsonStart >= 0) {
             int codeStart = jsonStart + "```json".length();
             int codeEnd = trimmed.indexOf("```", codeStart);
-            if (codeEnd > codeStart) {
-                return trimmed.substring(codeStart, codeEnd).trim();
-            }
+            if (codeEnd > codeStart) return trimmed.substring(codeStart, codeEnd).trim();
         }
-
-        // Fallback to generic ``` code block (find FIRST pair)
         int firstFence = trimmed.indexOf("```");
         if (firstFence >= 0) {
             int contentStart = firstFence + "```".length();
             int nextFence = trimmed.indexOf("```", contentStart);
-            if (nextFence > contentStart) {
-                return trimmed.substring(contentStart, nextFence).trim();
-            }
+            if (nextFence > contentStart) return trimmed.substring(contentStart, nextFence).trim();
         }
-
-        // No code fence found, return the whole response
         return trimmed;
     }
 }

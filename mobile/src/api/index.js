@@ -101,16 +101,16 @@ export default {
   // ========== 执行单相关 ==========
   execution: {
     // 我的待执行列表（后端从 JWT token 提取 userId，前端无需传 executorId）
-    myPending() {
-      return request({ url: '/api/sop/executions/my', data: { status: 'pending' } })
+    myPending(page = 1, limit = 20) {
+      return request({ url: '/api/sop/executions/my', data: { status: 'pending', page, pageSize: limit } })
     },
     // 我的进行中
-    myInProgress() {
-      return request({ url: '/api/sop/executions/my', data: { status: 'in_progress' } })
+    myInProgress(page = 1, limit = 20) {
+      return request({ url: '/api/sop/executions/my', data: { status: 'in_progress', page, pageSize: limit } })
     },
     // 我的已完成
-    myCompleted() {
-      return request({ url: '/api/sop/executions/my', data: { status: 'completed' } })
+    myCompleted(page = 1, limit = 20) {
+      return request({ url: '/api/sop/executions/my', data: { status: 'completed', page, pageSize: limit } })
     },
     // 执行单详情
     detail(id) {
@@ -148,8 +148,8 @@ export default {
 
   // ========== 周期实例相关 ==========
   instance: {
-    myInstances(status) {
-      const params = {}
+    myInstances(status, page = 1, limit = 20) {
+      const params = { page, pageSize: limit }
       if (status) params.status = status
       return request({ url: '/api/instance/my', data: params })
     },
@@ -184,8 +184,8 @@ export default {
 
   // ========== 通知相关 ==========
   notification: {
-    list() {
-      return request({ url: '/api/notifications' })
+    list(page = 1, limit = 20) {
+      return request({ url: '/api/notifications', data: { page, pageSize: limit } })
     },
     markRead(id) {
       return request({ url: `/api/notifications/${id}/read`, method: 'PUT' })
@@ -247,6 +247,42 @@ export default {
     // AI 执行指导
     getExecuteGuidance(data) {
       return request({ url: '/api/ai/sop/execute/guidance', method: 'POST', data })
+    }
+  },
+
+  // ========== 游戏化相关 ==========
+  gamification: {
+    // 获取用户资料（等级、积分等）
+    getProfile() {
+      return request({ url: '/api/gamification/profile' })
+    },
+    // 获取徽章列表
+    getBadges() {
+      return request({ url: '/api/gamification/badges' })
+    },
+    // 获取排行榜
+    getLeaderboard(period = 'weekly') {
+      return request({ url: '/api/gamification/leaderboard', data: { period } })
+    },
+    // 获取积分历史
+    getScoreHistory(page = 1, size = 20) {
+      return request({ url: '/api/gamification/score/history', data: { page, size } })
+    }
+  },
+
+  // ========== 模板市场相关 ==========
+  marketplace: {
+    // 模板列表
+    getTemplates(params) {
+      return request({ url: '/api/marketplace/templates', data: params })
+    },
+    // 模板详情
+    getDetail(id) {
+      return request({ url: `/api/marketplace/templates/${id}` })
+    },
+    // 使用模板
+    useTemplate(id, data) {
+      return request({ url: `/api/marketplace/templates/${id}/use`, method: 'POST', data })
     }
   }
 }

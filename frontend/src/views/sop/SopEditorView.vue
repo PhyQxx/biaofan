@@ -7,8 +7,27 @@
     <div class="topbar-right">
       <button v-if="isEdit" class="btn-versions" @click="router.push(`/sop/${route.params.id}/versions`)">📋 版本历史</button>
       <button v-if="isEdit" class="btn-delete" @click="handleDelete">🗑 删除</button>
-      <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
-      <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
+      
+      <!-- Actions based on scope and status -->
+      <template v-if="form.scope === 'personal'">
+        <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
+        <button class="btn-primary" @click="handleSave('published')">发布 SOP</button>
+      </template>
+      
+      <template v-else>
+        <!-- Organizational SOP actions -->
+        <template v-if="form.status === 'published'">
+          <span class="status-badge active">已发布</span>
+          <button class="btn-secondary" @click="handleSave('draft')">保存修改</button>
+        </template>
+        <template v-else-if="form.status === 'pending_review'">
+          <span class="status-badge info">审核中...</span>
+        </template>
+        <template v-else>
+          <button class="btn-secondary" @click="handleSave('draft')">保存草稿</button>
+          <button class="btn-primary" @click="handleSave('submit')">提交审核</button>
+        </template>
+      </template>
     </div>
   </div>
 
@@ -16,6 +35,15 @@
       <div class="editor-main">
       <!-- Meta -->
       <div class="meta-row">
+        <div class="meta-item">
+          <label>归属范围</label>
+          <select v-model="form.scope" class="meta-select" :disabled="isEdit">
+            <option value="personal">👤 个人私有</option>
+            <option v-for="org in userOrganizations" :key="org.id" :value="'org_' + org.id">
+              🏢 {{ org.name }}
+            </option>
+          </select>
+        </div>
         <div class="meta-item">
           <label>分类</label>
           <select v-model="form.category" class="meta-select">
@@ -39,22 +67,59 @@
       <!-- Steps -->
       <div class="steps-section">
         <div class="steps-header">
-          <h3>步骤列表</h3>
-          <button class="btn-add-step" @click="addStep">+ 添加步骤</button>
-        </div>
-
-        <div v-for="(step, index) in form.content" :key="index" class="step-card">
-          <div class="step-num">{{ index + 1 }}</div>
-          <div class="step-content">
-            <input v-model="step.title" class="step-title-input" placeholder="步骤标题" />
-            <textarea v-model="step.description" class="step-desc-input" placeholder="步骤说明..."></textarea>
-            <div class="step-meta">
-              <label>预计耗时（分钟）</label>
-              <input v-model.number="step.duration" type="number" class="step-duration" placeholder="30" />
+          <div class="header-left-side">
+            <h3>步骤列表</h3>
+            <div class="header-actions">
+              <button class="btn-link" @click="expandAll">全部展开</button>
+              <button class="btn-link" @click="collapseAll">全部折叠</button>
             </div>
           </div>
-          <button class="btn-remove-step" @click="removeStep(index)">✕</button>
+          <div class="header-right-side">
+            <button 
+              class="btn-ai-predict" 
+              @click="handleAiPredict" 
+              :disabled="predicting || !form.title"
+              title="根据标题和已有内容，预测接下来的 3 个步骤"
+            >
+              {{ predicting ? '🤖 正在预测...' : '✨ AI 补全' }}
+            </button>
+            <button class="btn-add-step" @click="addStep">+ 添加步骤</button>
+          </div>
         </div>
+
+        <draggable 
+          v-model="form.content" 
+          item-key="index"
+          handle=".drag-handle"
+          ghost-class="ghost-step"
+          class="steps-list"
+        >
+          <template #item="{ element: step, index }">
+            <div class="step-card" :class="{ collapsed: isStepCollapsed(index) }">
+              <div class="drag-handle">⠿</div>
+              <div class="step-num-wrapper" @click="toggleStep(index)">
+                <div class="step-num">{{ index + 1 }}</div>
+                <span class="collapse-arrow">{{ isStepCollapsed(index) ? '▶' : '▼' }}</span>
+              </div>
+              <div class="step-content">
+                <input v-model="step.title" class="step-title-input" placeholder="步骤标题" @click.stop />
+                <template v-if="!isStepCollapsed(index)">
+                  <textarea v-model="step.description" class="step-desc-input" placeholder="步骤说明..."></textarea>
+                  <div class="step-meta">
+                    <div class="meta-field">
+                      <label>预计耗时（分钟）</label>
+                      <input v-model.number="step.duration" type="number" class="step-duration" placeholder="30" />
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <div class="step-actions-vertical">
+                <button class="btn-remove-step" @click.stop="removeStep(index)" title="删除步骤">✕</button>
+                <button class="btn-clone-step" @click.stop="cloneStep(index)" title="克隆步骤">📋</button>
+              </div>
+            </div>
+          </template>
+        </draggable>
 
         <div v-if="form.content.length === 0" class="empty-steps">
           <p>还没有步骤，点击上方"添加步骤"开始</p>
@@ -176,17 +241,14 @@
 
 /**
  * SOP 编辑器页（新建 / 编辑）
- * - SOP 基本信息：标题、描述、分类、标签
- * - 执行人选择
- * - 步骤列表：拖拽排序 / 新增 / 删除 / 复制
- * - 每步骤：标题 + 描述 + 检查项配置（类型/是否必填/选项）
- * - 保存 / 发布
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSopStore } from '@/stores/sop'
+import { useAuthStore } from '@/stores/auth'
 import type { ApiResponse } from '@/types'
+import draggable from 'vuedraggable'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'
 
 /** 定时任务信息 */
@@ -207,6 +269,9 @@ interface AiStepContent {
 const route = useRoute()
 const router = useRouter()
 const sopStore = useSopStore()
+const authStore = useAuthStore()
+
+const userOrganizations = computed(() => authStore.userOrganizations)
 
 const isEdit = !!route.params.id
 const tagsInput = ref('')
@@ -215,6 +280,7 @@ const form = reactive({
   title: '',
   description: '',
   category: 'daily',
+  scope: 'personal' as string, // 'personal' or 'org_{id}'
   content: [] as { title: string; description: string; duration: number }[],
   status: 'draft',
 })
@@ -237,6 +303,61 @@ const selectedPreset = ref('')
 
 // AI 助手面板
 const sopId = ref<number | undefined>(undefined)
+const predicting = ref(false)
+
+import { predictNextSteps as predictStepsApi } from '@/api/ai'
+
+async function handleAiPredict() {
+  if (!form.title) {
+    ElMessage.warning('请先输入 SOP 标题，以便 AI 进行预测')
+    return
+  }
+  predicting.value = true
+  try {
+    const res = await predictStepsApi({
+      title: form.title,
+      existingStepsJson: JSON.stringify(form.content)
+    })
+    if (res.code === 200) {
+      const predicted = JSON.parse(res.data)
+      if (Array.isArray(predicted)) {
+        form.content.push(...predicted)
+        ElMessage.success(`AI 已成功预测并添加了 ${predicted.length} 个步骤`)
+      }
+    }
+  } catch (e) {
+    ElMessage.error('AI 预测失败，请稍后重试')
+  } finally {
+    predicting.value = false
+  }
+}
+
+// 步骤折叠状态
+const collapsedSteps = ref(new Set<number>())
+const isStepCollapsed = (index: number) => collapsedSteps.value.has(index)
+const toggleStep = (index: number) => {
+  if (collapsedSteps.value.has(index)) collapsedSteps.value.delete(index)
+  else collapsedSteps.value.add(index)
+}
+const collapseAll = () => {
+  form.content.forEach((_, i) => collapsedSteps.value.add(i))
+}
+const expandAll = () => {
+  collapsedSteps.value.clear()
+}
+
+const onKeydown = (e: KeyboardEvent) => {
+  // Ctrl + S: Save Draft
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    handleSave('draft')
+  }
+  // Ctrl + Enter: Add Step
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault()
+    addStep()
+  }
+}
 
 function handleApplyAiSop(jsonStr: string) {
   try {
@@ -370,6 +491,13 @@ const addStep = () => {
   form.content.push({ title: '', description: '', duration: 30 })
 }
 
+const cloneStep = (index: number) => {
+  const original = form.content[index]
+  const copy = JSON.parse(JSON.stringify(original))
+  form.content.splice(index + 1, 0, copy)
+  ElMessage.success('已克隆步骤')
+}
+
 const removeStep = (index: number) => {
   form.content.splice(index, 1)
 }
@@ -398,31 +526,43 @@ const handleSave = async (status: string) => {
     return
   }
   const tags = tagsInput.value.split(',').map((t: string) => t.trim()).filter(Boolean)
+  
+  let targetOrgId: number | null = null
+  if (form.scope.startsWith('org_')) {
+    targetOrgId = Number(form.scope.replace('org_', ''))
+  }
+
   const data = {
     ...form,
     tags,
     status: 'draft',
   }
   try {
-    let sopId = Number(route.params.id)
+    let sid = Number(route.params.id)
     if (isEdit) {
-      await sopStore.updateSop(sopId, data)
+      await sopStore.updateSop(sid, data)
     } else {
-      const createRes = await sopStore.createSop(data) as unknown as ApiResponse<{ id?: number }>
-      if (createRes?.code === 200 && createRes.data?.id) {
-        sopId = createRes.data.id
-      } else if (createRes?.data) {
-        sopId = Number(createRes.data)
+      const createRes = await sopStore.createSop(data, targetOrgId) as unknown as ApiResponse<{ id?: number }>
+      if (createRes?.code === 200 && (createRes.data?.id || createRes.data)) {
+        sid = createRes.data?.id ? createRes.data.id : Number(createRes.data)
       }
     }
 
-    if (status === 'published' && sopId) {
-      await sopStore.publishSop(sopId)
+    if (status === 'published' && sid) {
+      await sopStore.publishSop(sid)
+      form.status = 'published'
       ElMessage.success('发布成功')
+    } else if (status === 'submit' && sid) {
+      await sopStore.submitSopReview(sid)
+      form.status = 'pending_review'
+      ElMessage.success('已提交审核')
     } else {
+      form.status = 'draft'
       ElMessage.success(isEdit ? '保存成功' : '创建成功')
     }
-    router.push('/')
+    if (status !== 'draft') {
+      router.push('/')
+    }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : '操作失败'
     ElMessage.error(msg)
@@ -430,19 +570,35 @@ const handleSave = async (status: string) => {
 }
 
 onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
+  // 确保组织列表已加载
+  if (authStore.token && authStore.userOrganizations.length === 0) {
+    await authStore.fetchMyOrgs()
+  }
+
   if (isEdit) {
     const res = await sopStore.getSopById(Number(route.params.id)) as unknown as ApiResponse
     if (res.code === 200) {
-      const sop = res.data as { title: string; description?: string; category?: string; content?: string; tags?: string; id?: number }
+      const sop = res.data as { title: string; description?: string; category?: string; content?: string; tags?: string; id?: number; orgId?: number }
       form.title = sop.title
       form.description = sop.description || ''
       form.category = sop.category || 'daily'
+      form.scope = sop.orgId ? `org_${sop.orgId}` : 'personal'
       form.content = (sop.content && sop.content !== 'null' && sop.content !== 'undefined') ? JSON.parse(sop.content) : []
       tagsInput.value = (sop.tags && sop.tags !== 'null' && sop.tags !== 'undefined') ? JSON.parse(sop.tags).join(',') : ''
       sopId.value = sop.id
     }
     await loadSchedule()
+  } else {
+    // 新建时，如果当前处于组织空间，自动选中该组织
+    if (authStore.currentOrgId) {
+      form.scope = `org_${authStore.currentOrgId}`
+    }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -505,6 +661,13 @@ onMounted(async () => {
   cursor: pointer; padding: 6px 12px; border-radius: 6px;
 }
 .btn-back:hover { background: #F5F7FA; }
+.status-badge {
+  display: inline-flex; align-items: center; padding: 0 12px;
+  height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600;
+}
+.status-badge.active { background: #E6F7E6; color: #52C41A; }
+.status-badge.info { background: #E8F4FF; color: #1890FF; }
+.status-badge.warning { background: #FFF7E6; color: #FAAD14; }
 .ai-panel-wrapper {
   width: 380px;
   flex-shrink: 0;
@@ -530,6 +693,21 @@ onMounted(async () => {
 .form-group { margin-bottom: 20px; }
 .steps-section { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }
 .steps-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.header-left-side { display: flex; align-items: center; gap: 16px; }
+.header-right-side { display: flex; align-items: center; gap: 12px; }
+.header-actions { display: flex; gap: 8px; }
+.btn-ai-predict {
+  height: 32px; padding: 0 16px;
+  background: linear-gradient(135deg, #6366f1, #a855f7); color: white;
+  border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  transition: all 0.2s;
+}
+.btn-ai-predict:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+.btn-ai-predict:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(1); }
+.btn-link { background: none; border: none; color: #5B7FFF; font-size: 12px; cursor: pointer; padding: 0; }
+.btn-link:hover { text-decoration: underline; }
 .steps-header h3 { margin: 0; font-size: 15px; font-weight: 600; color: #212121; }
 .btn-add-step {
   height: 32px; padding: 0 14px;
@@ -541,13 +719,26 @@ onMounted(async () => {
 .step-card {
   display: flex; gap: 12px; margin-bottom: 12px;
   padding: 14px; background: #F5F7FA; border-radius: 8px;
+  position: relative; border: 1px solid transparent; transition: all 0.2s;
 }
+.step-card.collapsed { padding: 8px 14px; }
+.step-card:hover { border-color: #D0D8FF; box-shadow: 0 4px 12px rgba(91,127,255,0.08); }
+.drag-handle {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; color: #BDBDBD; cursor: grab; font-size: 18px;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.ghost-step { opacity: 0.5; background: #E8ECFF; border: 1px dashed #5B7FFF; }
+.step-num-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .step-num {
   width: 28px; height: 28px; background: #5B7FFF; color: white;
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 600; flex-shrink: 0;
+  font-size: 13px; font-weight: 600; flex-shrink: 0; margin-top: 4px;
 }
-.step-content { flex: 1; }
+.collapse-arrow { font-size: 10px; color: #999; }
+.step-card.collapsed .step-num { margin-top: 0; width: 24px; height: 24px; font-size: 11px; }
+.step-content { flex: 1; min-width: 0; }
 .step-title-input {
   width: 100%; height: 36px; padding: 0 10px;
   border: 1px solid #E8E8E8; border-radius: 6px;
@@ -560,13 +751,23 @@ onMounted(async () => {
   font-size: 13px; outline: none; resize: vertical; margin-bottom: 8px; box-sizing: border-box;
   background: #fff;
 }
-.step-meta { display: flex; align-items: center; gap: 8px; }
-.step-meta label { font-size: 12px; color: #999; margin: 0; }
+.step-meta { display: flex; align-items: center; gap: 16px; }
+.meta-field { display: flex; align-items: center; gap: 8px; }
+.meta-field label { font-size: 12px; color: #999; margin: 0; }
 .step-duration { width: 80px; height: 28px; padding: 0 8px; border: 1px solid #E8E8E8; border-radius: 6px; font-size: 13px; outline: none; background: #fff; }
+.step-actions-vertical {
+  display: flex; flex-direction: column; gap: 8px;
+}
 .btn-remove-step {
   background: none; border: none; color: #FF4D4F;
-  font-size: 16px; cursor: pointer; padding: 4px;
+  font-size: 16px; cursor: pointer; padding: 4px; opacity: 0.6;
 }
+.btn-remove-step:hover { opacity: 1; background: #FFF1F0; border-radius: 4px; }
+.btn-clone-step {
+  background: none; border: none; color: #5B7FFF;
+  font-size: 14px; cursor: pointer; padding: 4px; opacity: 0.6;
+}
+.btn-clone-step:hover { opacity: 1; background: #E8ECFF; border-radius: 4px; }
 .empty-steps { text-align: center; padding: 24px; color: #999; }
 
 /* 定时触发样式 */

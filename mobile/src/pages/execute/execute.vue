@@ -281,7 +281,7 @@ export default {
           try {
             const raw = sopRes.data.content
             steps = (raw && raw !== 'null') ? JSON.parse(raw) : []
-          } catch {}
+          } catch (e) { console.warn('SOP content parse failed:', e) }
           // 优先使用后端返回的步骤状态；若步骤本身没有 status 字段，
           // 再按 currentStepIndex 推算（兼容旧数据）
           const stepStatusFromBackend = instData.stepStatuses || {}

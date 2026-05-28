@@ -8,17 +8,15 @@ import request from './index'
  */
 export interface Badge {
   id?: number
-  badge_id: string          // 徽章唯一标识
+  badgeKey: string          // 徽章唯一标识
   name: string              // 徽章名称
   icon: string              // 徽章图标URL
-  rarity: 'common' | 'rare' | 'legendary'  // 稀有度等级
-  condition_type: string    // 解锁条件类型
-  condition_param: string   // 解锁条件参数
-  exp_reward: number        // 经验奖励
-  score_reward: number      // 积分奖励
-  status: number            // 状态：0-禁用 1-启用
-  created_at?: string       // 创建时间
-  updated_at?: string       // 更新时间
+  rarity: 'bronze' | 'silver' | 'gold'  // 稀有度等级
+  description: string          // 徽章描述
+  condition: string            // 解锁条件
+  rewardExp: number            // 经验奖励
+  rewardScore: number          // 积分奖励
+  createdAt?: string           // 创建时间
 }
 
 /**
@@ -66,15 +64,12 @@ export const deleteBadge = (id: number) =>
 export interface Product {
   id?: number
   name: string                                // 商品名称
-  category: 'title' | 'avatar_frame' | 'background' | 'emotion'  // 商品类别：称号、头像框、背景、表情
   icon: string                                // 商品图标URL
+  description: string                          // 商品描述
   price: number                               // 价格（积分）
   stock: number                               // 库存
-  valid_days: number                          // 有效期（天）
-  description: string                          // 商品描述
-  status: number                              // 状态：0-禁用 1-启用
-  created_at?: string                          // 创建时间
-  updated_at?: string                          // 更新时间
+  active: boolean                              // 状态：是否启用
+  createdAt?: string                          // 创建时间
 }
 
 /**
@@ -143,67 +138,34 @@ export const deleteGlobalAiConfig = (id: number) =>
 
 // ============ 成长规则 ============
 /**
- * 等级规则
- * 定义用户升级所需经验值
+ * 成长规则实体
  */
-export interface LevelRule {
+export interface GrowthRule {
   id?: number
-  rule_key: string       // 规则key
-  rule_name: string       // 规则名称
-  level: number           // 等级
-  exp_required: number    // 所需经验
-  segment: string         // 阶段
+  ruleType: string
+  ruleKey: string
+  ruleValue: string
+  version?: number
+  isActive?: boolean
+  comment?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 /**
- * 段位规则
- * 定义用户段位划分
- */
-export interface SegmentRule {
-  id?: number
-  rule_key: string       // 规则key
-  rule_name: string       // 规则名称
-  segment: string         // 段位
-  min_exp: number         // 最小经验
-  max_exp: number         // 最大经验
-}
-
-/**
- * 积分规则
- * 定义徽章对应积分奖励
- */
-export interface ScoreRule {
-  id?: number
-  rule_key: string       // 规则key
-  rule_name: string       // 规则名称
-  badge_id: string        // 徽章ID
-  exp_reward: number      // 经验奖励
-  score_reward: number    // 积分奖励
-}
-
-/**
- * 成长规则响应
- * 包含所有成长相关规则
- */
-export interface GrowthRulesResp {
-  level_exp: LevelRule[]       // 等级经验规则
-  segment_threshold: SegmentRule[]  // 段位阈值规则
-  score_rule: ScoreRule[]      // 积分规则
-}
-
-/**
- * 获取成长规则
- * @returns 等级、段位、积分规则配置
+ * 获取成长规则列表
+ * @returns 规则列表
  */
 export const getGrowthRules = () =>
-  request.get<any, GrowthRulesResp>('/admin/gamification/rules')
+  request.get<any, ApiResponse<GrowthRule[]>>('/admin/gamification/rules')
 
 /**
  * 更新成长规则
- * @param data 成长规则配置
+ * @param data 成长规则配置列表
  */
-export const updateGrowthRules = (data: GrowthRulesResp) =>
-  request.put<GrowthRulesResp, ApiResponse<void>>('/admin/gamification/rules', data)
+export const updateGrowthRules = (data: GrowthRule[]) =>
+  request.put<GrowthRule[], ApiResponse<void>>('/admin/gamification/rules', data)
+
 
 // ============ 邮件配置 ============
 export interface EmailConfig {

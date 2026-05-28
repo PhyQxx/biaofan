@@ -15,6 +15,9 @@ import java.time.LocalDateTime;
 public class SopExecution {
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    private Long orgId;
+
     private Long sopId;
     private Integer sopVersion;
     private Long executorId;

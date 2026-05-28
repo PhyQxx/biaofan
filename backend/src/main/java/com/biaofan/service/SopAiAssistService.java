@@ -41,4 +41,26 @@ public interface SopAiAssistService {
      * @return 审核结果实体
      */
     SopAiReview reviewSop(Long userId, Long sopId, String sopContentJson, Integer sopVersion);
+
+    /**
+     * AI 步骤智能补全
+     * 根据当前 SOP 的标题和已存在的步骤，预测后续的 3 个逻辑步骤
+     *
+     * @param userId 用户ID
+     * @param title SOP 标题
+     * @param existingStepsJson 当前已有的步骤 JSON
+     * @return 预测的步骤 JSON 数组字符串
+     */
+    String predictNextSteps(Long userId, String title, String existingStepsJson);
+
+    /**
+     * 组织级智能 Q&A
+     * 基于组织内所有 SOP 知识回答用户提问
+     *
+     * @param userId 用户ID
+     * @param orgId 组织ID
+     * @param question 用户提问
+     * @return AI 回答内容
+     */
+    String getOrgQa(Long userId, Long orgId, String question);
 }

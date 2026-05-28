@@ -1,4 +1,5 @@
 import request from './index'
+import type { ApiResponse } from '@/types'
 
 /**
  * 趋势数据点
@@ -43,23 +44,18 @@ export interface DashboardStats {
 
 /**
  * 获取仪表盘统计数据
- * @returns 仪表盘所有统计数据
  */
-export const getDashboardStats = () =>
-  request.get<any, { data: DashboardStats }>('/stats/dashboard')
+export const getDashboardStats = (orgId?: number | null) =>
+  request.get<any, ApiResponse<DashboardStats>>('/stats/dashboard', { params: { orgId } })
 
 /**
  * 获取趋势数据
- * @param days 天数（默认7天）
- * @returns 每日完成率趋势数据
  */
-export const getTrend = (days = 7) =>
-  request.get<any, { data: TrendPoint[] }>(`/stats/trend?days=${days}`)
+export const getTrend = (days = 7, orgId?: number | null) =>
+  request.get<any, ApiResponse<TrendPoint[]>>(`/stats/trend?days=${days}`, { params: { orgId } })
 
 /**
  * 获取排行榜
- * @param limit 返回数量（默认10）
- * @returns 完成数排名前N的用户
  */
-export const getLeaderboard = (limit = 10) =>
-  request.get<any, { data: MemberStat[] }>(`/stats/leaderboard?limit=${limit}`)
+export const getLeaderboard = (limit = 10, orgId?: number | null) =>
+  request.get<any, ApiResponse<MemberStat[]>>(`/stats/leaderboard?limit=${limit}`, { params: { orgId } })

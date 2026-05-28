@@ -69,6 +69,10 @@ const router = createRouter({
         { path: 'leaderboard', name: 'Leaderboard', component: () => import('@/views/profile/LeaderboardView.vue') },
         // 用户收藏页面
         { path: 'user/favorites', name: 'Favorites', component: () => import('@/views/user/Favorites.vue') },
+        // 组织相关页面
+        { path: 'org/join', name: 'OrgJoin', component: () => import('@/views/org/OrgJoinView.vue') },
+        { path: 'org/manage', name: 'OrgManage', component: () => import('@/views/org/OrgManageView.vue') },
+        { path: 'org/approvals', name: 'OrgApprovals', component: () => import('@/views/org/OrgApprovalView.vue') },
         // 新建 SOP 页面
         { path: 'sop/new', name: 'SopNew', component: () => import('@/views/sop/SopEditorView.vue') },
         // 编辑 SOP 页面
@@ -133,6 +137,13 @@ router.beforeEach(async (to) => {
     if (!authStore.userInfo) {
       authStore.logout()
       return { path: '/login', query: { redirect: to.fullPath } }
+    }
+  }
+
+  // Admin routes require admin role
+  if (to.path.startsWith('/admin')) {
+    if (!authStore.userInfo || authStore.userInfo.role !== 'admin') {
+      return { path: '/' }
     }
   }
 })

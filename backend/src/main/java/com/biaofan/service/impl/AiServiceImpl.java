@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,7 @@ public class AiServiceImpl implements AiService {
     }
 
     @Override
+    @CacheEvict(value = "aiConfig", key = "#userId")
     public void saveConfig(Long userId, AiModelConfig config) {
         AiModelConfig existing = getUserConfig(userId);
         if (existing != null) {
@@ -88,6 +90,7 @@ public class AiServiceImpl implements AiService {
     }
 
     @Override
+    @CacheEvict(value = "aiConfig", key = "#userId")
     public void deleteConfig(Long userId) {
         configMapper.delete(new LambdaQueryWrapper<AiModelConfig>()
                 .eq(AiModelConfig::getUserId, userId));

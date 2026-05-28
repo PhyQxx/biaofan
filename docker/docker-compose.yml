@@ -1,15 +1,23 @@
-version: '3.8'
-
 services:
   biaofan-backend:
     build:
       context: ../
       dockerfile: docker/Dockerfile.backend
     container_name: biaofan-backend
-    network_mode: host
+    ports:
+      - "127.0.0.1:8013:8013"
+    networks:
+      - biaofan-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          memory: 512M
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "java -jar app.jar"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8013/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -19,10 +27,24 @@ services:
       context: ../
       dockerfile: docker/Dockerfile.frontend
     container_name: biaofan-frontend
-    network_mode: host
+    ports:
+      - "127.0.0.1:8011:8011"
+    networks:
+      - biaofan-net
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8011"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8011/"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+networks:
+  biaofan-net:
+    driver: bridge

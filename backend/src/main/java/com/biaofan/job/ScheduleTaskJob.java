@@ -52,7 +52,9 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 60000)
     public void processPeriodicInstances() {
-        if (!redisTemplate.opsForValue().setIfAbsent("lock:processPeriodicInstances", "1", Duration.ofMinutes(2))) {
+        String lockKey = "lock:processPeriodicInstances";
+        String lockValue = java.util.UUID.randomUUID().toString();
+        if (!redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofMinutes(2))) {
             log.info("[Job] processPeriodicInstances 已被其他实例锁定，跳过执行");
             return;
         }
@@ -61,7 +63,10 @@ public class ScheduleTaskJob {
         } catch (Exception e) {
             log.error("生成周期实例异常: {}", e.getMessage(), e);
         } finally {
-            redisTemplate.delete("lock:processPeriodicInstances");
+            String current = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(current)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 
@@ -72,7 +77,9 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 60000)
     public void processCronTasks() {
-        if (!redisTemplate.opsForValue().setIfAbsent("lock:processCronTasks", "1", Duration.ofMinutes(2))) {
+        String lockKey = "lock:processCronTasks";
+        String lockValue = java.util.UUID.randomUUID().toString();
+        if (!redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofMinutes(2))) {
             log.info("[Job] processCronTasks 已被其他实例锁定，跳过执行");
             return;
         }
@@ -88,7 +95,10 @@ public class ScheduleTaskJob {
         } catch (Exception e) {
             log.error("Cron 任务处理异常: {}", e.getMessage(), e);
         } finally {
-            redisTemplate.delete("lock:processCronTasks");
+            String current = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(current)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 
@@ -144,7 +154,9 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 300000)
     public void checkOverdue() {
-        if (!redisTemplate.opsForValue().setIfAbsent("lock:checkOverdue", "1", Duration.ofMinutes(2))) {
+        String lockKey = "lock:checkOverdue";
+        String lockValue = java.util.UUID.randomUUID().toString();
+        if (!redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofMinutes(2))) {
             log.info("[Job] checkOverdue 已被其他实例锁定，跳过执行");
             return;
         }
@@ -153,7 +165,10 @@ public class ScheduleTaskJob {
         } catch (Exception e) {
             log.error("逾期检查异常: {}", e.getMessage(), e);
         } finally {
-            redisTemplate.delete("lock:checkOverdue");
+            String current = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(current)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 
@@ -163,7 +178,9 @@ public class ScheduleTaskJob {
      */
     @Scheduled(fixedRate = 86400000)
     public void cleanupOldNotifications() {
-        if (!redisTemplate.opsForValue().setIfAbsent("lock:cleanupOldNotifications", "1", Duration.ofMinutes(30))) {
+        String lockKey = "lock:cleanupOldNotifications";
+        String lockValue = java.util.UUID.randomUUID().toString();
+        if (!redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, Duration.ofMinutes(30))) {
             return;
         }
         try {
@@ -175,7 +192,10 @@ public class ScheduleTaskJob {
             );
             log.info("[Notification] 清理了 {} 条90天前已读通知", deleted);
         } finally {
-            redisTemplate.delete("lock:cleanupOldNotifications");
+            String current = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(current)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 }

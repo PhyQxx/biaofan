@@ -12,11 +12,12 @@ public interface SopService {
     /**
      * 获取当前用户的SOP列表（分页）
      * @param userId 用户ID
+     * @param orgId 组织ID
      * @param page 页码
      * @param size 每页数量
      * @return SOP分页列表
      */
-    IPage<Sop> getMySops(Long userId, int page, int size);
+    IPage<Sop> getMySops(Long userId, Long orgId, int page, int size);
 
     /**
      * 根据ID获取SOP详情
@@ -29,10 +30,11 @@ public interface SopService {
     /**
      * 创建新的SOP
      * @param userId 创建者用户ID
+     * @param orgId 组织ID
      * @param req SOP创建请求（包含标题、步骤等内容）
      * @return 创建的SOP实体
      */
-    Sop create(Long userId, SopRequest req);
+    Sop create(Long userId, Long orgId, SopRequest req);
 
     /**
      * 更新SOP内容
@@ -63,4 +65,35 @@ public interface SopService {
      * @param changeSummary 本次发布的变更说明
      */
     void publish(Long id, Long userId, String changeSummary);
+
+    /**
+     * 提交 SOP 进行审核（针对组织空间）
+     * @param id SOP ID
+     * @param userId 提交者用户ID
+     */
+    void submitForReview(Long id, Long userId);
+
+    /**
+     * 审核通过 SOP
+     * @param id SOP ID
+     * @param reviewerId 审核者用户ID
+     * @param comment 审核意见
+     */
+    void approve(Long id, Long reviewerId, String comment);
+
+    /**
+     * 审核驳回 SOP
+     * @param id SOP ID
+     * @param reviewerId 审核者用户ID
+     * @param comment 审核意见
+     */
+    void reject(Long id, Long reviewerId, String comment);
+
+    /**
+     * 将个人 SOP 转移到组织
+     * @param id SOP ID
+     * @param userId 操作者ID
+     * @param orgId 目标组织ID
+     */
+    void transferToOrganization(Long id, Long userId, Long orgId);
 }
