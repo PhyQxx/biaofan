@@ -29,3 +29,4 @@ npm-debug.log*
 # Docker
 docker-compose.override.yml
 .gstack/
+/backend/src/main/resources/db/

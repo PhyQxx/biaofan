@@ -5,19 +5,21 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.GamificationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
 /**
  * 积分化服务实现类
  * 提供用户等级、经验值、积分、排行榜、徽章、商城兑换等功能
+ * 动态加载 gamification_growth_rules 表中的规则
  */
 @Slf4j
 @Service
@@ -30,26 +32,79 @@ public class GamificationServiceImpl implements GamificationService {
     private final GamificationScoreHistoryMapper scoreHistoryMapper;
     private final GamificationStoreProductMapper storeProductMapper;
     private final GamificationUserProductMapper userProductMapper;
+    private final GamificationGrowthRuleMapper ruleMapper;
     private final UserMapper userMapper;
+    private final ObjectMapper objectMapper;
 
-    // === EXP / Level helpers ===
-    private static final int MAX_LEVEL = 999;
-    private int expForLevel(int level) { return level * 100; }
-    
-    private String rankForLevel(int level) {
-        if (level >= 80) return "diamond";
-        if (level >= 60) return "platinum";
-        if (level >= 40) return "gold";
-        if (level >= 20) return "silver";
-        return "bronze";
+    // === 动态规则获取 (带缓存) ===
+
+    private JsonNode getRuleConfig(String type, String key) {
+        GamificationGrowthRule rule = ruleMapper.selectOne(new LambdaQueryWrapper<GamificationGrowthRule>()
+                .eq(GamificationGrowthRule::getRuleType, type)
+                .eq(GamificationGrowthRule::getRuleKey, key)
+                .eq(GamificationGrowthRule::getIsActive, true));
+        if (rule == null || rule.getRuleValue() == null) return null;
+        try {
+            return objectMapper.readTree(rule.getRuleValue());
+        } catch (Exception e) {
+            log.error("[Gamification] 解析规则失败 type={}, key={}", type, key, e);
+            return null;
+        }
     }
+
+    private int getExpNeededForNextLevel(int currentLevel) {
+        // 从 L1, L2... 规则中获取
+        JsonNode config = getRuleConfig("level_exp", "L" + currentLevel);
+        if (config != null && config.has("exp_to_next")) {
+            return config.get("exp_to_next").asInt();
+        }
+        return currentLevel * 100; // 兜底
+    }
+
+    private String calculateRank(int level, int currentExp) {
+        // 从 segment_threshold 中获取
+        List<GamificationGrowthRule> segments = ruleMapper.selectList(new LambdaQueryWrapper<GamificationGrowthRule>()
+                .eq(GamificationGrowthRule::getRuleType, "segment_threshold")
+                .eq(GamificationGrowthRule::getIsActive, true));
+        
+        String bestRank = "bronze";
+        int maxMinExp = -1;
+
+        for (GamificationGrowthRule rule : segments) {
+            try {
+                JsonNode node = objectMapper.readTree(rule.getRuleValue());
+                int minExp = node.get("min_exp").asInt();
+                // 注意：这里由于等级系统可能重置经验，计算段位时通常用总经验或当前等级综合判断
+                // 这里暂时简化为：如果当前等级规则的 total_exp 加上当前 exp 超过阈值
+                if (currentExp >= minExp && minExp > maxMinExp) {
+                    maxMinExp = minExp;
+                    bestRank = rule.getRuleKey();
+                }
+            } catch (Exception ignored) {}
+        }
+        return bestRank;
+    }
+
+    // === Rank Display ===
     
     private String rankName(String r) {
-        return switch (r) { case "diamond" -> "钻石"; case "platinum" -> "铂金"; case "gold" -> "黄金"; case "silver" -> "白银"; default -> "青铜"; };
+        return switch (r) { 
+            case "king" -> "王者"; 
+            case "diamond" -> "钻石"; 
+            case "gold" -> "黄金"; 
+            case "silver" -> "白银"; 
+            default -> "青铜"; 
+        };
     }
     
     private String rankIcon(String r) {
-        return switch (r) { case "diamond" -> "💎"; case "platinum" -> "🏆"; case "gold" -> "🥇"; case "silver" -> "🥈"; default -> "🥉"; };
+        return switch (r) { 
+            case "king" -> "👑"; 
+            case "diamond" -> "💎"; 
+            case "gold" -> "🥇"; 
+            case "silver" -> "🥈"; 
+            default -> "🥉"; 
+        };
     }
 
     private Map<String, Object> buildStats(GamificationUserStats s) {
@@ -63,7 +118,8 @@ public class GamificationServiceImpl implements GamificationService {
         m.put("rankIcon", rankIcon(s.getRank()));
         m.put("streakDays", s.getStreakDays());
         m.put("lastActiveAt", s.getLastActiveAt());
-        int next = expForLevel(s.getLevel() + 1);
+        
+        int next = getExpNeededForNextLevel(s.getLevel());
         m.put("expToNext", next);
         m.put("expProgress", next > 0 ? Math.round((double) s.getExp() / next * 100) : 0);
         return m;
@@ -144,16 +200,16 @@ public class GamificationServiceImpl implements GamificationService {
             .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
 
         List<Map<String, Object>> r = new ArrayList<>();
-        int rank = 1;
+        int rankIdx = 1;
         for (GamificationUserStats s : top) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("userId", s.getUserId());
             User user = userMap.get(s.getUserId());
             m.put("username", user != null ? user.getUsername() : "用户" + s.getUserId());
             m.put("score", s.getTotalScore());
-            m.put("rank", rank++);
+            m.put("rank", rankIdx++);
             m.put("level", s.getLevel());
-            m.put("rankTitle", s.getRank());
+            m.put("rankTitle", rankName(s.getRank()));
             r.add(m);
         }
         return r;
@@ -253,13 +309,7 @@ public class GamificationServiceImpl implements GamificationService {
     @Override
     public Map<String, Object> getProgress(Long userId, Long orgId) {
         GamificationUserStats s = getOrCreateStats(userId, orgId);
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("level", s.getLevel());
-        m.put("rank", s.getRank());
-        m.put("currentExp", s.getExp());
-        int next = expForLevel(s.getLevel() + 1);
-        m.put("nextExp", next);
-        return m;
+        return buildStats(s);
     }
 
     @Override
@@ -285,51 +335,79 @@ public class GamificationServiceImpl implements GamificationService {
     @Transactional
     public void onExecutionCompleted(Long userId, Long orgId, Long sopId) {
         if (userId == null) return;
+        log.info("[Gamification] 触发执行奖励 userId={}, orgId={}", userId, orgId);
         GamificationUserStats s = getOrCreateStats(userId, orgId);
 
-        s.setExp(s.getExp() + 10);
-        s.setTotalScore(s.getTotalScore() + 5);
-        s.setAvailableScore(s.getAvailableScore() + 5);
-
-        LocalDateTime now = LocalDateTime.now();
-        s.setLastActiveAt(now);
-
-        if (s.getLevel() < MAX_LEVEL) {
-            int needed = expForLevel(s.getLevel() + 1);
-            while (s.getExp() >= needed && s.getLevel() < MAX_LEVEL) {
-                s.setExp(s.getExp() - needed);
-                s.setLevel(s.getLevel() + 1);
-                s.setRank(rankForLevel(s.getLevel()));
-                needed = expForLevel(s.getLevel() + 1);
-            }
+        // 获取奖励规则
+        int addExp = 10;
+        int addScore = 5;
+        JsonNode rewardRule = getRuleConfig("score_rule", "basic_execution");
+        if (rewardRule != null) {
+            addExp = rewardRule.has("reward_exp") ? rewardRule.get("reward_exp").asInt() : addExp;
+            addScore = rewardRule.has("reward_score") ? rewardRule.get("reward_score").asInt() : addScore;
         }
+
+        s.setExp(s.getExp() + addExp);
+        s.setTotalScore(s.getTotalScore() + addScore);
+        s.setAvailableScore(s.getAvailableScore() + addScore);
+
+        s.setLastActiveAt(LocalDateTime.now());
+
+        // 升级逻辑
+        int needed = getExpNeededForNextLevel(s.getLevel());
+        while (s.getExp() >= needed && s.getLevel() < 100) {
+            s.setExp(s.getExp() - needed);
+            s.setLevel(s.getLevel() + 1);
+            needed = getExpNeededForNextLevel(s.getLevel());
+        }
+        
+        // 更新段位 (根据当前等级主键 L1, L2... 对应的累计经验或直接等级划分)
+        s.setRank(calculateRank(s.getLevel(), s.getExp()));
+        
         s.setUpdatedAt(LocalDateTime.now());
         statsMapper.updateById(s);
 
+        // 记录历史
         GamificationScoreHistory h = new GamificationScoreHistory();
-        h.setUserId(userId); h.setType("earn"); h.setAmount(5);
-        h.setReason("完成 SOP 执行"); h.setCreatedAt(LocalDateTime.now());
+        h.setUserId(userId); h.setType("earn"); h.setAmount(addScore);
+        h.setReason("完成 SOP 执行奖励"); h.setCreatedAt(LocalDateTime.now());
         scoreHistoryMapper.insert(h);
 
+        // 勋章检查
         checkAndGrantBadge(userId, "first_execution", s);
-        checkAndGrantStreakBadge(userId, s);
+        if (s.getStreakDays() >= 7) checkAndGrantBadge(userId, "streak_7", s);
     }
 
     private void checkAndGrantBadge(Long userId, String badgeKey, GamificationUserStats s) {
-        GamificationBadgeDefinition def = badgeDefMapper.selectList(
+        GamificationBadgeDefinition def = badgeDefMapper.selectOne(
             new LambdaQueryWrapper<GamificationBadgeDefinition>().eq(GamificationBadgeDefinition::getBadgeKey, badgeKey)
-        ).stream().findFirst().orElse(null);
+        );
         if (def == null) return;
         
+        // 检查是否已拥有
+        Long count = userBadgeMapper.selectCount(new LambdaQueryWrapper<GamificationUserBadge>()
+                .eq(GamificationUserBadge::getUserId, userId)
+                .eq(GamificationUserBadge::getBadgeId, def.getId()));
+        if (count > 0) return;
+
         GamificationUserBadge ub = new GamificationUserBadge();
         ub.setUserId(userId); ub.setBadgeId(def.getId());
         ub.setUnlockedAt(LocalDateTime.now());
-        try { userBadgeMapper.insert(ub); } catch (Exception ignored) {}
-    }
-
-    private void checkAndGrantStreakBadge(Long userId, GamificationUserStats s) {
-        if (s.getStreakDays() >= 7) {
-            checkAndGrantBadge(userId, "streak_7", s);
+        userBadgeMapper.insert(ub);
+        
+        log.info("[Gamification] 授予勋章: userId={}, badge={}", userId, def.getName());
+        
+        // 勋章奖励 (尝试从 rules 表获取奖励数值)
+        JsonNode badgeReward = getRuleConfig("score_rule", badgeKey);
+        if (badgeReward != null) {
+            int rx = badgeReward.has("reward_exp") ? badgeReward.get("reward_exp").asInt() : 0;
+            int rs = badgeReward.has("reward_score") ? badgeReward.get("reward_score").asInt() : 0;
+            if (rx > 0 || rs > 0) {
+                s.setExp(s.getExp() + rx);
+                s.setAvailableScore(s.getAvailableScore() + rs);
+                s.setTotalScore(s.getTotalScore() + rs);
+                statsMapper.updateById(s);
+            }
         }
     }
 

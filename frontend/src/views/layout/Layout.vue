@@ -146,8 +146,8 @@
       </main>
     </div>
 
-    <!-- AI Knowledge Assistant -->
-    <OrgKnowledgeAssistant v-if="user" />
+    <!-- AI Knowledge Assistant: Only visible in Org Space -->
+    <OrgKnowledgeAssistant v-if="user && currentOrgId" />
   </div>
 </template>
 
