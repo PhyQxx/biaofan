@@ -1,5 +1,5 @@
 <template>
-  <div class="app-layout" :class="{ 'dark-mode': isDarkRoute }">
+  <div class="app-layout" :class="{ 'dark-mode': isDark }">
     <!-- Header -->
     <header class="layout-header">
       <div class="header-left">
@@ -42,14 +42,19 @@
         </div>
       </div>
       <div class="header-right">
-        <button v-if="isAdmin" class="btn-admin" @click="isAdminRoute ? router.push('/') : router.push('/admin/badges')" aria-label="管理后台">
-          {{ isAdminRoute ? '← 返回' : '⚙️ 管理后台' }}
+        <!-- Theme Toggle -->
+        <button class="btn-icon theme-toggle" @click="toggleTheme" :title="isDark ? '切换到明亮模式' : '切换到暗黑模式'">
+          <span v-if="isDark">☀️</span>
+          <span v-else>🌙</span>
         </button>
+
         <button class="btn-new" @click="router.push('/sop/new')" aria-label="新建 SOP">+ 新建 SOP</button>
+        
         <div class="notif-bell" @click="router.push('/notification')" role="button" aria-label="查看通知">
           <span class="bell-icon">🔔</span>
           <span class="notif-badge" v-if="unreadNotif > 0">{{ unreadNotif > 9 ? '9+' : unreadNotif }}</span>
         </div>
+
         <div class="avatar-wrapper">
           <div class="avatar" @click="showUserMenu = !showUserMenu" role="button" aria-label="用户菜单">{{ userInitial }}</div>
           <div class="user-menu" v-if="showUserMenu" @mouseleave="showUserMenu = false">
@@ -68,75 +73,75 @@
     <!-- Body -->
     <div class="layout-body">
       <!-- Sidebar -->
-      <aside class="layout-sidebar" :class="{ dark: isDarkRoute }">
-        <!-- 管理后台菜单 -->
-        <template v-if="isAdminRoute">
-          <div class="sidebar-item" :class="{ active: isActive('/admin/badges') }" @click="router.push('/admin/badges')" role="button" aria-label="徽章管理">
-            <span class="sidebar-icon">🏅</span>
-            <span>徽章管理</span>
-          </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/products') }" @click="router.push('/admin/products')" role="button" aria-label="商品管理">
-            <span class="sidebar-icon">📦</span>
-            <span>商品管理</span>
-          </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/rules') }" @click="router.push('/admin/rules')" role="button" aria-label="规则管理">
-            <span class="sidebar-icon">📏</span>
-            <span>规则管理</span>
-          </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/marketplace') }" @click="router.push('/admin/marketplace')" role="button" aria-label="市场审核">
-            <span class="sidebar-icon">🛒</span>
-            <span>市场审核</span>
-          </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/ai-config') }" @click="router.push('/admin/ai-config')" role="button" aria-label="AI配置">
-            <span class="sidebar-icon">🤖</span>
-            <span>AI配置</span>
-          </div>
-          <div class="sidebar-item" :class="{ active: isActive('/admin/email-config') }" @click="router.push('/admin/email-config')" role="button" aria-label="邮件配置">
-            <span class="sidebar-icon">📧</span>
-            <span>邮件配置</span>
-          </div>
-          <div class="sidebar-divider"></div>
-        </template>
-
-        <!-- 普通用户菜单 -->
-        <template v-else>
-          <div class="sidebar-item" :class="{ active: isActive('/') }" @click="router.push('/')" role="button" aria-label="工作台">
+      <aside class="layout-sidebar">
+        <div class="sidebar-scroll">
+          <div class="sidebar-item" :class="{ active: isActive('/') }" @click="router.push('/')" role="button">
             <span class="sidebar-icon">📊</span>
             <span>工作台</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/execution') }" @click="router.push('/execution')" role="button" aria-label="执行台">
+          <div class="sidebar-item" :class="{ active: isActive('/execution') }" @click="router.push('/execution')" role="button">
             <span class="sidebar-icon">▶️</span>
             <span>执行台</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/stats') }" @click="router.push('/stats')" role="button" aria-label="统计">
+          <div class="sidebar-item" :class="{ active: isActive('/stats') }" @click="router.push('/stats')" role="button">
             <span class="sidebar-icon">📈</span>
             <span>统计</span>
           </div>
-          <div class="sidebar-item" v-if="currentOrgId" :class="{ active: isActive('/org/approvals') }" @click="router.push('/org/approvals')" role="button" aria-label="审核中心">
+          <div class="sidebar-item" v-if="currentOrgId" :class="{ active: isActive('/org/approvals') }" @click="router.push('/org/approvals')" role="button">
             <span class="sidebar-icon">📝</span>
             <span>审核中心</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/notification') }" @click="router.push('/notification')" role="button" aria-label="通知">
+          <div class="sidebar-item" :class="{ active: isActive('/notification') }" @click="router.push('/notification')" role="button">
             <span class="sidebar-icon">🔔</span>
             <span>通知</span>
             <span class="sidebar-badge" v-if="unreadNotif > 0">{{ unreadNotif }}</span>
           </div>
+          
           <div class="sidebar-divider"></div>
           <div class="sidebar-group-label">🏆 游戏化</div>
-          <div class="sidebar-item" :class="{ active: isActive('/profile') }" @click="router.push('/profile')" role="button" aria-label="个人中心">
+          <div class="sidebar-item" :class="{ active: isActive('/profile') }" @click="router.push('/profile')" role="button">
             <span class="sidebar-icon">👤</span>
             <span>个人中心</span>
           </div>
-          <div class="sidebar-item" :class="{ active: isActive('/leaderboard') }" @click="router.push('/leaderboard')" role="button" aria-label="排行榜">
+          <div class="sidebar-item" :class="{ active: isActive('/leaderboard') }" @click="router.push('/leaderboard')" role="button">
             <span class="sidebar-icon">🏆</span>
             <span>排行榜</span>
           </div>
-          <div class="sidebar-divider"></div>
-        </template>
+
+          <!-- 管理后台入口 (仅管理员可见，放在最下面) -->
+          <template v-if="isAdmin">
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-group-label">⚙️ 管理后台</div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/badges') }" @click="router.push('/admin/badges')" role="button">
+              <span class="sidebar-icon">🏅</span>
+              <span>徽章管理</span>
+            </div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/products') }" @click="router.push('/admin/products')" role="button">
+              <span class="sidebar-icon">📦</span>
+              <span>商品管理</span>
+            </div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/rules') }" @click="router.push('/admin/rules')" role="button">
+              <span class="sidebar-icon">📏</span>
+              <span>规则管理</span>
+            </div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/marketplace') }" @click="router.push('/admin/marketplace')" role="button">
+              <span class="sidebar-icon">🛒</span>
+              <span>市场审核</span>
+            </div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/ai-config') }" @click="router.push('/admin/ai-config')" role="button">
+              <span class="sidebar-icon">🤖</span>
+              <span>AI 配置</span>
+            </div>
+            <div class="sidebar-item" :class="{ active: isActive('/admin/email-config') }" @click="router.push('/admin/email-config')" role="button">
+              <span class="sidebar-icon">📧</span>
+              <span>邮件配置</span>
+            </div>
+          </template>
+        </div>
       </aside>
 
       <!-- Main Content -->
-      <main class="layout-main" :class="{ 'dark-theme': isDarkRoute, 'admin-dark': isAdminDarkRoute }">
+      <main class="layout-main">
         <RouterView />
       </main>
     </div>
@@ -150,7 +155,7 @@
 
 
 /**
- * PC 端主布局组件
+ * PC 端主布局组件 - 统一风格并支持主题切换
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -165,6 +170,23 @@ const notifStore = useNotificationStore()
 const showUserMenu = ref(false)
 const showSpaceMenu = ref(false)
 
+// 主题管理
+const isDark = ref(localStorage.getItem('bf_theme') === 'dark')
+
+function applyTheme(dark: boolean) {
+  if (dark) {
+    document.documentElement.classList.add('dark-mode')
+  } else {
+    document.documentElement.classList.remove('dark-mode')
+  }
+}
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  localStorage.setItem('bf_theme', isDark.value ? 'dark' : 'light')
+  applyTheme(isDark.value)
+}
+
 const user = computed(() => authStore.userInfo)
 const userOrganizations = computed(() => authStore.userOrganizations)
 const currentOrgId = computed(() => authStore.currentOrgId)
@@ -173,13 +195,6 @@ const currentOrg = computed(() => authStore.currentOrg)
 const isAdmin = computed(() => user.value?.role === 'admin')
 const userInitial = computed(() => user.value?.username?.charAt(0)?.toUpperCase() || 'U')
 const unreadNotif = computed(() => notifStore.unreadCount)
-const isDarkRoute = computed(() =>
-  route.path.startsWith('/profile') ||
-  route.path.startsWith('/leaderboard') ||
-  route.path.startsWith('/admin')
-)
-const isAdminDarkRoute = computed(() => route.path.startsWith('/admin'))
-const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 function isActive(path: string) {
   if (path === '/') return route.path === '/'
@@ -194,11 +209,11 @@ function handleLogout() {
 function handleSwitchOrg(id: number | null) {
   authStore.switchOrg(id)
   showSpaceMenu.value = false
-  // 刷新当前页面数据，通过注入一个随机 time 参数强制重载
   router.replace({ path: route.path, query: { ...route.query, _t: Date.now() } })
 }
 
 onMounted(() => {
+  applyTheme(isDark.value)
   notifStore.fetchUnreadCount()
   if (authStore.token) {
     authStore.fetchMyOrgs()
@@ -217,18 +232,16 @@ watch(() => route.path, (newPath) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f6fa;
-}
-
-.app-layout.dark-mode {
-  background: #0f1117;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Header */
 .layout-header {
   height: 56px;
-  background: #fff;
-  border-bottom: 1px solid #eee;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -238,417 +251,111 @@ watch(() => route.path, (newPath) => {
   left: 0;
   right: 0;
   z-index: 100;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  transition: background 0.2s, border-color 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
-.app-layout.dark-mode .layout-header {
-  background: #1a1d27;
-  border-bottom-color: #2d3348;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.logo-icon {
-  font-size: 22px;
-}
-
-.logo-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #222;
-  letter-spacing: 0.5px;
-  transition: color 0.2s;
-}
-
-.app-layout.dark-mode .logo-text {
-  color: #e8eaf0;
-}
+.header-left { display: flex; align-items: center; gap: 24px; }
+.logo { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.logo-icon { font-size: 22px; }
+.logo-text { font-size: 16px; font-weight: 700; color: var(--color-text-primary); letter-spacing: 0.5px; }
 
 /* Space Switcher */
-.space-switcher {
-  position: relative;
-  margin-left: 8px;
-  padding-left: 16px;
-  border-left: 1px solid #eee;
-}
-
-.app-layout.dark-mode .space-switcher {
-  border-left-color: #2d3348;
-}
-
+.space-switcher { position: relative; margin-left: 8px; padding-left: 16px; border-left: 1px solid var(--color-border); }
 .current-space {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+  background: var(--color-bg-surface); border-radius: 8px; cursor: pointer;
 }
-
-.app-layout.dark-mode .current-space {
-  background: #22263a;
-}
-
-.current-space:hover {
-  background: #edf0f5;
-}
-
-.space-icon { font-size: 16px; }
-.space-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-layout.dark-mode .space-name {
-  color: #e8eaf0;
-}
-
-.chevron {
-  font-size: 12px;
-  color: #999;
-}
+.space-name { font-size: 13px; font-weight: 600; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chevron { font-size: 12px; color: var(--color-text-muted); }
 
 .space-menu {
-  position: absolute;
-  top: 42px;
-  left: 16px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-  min-width: 200px;
-  padding: 8px 0;
-  z-index: 200;
-  border: 1px solid #eee;
+  position: absolute; top: 42px; left: 16px;
+  background: var(--color-bg-elevated); border-radius: 10px;
+  box-shadow: var(--shadow-lg); min-width: 200px; padding: 8px 0;
+  z-index: 200; border: 1px solid var(--color-border);
 }
-
-.app-layout.dark-mode .space-menu {
-  background: #1a1d27;
-  border-color: #2d3348;
-}
-
-.menu-label {
-  padding: 8px 16px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #999;
-  text-transform: uppercase;
-}
-
+.menu-label { padding: 8px 16px; font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; }
 .space-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  transition: background 0.15s;
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  font-size: 14px; color: var(--color-text-primary); cursor: pointer;
 }
+.space-item:hover { background: var(--color-bg-surface); }
+.space-item.active { color: var(--color-primary); background: var(--color-primary-subtle); font-weight: 600; }
 
-.app-layout.dark-mode .space-item {
-  color: #8b90a0;
+.header-right { display: flex; align-items: center; gap: 16px; }
+
+.btn-icon {
+  background: none; border: none; font-size: 18px; padding: 6px;
+  border-radius: 50%; cursor: pointer; transition: background 0.2s;
+  display: flex; align-items: center; justify-content: center;
 }
-
-.space-item:hover {
-  background: #F5F7FA;
-}
-
-.app-layout.dark-mode .space-item:hover {
-  background: #22263a;
-}
-
-.space-item.active {
-  color: #4f46e5;
-  background: #eef2ff;
-  font-weight: 600;
-}
-
-.app-layout.dark-mode .space-item.active {
-  color: #5b7fff;
-  background: rgba(91, 127, 255, 0.1);
-}
-
-.join-org {
-  color: #4f46e5;
-  font-weight: 500;
-}
-
-.item-icon { font-size: 16px; width: 20px; text-align: center; }
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.btn-admin {
-  padding: 6px 14px;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-admin:hover {
-  background: #e0e0e0;
-}
+.btn-icon:hover { background: var(--color-bg-surface); }
 
 .btn-new {
-  padding: 7px 16px;
-  background: #4f46e5;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
+  padding: 8px 16px; background: var(--color-primary); color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
 }
+.btn-new:hover { background: var(--color-primary-hover); }
 
-.btn-new:hover {
-  background: #4338ca;
-}
-
-.notif-bell {
-  position: relative;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 4px;
-}
-
+.notif-bell { position: relative; cursor: pointer; font-size: 20px; }
 .notif-badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
+  position: absolute; top: -4px; right: -6px;
+  background: var(--color-error); color: #fff; font-size: 10px;
+  font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px;
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 32px; height: 32px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  color: #fff; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; font-weight: 700; cursor: pointer;
 }
-
-.avatar:hover {
-  opacity: 0.85;
-}
-
-.avatar-wrapper {
-  position: relative;
-}
-
+.avatar-wrapper { position: relative; }
 .user-menu {
-  position: absolute;
-  top: 40px;
-  right: 0;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-  min-width: 140px;
-  padding: 6px 0;
-  z-index: 200;
+  position: absolute; top: 40px; right: 0;
+  background: var(--color-bg-elevated); border-radius: 10px;
+  box-shadow: var(--shadow-md); min-width: 140px; padding: 6px 0; z-index: 200;
+  border: 1px solid var(--color-border);
 }
-
 .menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  transition: background 0.15s;
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  font-size: 14px; color: var(--color-text-primary); cursor: pointer;
 }
-
-.menu-item:hover {
-  background: #F5F7FA;
-}
-
-.menu-item-danger {
-  color: #FF4D4F;
-}
-
-.menu-item-danger:hover {
-  background: #FFF1F0;
-}
-
-.menu-divider {
-  height: 1px;
-  background: #F0F0F0;
-  margin: 4px 0;
-}
+.menu-item:hover { background: var(--color-bg-surface); }
+.menu-item-danger { color: var(--color-error); }
+.menu-divider { height: 1px; background: var(--color-border); margin: 4px 0; }
 
 /* Body */
-.layout-body {
-  display: flex;
-  flex: 1;
-  margin-top: 56px;
-}
+.layout-body { display: flex; flex: 1; margin-top: 56px; }
 
 /* Sidebar */
 .layout-sidebar {
-  width: 200px;
-  background: #fff;
-  border-right: 1px solid #eee;
-  position: fixed;
-  top: 56px;
-  left: 0;
-  bottom: 0;
-  overflow-y: auto;
-  padding: 12px 0;
-  transition: background 0.2s, border-color 0.2s;
+  width: 210px; background: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  position: fixed; top: 56px; left: 0; bottom: 0;
+  overflow-y: hidden;
 }
-
-.layout-sidebar.dark {
-  background: #1a1d27;
-  border-right-color: #2d3348;
-}
-
+.sidebar-scroll { height: 100%; overflow-y: auto; padding: 12px 0; }
 .sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
-  font-size: 14px;
-  color: #555;
-  cursor: pointer;
-  transition: all 0.15s;
-  border-left: 3px solid transparent;
-  position: relative;
+  display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+  font-size: 14px; color: var(--color-text-secondary); cursor: pointer;
+  transition: all 0.2s; border-left: 3px solid transparent;
 }
-
-.sidebar-item:hover {
-  background: #f5f6fa;
-  color: #333;
-}
-
+.sidebar-item:hover { background: var(--color-bg-surface); color: var(--color-text-primary); }
 .sidebar-item.active {
-  background: #eef2ff;
-  color: #4f46e5;
-  border-left-color: #4f46e5;
-  font-weight: 600;
+  background: var(--color-primary-subtle); color: var(--color-primary);
+  border-left-color: var(--color-primary); font-weight: 600;
 }
-
-.sidebar-icon {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
+.sidebar-icon { font-size: 16px; width: 20px; text-align: center; }
 .sidebar-badge {
-  margin-left: auto;
-  background: #ef4444;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
+  margin-left: auto; background: var(--color-error); color: #fff;
+  font-size: 10px; font-weight: 700; min-width: 18px; height: 18px;
+  border-radius: 9px; display: flex; align-items: center; justify-content: center;
 }
-
-.sidebar-divider {
-  height: 1px;
-  background: #eee;
-  margin: 8px 16px;
-}
-
-.sidebar-group-label {
-  padding: 6px 20px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-/* Dark sidebar */
-.layout-sidebar.dark {
-  background: #1a1d27;
-  border-right-color: #2d3348;
-}
-.layout-sidebar.dark .sidebar-item {
-  color: #8b90a0;
-}
-.layout-sidebar.dark .sidebar-item:hover {
-  background: #22263a;
-  color: #e8eaf0;
-}
-.layout-sidebar.dark .sidebar-item.active {
-  background: rgba(91, 127, 255, 0.1);
-  color: #5b7fff;
-  border-left-color: #5b7fff;
-}
-.layout-sidebar.dark .sidebar-divider {
-  background: #2d3348;
-}
-.layout-sidebar.dark .sidebar-group-label {
-  color: #555a6e;
-}
+.sidebar-divider { height: 1px; background: var(--color-border); margin: 8px 16px; }
+.sidebar-group-label { padding: 12px 20px 6px; font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 1px; }
 
 /* Main */
-.layout-main {
-  flex: 1;
-  margin-left: 200px;
-  padding: 24px;
-  overflow-y: auto;
-  min-height: calc(100vh - 56px);
-  transition: background 0.2s;
-}
-
-.layout-main.dark-theme {
-  background: #0f1117;
-  margin-left: 200px;
-  padding-left: 24px;
-  padding-right: 24px;
-}
-
-.layout-main.admin-dark {
-  padding-left: 24px !important;
-}
+.layout-main { flex: 1; margin-left: 210px; padding: 24px; min-height: calc(100vh - 56px); transition: background 0.3s; }
 </style>

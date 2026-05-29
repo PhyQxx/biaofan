@@ -1,256 +1,243 @@
 <template>
-  <div class="execution-do-page">
-    <div class="exec-layout">
-      <div class="exec-main">
-        <!-- Topbar -->
-        <div class="exec-topbar">
-          <button class="exec-back" @click="handleBack">←</button>
-          <div class="exec-title">{{ execution?.sopTitle || 'SOP 执行' }}</div>
-          <div class="exec-steps-count" v-if="totalSteps">{{ currentStep }}/{{ totalSteps }}</div>
-          <button v-if="stepsLoaded" class="btn-ai" @click="showAi = !showAi">🤖 AI</button>
-        </div>
-
-        <!-- Step Dots Progress -->
-        <div class="step-progress-wrap" v-if="totalSteps">
-          <div class="step-dots-row">
-            <div
-              v-for="n in totalSteps"
-              :key="n"
-              class="step-dot"
-              :class="{
-                'done': n < currentStep,
-                'active': n === currentStep,
-                'future': n > currentStep
-              }"
-              @click="n < currentStep && navigateToStep(n)"
-            >
-              <span class="dot-inner" v-if="n < currentStep">✓</span>
-              <span class="dot-num" v-else>{{ n }}</span>
+  <div class="execution-do-page" :class="{ 'ai-active': showAi }">
+    <!-- Topbar: Immersive Header -->
+    <header class="exec-header">
+      <div class="header-left">
+        <button class="btn-icon-back" @click="handleBack" title="退出执行">
+          <span class="icon">✕</span>
+        </button>
+        <div class="sop-meta">
+          <h1 class="sop-title">{{ execution?.sopTitle || 'SOP 执行' }}</h1>
+          <div class="sop-progress-summary">
+            <div class="progress-track">
+              <div class="progress-thumb" :style="{ width: progressPercent + '%' }"></div>
             </div>
-          </div>
-          <div class="step-progress-bar">
-            <div class="step-progress-fill" :style="{ width: progressPercent + '%' }"></div>
-          </div>
-          <div class="step-progress-meta">
-            <span class="progress-percent">{{ progressPercent }}%</span>
-            <span class="progress-remaining" v-if="currentStep < totalSteps">剩余 {{ totalSteps - currentStep }} 步</span>
-            <span class="progress-remaining success" v-else>即将完成</span>
-          </div>
-        </div>
-
-        <!-- Loading -->
-        <div class="loading-state" v-if="!stepsLoaded">
-          <div class="loading-spinner"></div>
-          <p>加载中...</p>
-        </div>
-
-        <!-- Step Content -->
-        <div class="exec-content" v-else-if="currentStepData && !isCompleted">
-
-          <!-- Current Step Card -->
-          <div class="step-main-card" :class="{ 'just-completed': justCompleted }">
-            <div class="step-header-row">
-              <span class="step-badge">步骤 {{ currentStep }}</span>
-              <span class="step-duration" v-if="currentStepData.duration">⏱️ {{ currentStepData.duration }} 分钟</span>
-            </div>
-            <h2 class="step-title">{{ currentStepData.title }}</h2>
-            <p class="step-desc" v-if="currentStepData.description">{{ currentStepData.description }}</p>
-          </div>
-
-          <!-- Next Step Preview -->
-          <div class="next-step-preview" v-if="currentStep < totalSteps && steps[currentStep]">
-            <div class="next-label">
-              <span class="next-arrow">↑</span>
-              下一步预览
-            </div>
-            <div class="next-title">{{ steps[currentStep].title }}</div>
-          </div>
-
-          <!-- Check Items -->
-          <div class="check-section" v-if="checkItems.length">
-            <div class="check-section-header">
-              <span class="check-section-title">📋 检查项</span>
-              <span class="check-progress-tag">
-                {{ completedCheckCount }}/{{ checkItems.length }} 已完成
-              </span>
-            </div>
-            <div v-for="(item, idx) in checkItems" :key="idx" class="check-item">
-              <!-- Checkbox type -->
-              <div v-if="item.itemType === 'checkbox' || !item.itemType" class="check-row">
-                <label class="check-label" :class="{ 'is-done': checkData[String(idx)] }">
-                  <div class="custom-checkbox" :class="{ checked: checkData[String(idx)] }">
-                    <span v-if="checkData[String(idx)]">✓</span>
-                  </div>
-                  <span class="check-text">{{ item.label }}</span>
-                  <span class="required-dot" v-if="item.isRequired">*</span>
-                </label>
-              </div>
-              <!-- Text type -->
-              <div v-else-if="item.itemType === 'text'" class="check-text-row">
-                <div class="check-label-row">
-                  {{ item.label }}
-                  <span class="required-dot" v-if="item.isRequired">*</span>
-                </div>
-                <textarea
-                  v-model="checkData[String(idx)]"
-                  class="check-text-input"
-                  :class="{ 'has-value': checkData[String(idx)] }"
-                  :placeholder="item.placeholder || '请输入...'"
-                  rows="2"
-                ></textarea>
-              </div>
-              <!-- Number type -->
-              <div v-else-if="item.itemType === 'number'" class="check-text-row">
-                <div class="check-label-row">
-                  {{ item.label }}
-                  <span class="required-dot" v-if="item.isRequired">*</span>
-                </div>
-                <input
-                  type="number"
-                  v-model="checkData[String(idx)]"
-                  class="check-num-input"
-                  :class="{ 'has-value': checkData[String(idx)] !== undefined && checkData[String(idx)] !== '' }"
-                  :placeholder="item.placeholder || '请输入数字'"
-                />
-              </div>
-              <!-- Date type -->
-              <div v-else-if="item.itemType === 'date'" class="check-text-row">
-                <div class="check-label-row">
-                  {{ item.label }}
-                  <span class="required-dot" v-if="item.isRequired">*</span>
-                </div>
-                <input type="date" v-model="checkData[String(idx)]" class="check-text-input" :class="{ 'has-value': checkData[String(idx)] }" />
-              </div>
-              <!-- Select type -->
-              <div v-else-if="item.itemType === 'select'" class="check-text-row">
-                <div class="check-label-row">
-                  {{ item.label }}
-                  <span class="required-dot" v-if="item.isRequired">*</span>
-                </div>
-                <select v-model="checkData[String(idx)]" class="check-select-input" :class="{ 'has-value': checkData[String(idx)] }">
-                  <option value="">请选择...</option>
-                  <option v-for="opt in (item.options || [])" :key="opt" :value="opt">{{ opt }}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- No check items hint -->
-          <div class="no-check-hint" v-else>
-            <span>此步骤无检查项，可直接提交</span>
-          </div>
-
-          <!-- Notes -->
-          <div class="notes-section">
-            <div class="notes-label">📝 执行笔记 <span class="optional-hint">（选填）</span>
-              <span v-if="currentGuidance" class="guidance-badge">✓ 含AI指导</span>
-            </div>
-            <textarea
-              v-if="notesEditing"
-              v-model="notes"
-              class="notes-input"
-              :class="{ 'has-value': notes }"
-              placeholder="记录执行过程中的备注、问题或心得..."
-              @blur="notesEditing = false"
-              ref="notesTextareaRef"
-            ></textarea>
-            <div
-              v-else
-              class="notes-preview"
-              :class="{ 'has-value': notes, 'empty': !notes }"
-              @click="notesEditing = true"
-            >
-              <span v-if="notes" v-html="DOMPurify.sanitize(marked.parse(notes) as string)"></span>
-              <span v-else class="placeholder">记录执行过程中的备注、问题或心得...</span>
-            </div>
-            <div v-if="currentGuidance" class="guidance-history-hint" @click="showAi = true">
-              📋 本步AI指导：{{ currentGuidance.substring(0, 60) }}{{ currentGuidance.length > 60 ? '...' : '' }}
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="step-actions">
-            <button v-if="currentStep > 1" class="btn-secondary" @click="prevStep">
-              ← 上一步
-            </button>
-            <button
-              class="btn-primary flex-1"
-              @click="handleComplete"
-              :disabled="isSubmitting"
-              :class="{ 'is-submitting': isSubmitting }"
-            >
-              <span v-if="isSubmitting" class="btn-spinner"></span>
-              <span v-else>{{ currentStep >= totalSteps ? '✓ 完成 SOP' : '完成本步 →' }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Empty SOP State -->
-        <div class="empty-state" v-else-if="stepsLoaded && totalSteps === 0">
-          <div class="empty-icon">📋</div>
-          <h2>暂无步骤</h2>
-          <p>当前 SOP 还没有添加步骤，请先编辑 SOP 添加执行步骤</p>
-          <button class="btn-primary" @click="router.push(`/sop/${route.params.id}/edit`)">去编辑 SOP</button>
-        </div>
-
-        <!-- Completed State -->
-        <div class="complete-state" v-else-if="isCompleted">
-          <div class="complete-icon">🎉</div>
-          <h2>执行完成！</h2>
-          <p>恭喜你完成了本次 SOP 执行</p>
-          <div class="complete-stats">
-            <div class="complete-stat">
-              <div class="cs-num">{{ totalSteps }}</div>
-              <div class="cs-label">总步骤</div>
-            </div>
-            <div class="complete-stat">
-              <div class="cs-num success">{{ totalSteps }}</div>
-              <div class="cs-label">已完成</div>
-            </div>
-            <div class="complete-stat">
-              <div class="cs-num primary">{{ Math.round((Date.now() - new Date(execution?.startedAt ?? '').getTime()) / 60000) }}</div>
-              <div class="cs-label">用时(分钟)</div>
-            </div>
-          </div>
-          <div class="complete-actions">
-            <button class="btn-secondary" @click="router.push('/')">返回首页</button>
-            <button class="btn-primary" @click="router.push('/execution')">继续其他 SOP</button>
+            <span class="progress-text">{{ progressPercent }}% 已完成</span>
           </div>
         </div>
       </div>
+      
+      <div class="header-right">
+        <div class="session-timer" v-if="execution?.startedAt">
+          <span class="label">已用时</span>
+          <span class="time">{{ formattedSessionTime }}</span>
+        </div>
+        <button class="btn-ai-toggle" :class="{ active: showAi }" @click="showAi = !showAi">
+          <span class="icon">🤖</span>
+          <span class="text">AI 助手</span>
+        </button>
+      </div>
+    </header>
 
-      <!-- AI 助手面板 - 执行指导 -->
-      <div v-if="showAi" class="ai-panel-wrapper">
+    <div class="exec-layout">
+      <!-- Left: Step Navigation Sidebar -->
+      <aside class="exec-sidebar">
+        <div class="sidebar-header">
+          <span>流程步骤</span>
+          <span class="count">{{ currentStep }} / {{ totalSteps }}</span>
+        </div>
+        <div class="step-nav-list">
+          <div 
+            v-for="(s, index) in steps" 
+            :key="index"
+            class="nav-item"
+            :class="{ 
+              'active': index + 1 === currentStep,
+              'completed': index + 1 < currentStep,
+              'pending': index + 1 > currentStep
+            }"
+            @click="index + 1 < currentStep && navigateToStep(index + 1)"
+          >
+            <div class="status-indicator">
+              <span v-if="index + 1 < currentStep" class="icon-check">✓</span>
+              <span v-else class="num">{{ index + 1 }}</span>
+            </div>
+            <div class="nav-content">
+              <div class="nav-title">{{ s.title }}</div>
+              <div class="nav-meta" v-if="s.duration">{{ s.duration }} min</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Main Execution Area -->
+      <main class="exec-main-content">
+        <div class="content-scroll-container">
+          <!-- Loading Overlay -->
+          <div class="loading-overlay" v-if="!stepsLoaded">
+            <div class="loader"></div>
+            <p>正在同步流程数据...</p>
+          </div>
+
+          <!-- Finished View -->
+          <div class="finished-view" v-else-if="isCompleted">
+            <div class="celebration">
+              <div class="icon">🏆</div>
+              <h2>任务圆满完成！</h2>
+              <p>本次 SOP 执行已全部结束，数据已同步至组织中心。</p>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="label">总步骤</span>
+                <span class="val">{{ totalSteps }}</span>
+              </div>
+              <div class="stat-card">
+                <span class="label">实际耗时</span>
+                <span class="val">{{ sessionTimeMinutes }} min</span>
+              </div>
+              <div class="stat-card success">
+                <span class="label">执行状态</span>
+                <span class="val">100% 合规</span>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="btn-secondary" @click="router.push('/')">返回工作台</button>
+              <button class="btn-primary" @click="router.push('/execution')">查看所有记录</button>
+            </div>
+          </div>
+
+          <!-- Current Step Area -->
+          <div class="step-interaction-area" v-else-if="currentStepData">
+            <!-- Step Heading Card -->
+            <section class="step-detail-card" :class="{ 'flash': justCompleted }">
+              <div class="step-head">
+                <span class="step-label">当前步骤 {{ currentStep }}</span>
+                <div class="step-timer" v-if="currentStepData.duration">
+                  建议时长: {{ currentStepData.duration }} 分钟
+                </div>
+              </div>
+              <h2 class="current-step-title">{{ currentStepData.title }}</h2>
+              <div class="current-step-desc" v-if="currentStepData.description">
+                {{ currentStepData.description }}
+              </div>
+            </section>
+
+            <!-- Check Items Group -->
+            <section class="interaction-group" v-if="checkItems.length">
+              <div class="group-header">
+                <h3>📋 核心检查项</h3>
+                <span class="badge">{{ completedCheckCount }} / {{ checkItems.length }}</span>
+              </div>
+              <div class="check-list">
+                <div 
+                  v-for="(item, idx) in checkItems" 
+                  :key="idx" 
+                  class="check-item-row"
+                  :class="{ 'is-checked': !!checkData[String(idx)] }"
+                >
+                  <!-- Checkbox -->
+                  <template v-if="item.itemType === 'checkbox' || !item.itemType">
+                    <label class="checkbox-container">
+                      <input type="checkbox" v-model="checkData[String(idx)]" />
+                      <span class="checkmark"></span>
+                      <span class="label-text">{{ item.label }}</span>
+                      <span class="required" v-if="item.isRequired">*</span>
+                    </label>
+                  </template>
+                  
+                  <!-- Text/Number Input -->
+                  <template v-else>
+                    <div class="input-item-wrap">
+                      <div class="input-header">
+                        {{ item.label }} <span class="required" v-if="item.isRequired">*</span>
+                      </div>
+                      <input 
+                        v-if="item.itemType === 'number'"
+                        type="number" 
+                        v-model="checkData[String(idx)]"
+                        class="form-input"
+                        :placeholder="item.placeholder || '请输入数值...'"
+                      />
+                      <textarea 
+                        v-else
+                        v-model="checkData[String(idx)]"
+                        class="form-textarea"
+                        :placeholder="item.placeholder || '请输入内容...'"
+                        rows="2"
+                      ></textarea>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </section>
+
+            <!-- Notes & AI Section -->
+            <section class="interaction-group">
+              <div class="group-header">
+                <h3>📝 执行笔记</h3>
+                <div class="ai-status" v-if="currentGuidance">
+                  <span class="pulse"></span> 实时 AI 指导中
+                </div>
+              </div>
+              <div class="notes-editor-box">
+                <textarea 
+                  v-model="notes" 
+                  class="rich-notes-input"
+                  placeholder="记录任何异常、心得或操作记录..."
+                ></textarea>
+                <div class="ai-hint-box" v-if="currentGuidance" @click="showAi = true">
+                  <span class="icon">💡</span>
+                  <p>{{ currentGuidance }}</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Action Footer -->
+            <footer class="interaction-footer">
+              <button class="btn-back-step" v-if="currentStep > 1" @click="prevStep">
+                ← 上一步
+              </button>
+              <button 
+                class="btn-next-step" 
+                :class="{ 'is-loading': isSubmitting }"
+                @click="handleComplete"
+                :disabled="isSubmitting"
+              >
+                <span v-if="!isSubmitting">
+                  {{ currentStep === totalSteps ? '🎉 完成所有流程' : '完成本步并继续 →' }}
+                </span>
+                <span v-else class="loader-sm"></span>
+              </button>
+            </footer>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right: AI Guidance Panel -->
+      <aside class="exec-ai-panel" v-if="showAi">
         <SopAiPanel
           :sop-id="sopId"
           :visible-tabs="['execute']"
           :auto-fill-execute="aiAutoFill"
           @guidance-ready="onGuidanceReady"
           @notes-ready="onNotesReady"
+          @close="showAi = false"
         />
-      </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 
+
 /**
- * PC 端 SOP 执行详情页（逐步执行）
- *
- * Unique to this view:
- * - Toggle-able AI panel (showAi button)
- * - Fetches execution + SOP via parallel requests
- *
- * Shared logic lives in useExecutionStep composable.
+ * 沉浸式 SOP 执行控制台
+ * 经过审美重塑的 UI，提供类似“飞行座舱”的操作体验
  */
+import { ref, onMounted, onUnmounted } from 'vue'
 import request from '@/api'
 import type { Execution, Sop, ApiResponse } from '@/types'
 import SopAiPanel from '@/components/ai/SopAiPanel.vue'
 import { useExecutionStep } from '@/composables/useExecutionStep'
 
+const sessionSeconds = ref(0)
+let timer: any = null
+
+const formattedSessionTime = ref('00:00')
+const sessionTimeMinutes = ref(0)
+
 const {
-  route,
   router,
   entityId,
 
@@ -258,7 +245,6 @@ const {
   steps,
   currentStep,
   notes,
-  notesEditing,
   checkData,
   isSubmitting,
   justCompleted,
@@ -281,11 +267,8 @@ const {
   onNotesReady,
   handleBack,
   handleComplete,
-
-  DOMPurify,
-  marked,
 } = useExecutionStep({
-  logLabel: 'ExecutionDoView',
+  logLabel: 'ExecutionImmersive',
 
   buildCompleteUrl: (id, step) => `/execution/${id}/step/${step}`,
   buildRefreshUrl: (id) => `/execution/${id}`,
@@ -303,13 +286,10 @@ const {
 
     if (execRes?.code === 200) {
       exec = execRes.data
-      if (exec) {
-        exec.sopTitle = ''
-        if (exec.status === 'pending') {
-          await request.post(`/execution/${id}/activate`)
-          exec.status = 'in_progress'
-          exec.currentStep = 1
-        }
+      if (exec && exec.status === 'pending') {
+        await request.post(`/execution/${id}/activate`)
+        exec.status = 'in_progress'
+        exec.currentStep = 1
       }
     }
 
@@ -325,319 +305,212 @@ const {
       } catch { parsedSteps = [] }
     }
 
-    // Load history guidance
-    let initialNotes = ''
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const guidanceHistory: Record<number, string> = {}
-    try {
-      const recordsRes = await request.get<unknown, ApiResponse<any[]>>(`/execution/${id}/records`)
-      if (recordsRes?.code === 200 && recordsRes.data) {
-        for (const rec of recordsRes.data) {
-          if (rec.guidance) {
-            guidanceHistory[rec.stepIndex] = rec.guidance
-          }
-        }
-        const currentStepIndex = exec?.currentStep || 1
-        const currentRec = recordsRes.data.find((r: any) => r.stepIndex === currentStepIndex)
-        if (currentRec?.notes) {
-          initialNotes = currentRec.notes
-        }
-      }
-    } catch (e) {
-      console.error('[ExecutionDoView] load records failed:', e)
-    }
-
     return {
       execution: exec,
       steps: parsedSteps,
       sopId: fetchedSopId,
       sopTitle,
-      initialNotes,
-      guidanceHistory,
+      initialNotes: '',
+      guidanceHistory: {},
     }
   },
+})
+
+// Timer logic
+const startTimer = () => {
+  timer = setInterval(() => {
+    sessionSeconds.value++
+    const mins = Math.floor(sessionSeconds.value / 60)
+    const secs = sessionSeconds.value % 60
+    formattedSessionTime.value = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    sessionTimeMinutes.value = mins
+  }, 1000)
+}
+
+onMounted(() => {
+  startTimer()
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
 })
 </script>
 
 <style scoped>
-.execution-do-page { min-height: 100vh; background: var(--color-bg-light); display: flex; flex-direction: column; }
-
-/* Topbar */
-.exec-topbar {
-  display: flex; align-items: center; padding: 12px 20px;
-  background: var(--color-bg-light-elevated); border-bottom: 1px solid var(--color-border-light); gap: 12px; flex-shrink: 0;
-}
-.exec-back { border: none; background: transparent; font-size: 20px; cursor: pointer; padding: 4px 8px; color: var(--color-text-light-primary); border-radius: 8px; }
-.exec-back:hover { background: #F0F0F0; }
-.exec-title { flex: 1; font-size: 15px; font-weight: 600; color: var(--color-text-light-primary); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.exec-steps-count {
-  font-size: 12px; font-weight: 600; color: var(--color-primary);
-  background: #E8ECFF; padding: 3px 10px; border-radius: 20px;
+.execution-do-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  overflow: hidden;
 }
 
-/* Step Progress Dots */
-.step-progress-wrap {
-  background: var(--color-bg-light-elevated); padding: 16px 20px 12px;
-  border-bottom: 1px solid #F0F0F0; flex-shrink: 0;
+/* Header */
+.exec-header {
+  height: 64px;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
 }
-.step-dots-row {
-  display: flex; align-items: center; gap: 6px;
-  margin-bottom: 10px; overflow-x: auto;
-}
-.step-dot {
-  width: 28px; height: 28px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 600; flex-shrink: 0;
-  cursor: default; transition: all 0.2s;
-}
-.step-dot.done {
-  background: var(--color-success); color: white; cursor: pointer;
-}
-.step-dot.done:hover { background: #73D13D; }
-.step-dot.active {
-  background: var(--color-primary); color: white; box-shadow: 0 0 0 4px rgba(91,127,255,0.2);
-  transform: scale(1.1);
-}
-.step-dot.future {
-  background: #F0F0F0; color: var(--color-text-light-muted);
-}
-.dot-inner { font-size: 12px; }
-.dot-num { line-height: 1; }
 
-.step-progress-bar {
-  height: 5px; background: #F0F0F0; border-radius: 3px; overflow: hidden;
+.header-left { display: flex; align-items: center; gap: 20px; flex: 1; }
+.btn-icon-back {
+  width: 40px; height: 40px; border-radius: 10px;
+  border: 1px solid var(--color-border); background: var(--color-bg-surface);
+  color: var(--color-text-secondary); display: flex; align-items: center;
+  justify-content: center; font-size: 18px; cursor: pointer; transition: all 0.2s;
 }
-.step-progress-fill {
-  height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
-  border-radius: 3px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.step-progress-meta {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-top: 6px;
-}
-.progress-percent { font-size: 12px; font-weight: 700; color: var(--color-primary); }
-.progress-remaining { font-size: 11px; color: var(--color-text-light-muted); }
-.progress-remaining.success { color: var(--color-success); }
+.btn-icon-back:hover { background: var(--color-error-subtle); color: var(--color-error); border-color: var(--color-error); }
 
-/* Loading */
-.loading-state {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 16px; color: var(--color-text-light-muted);
+.sop-meta { display: flex; flex-direction: column; gap: 4px; }
+.sop-title { font-size: 16px; font-weight: 700; margin: 0; }
+.sop-progress-summary { display: flex; align-items: center; gap: 10px; }
+.progress-track { width: 120px; height: 6px; background: var(--color-bg-surface); border-radius: 3px; overflow: hidden; }
+.progress-thumb { height: 100%; background: var(--color-success); border-radius: 3px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+.progress-text { font-size: 11px; color: var(--color-text-muted); font-weight: 500; }
+
+.header-right { display: flex; align-items: center; gap: 20px; }
+.session-timer { display: flex; flex-direction: column; align-items: flex-end; }
+.session-timer .label { font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
+.session-timer .time { font-family: monospace; font-size: 16px; font-weight: 700; color: var(--color-primary); }
+
+.btn-ai-toggle {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  border-radius: 20px; border: 1px solid var(--color-primary);
+  background: var(--color-primary-subtle); color: var(--color-primary);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
 }
-.loading-spinner {
-  width: 36px; height: 36px; border: 3px solid var(--color-border-light);
-  border-top-color: var(--color-primary); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.btn-ai-toggle.active { background: var(--color-primary); color: white; }
+
+/* Main Layout */
+.exec-layout { display: flex; flex: 1; overflow: hidden; }
+
+/* Sidebar */
+.exec-sidebar {
+  width: 260px; background: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  display: flex; flex-direction: column;
 }
+.sidebar-header { padding: 20px; font-size: 13px; font-weight: 700; color: var(--color-text-muted); display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); }
+.step-nav-list { flex: 1; overflow-y: auto; padding: 10px 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+  cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent;
+}
+.nav-item.active { background: var(--color-primary-subtle); border-left-color: var(--color-primary); }
+.nav-item.completed { opacity: 0.7; }
+.nav-item.pending { opacity: 0.5; cursor: not-allowed; }
+
+.status-indicator {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.active .status-indicator { border-color: var(--color-primary); color: var(--color-primary); background: white; }
+.completed .status-indicator { background: var(--color-success); border-color: var(--color-success); color: white; }
+
+.nav-content { overflow: hidden; }
+.nav-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-meta { font-size: 10px; color: var(--color-text-muted); }
+
+/* Main Content Area */
+.exec-main-content { flex: 1; background: var(--color-bg-base); position: relative; }
+.content-scroll-container { height: 100%; overflow-y: auto; padding: var(--space-3xl); }
+
+.step-interaction-area { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-xl); }
+
+/* Step Card */
+.step-detail-card {
+  background: var(--color-bg-elevated); border-radius: var(--radius-lg); padding: var(--space-3xl);
+  border: 1px solid var(--color-border); box-shadow: var(--shadow-md);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.step-detail-card.flash { transform: scale(1.02); border-color: var(--color-success); }
+.step-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.step-label { font-size: 12px; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; }
+.step-timer { font-size: 12px; color: var(--color-text-muted); background: var(--color-bg-surface); padding: 4px 12px; border-radius: 20px; }
+.current-step-title { font-size: 24px; font-weight: 800; margin: 0 0 16px 0; line-height: 1.3; }
+.current-step-desc { font-size: 15px; color: var(--color-text-secondary); line-height: 1.6; }
+
+/* Groups */
+.interaction-group { background: var(--color-bg-elevated); border-radius: var(--radius-lg); padding: var(--space-2xl); border: 1px solid var(--color-border); }
+.group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.group-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.group-header .badge { background: var(--color-bg-surface); padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--color-primary); }
+
+.check-list { display: flex; flex-direction: column; gap: 12px; }
+.check-item-row { 
+  padding: 16px; border-radius: 12px; background: var(--color-bg-surface); 
+  border: 1.5px solid transparent; transition: all 0.2s;
+}
+.check-item-row.is-checked { border-color: var(--color-success-subtle); background: var(--color-bg-elevated); }
+
+.checkbox-container { display: flex; align-items: center; gap: 14px; cursor: pointer; font-size: 15px; width: 100%; }
+.checkbox-container input { display: none; }
+.checkmark { 
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.checkbox-container input:checked + .checkmark { background: var(--color-success); border-color: var(--color-success); }
+.checkbox-container input:checked + .checkmark::after { content: '✓'; color: white; font-size: 14px; font-weight: 800; }
+.label-text { flex: 1; font-weight: 500; }
+.required { color: var(--color-error); margin-left: 4px; }
+
+.input-header { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.form-input, .form-textarea {
+  width: 100%; background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 12px; color: var(--color-text-primary); outline: none;
+}
+.form-input:focus, .form-textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-subtle); }
+
+.notes-editor-box { display: flex; flex-direction: column; gap: 12px; }
+.rich-notes-input {
+  width: 100%; min-height: 100px; background: var(--color-bg-surface); border: 1px solid var(--color-border);
+  border-radius: 12px; padding: 16px; font-size: 14px; resize: none; color: var(--color-text-primary);
+}
+.ai-hint-box {
+  background: linear-gradient(135deg, #e0e7ff, #f3e8ff); border-radius: 12px; padding: 12px 16px;
+  display: flex; gap: 12px; cursor: pointer; border: 1px solid #c7d2fe; transition: transform 0.2s;
+}
+.ai-hint-box:hover { transform: scale(1.01); }
+.ai-hint-box .icon { font-size: 18px; }
+.ai-hint-box p { font-size: 13px; color: #4338ca; margin: 0; line-height: 1.5; font-style: italic; }
+
+/* Footer Actions */
+.interaction-footer { display: flex; gap: 16px; margin-top: 20px; }
+.btn-next-step {
+  flex: 1; height: 56px; border-radius: 16px; border: none;
+  background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+  color: white; font-size: 16px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3); transition: all 0.2s;
+}
+.btn-next-step:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(79, 70, 229, 0.4); }
+.btn-back-step {
+  padding: 0 24px; border-radius: 16px; border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated); color: var(--color-text-secondary);
+  font-weight: 600; cursor: pointer;
+}
+
+/* AI Panel */
+.exec-ai-panel { width: 380px; background: var(--color-bg-elevated); border-left: 1px solid var(--color-border); }
+
+/* Animations */
+.loader-sm { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Content */
-.exec-content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; }
-
-/* Step Main Card */
-.step-main-card {
-  background: var(--color-bg-light-elevated); border-radius: 16px; padding: 20px; margin-bottom: 12px;
-  border: 1.5px solid var(--color-border-light); transition: all 0.3s;
-}
-.step-main-card.just-completed {
-  border-color: var(--color-success);
-  box-shadow: 0 0 0 4px rgba(82,196,26,0.1);
-  animation: flashGreen 0.6s ease;
-}
-@keyframes flashGreen {
-  0% { background: var(--color-bg-light-elevated); }
-  30% { background: #F6FFED; }
-  100% { background: var(--color-bg-light-elevated); }
-}
-.step-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.step-badge {
-  display: inline-block; background: var(--color-primary); color: white;
-  font-size: 11px; padding: 3px 12px; border-radius: 20px; font-weight: 600;
-}
-.step-duration { font-size: 12px; color: var(--color-text-light-muted); }
-.step-title { font-size: 18px; font-weight: 700; color: var(--color-text-light-primary); margin: 0 0 8px; line-height: 1.4; }
-.step-desc { font-size: 14px; color: #555; line-height: 1.7; margin: 0; }
-
-/* Next Step Preview */
-.next-step-preview {
-  background: #F9FAFF; border: 1px dashed #C3C8FF; border-radius: 12px;
-  padding: 12px 16px; margin-bottom: 14px;
-}
-.next-label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: #8B8FA8; font-weight: 600; margin-bottom: 4px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-.next-arrow { color: var(--color-primary); font-size: 14px; }
-.next-title { font-size: 13px; color: var(--color-primary); font-weight: 500; }
-
-/* Check Items */
-.check-section {
-  background: var(--color-bg-light-elevated); border-radius: 16px; padding: 18px; margin-bottom: 14px;
-  border: 1.5px solid var(--color-border-light);
-}
-.check-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.check-section-title { font-size: 14px; font-weight: 600; color: var(--color-text-light-primary); }
-.check-progress-tag {
-  font-size: 11px; background: #E8F3FF; color: var(--color-primary);
-  padding: 2px 8px; border-radius: 10px; font-weight: 600;
-}
-.required-dot { color: var(--color-error); margin-left: 2px; }
-
-.check-item { margin-bottom: 14px; }
-.check-item:last-child { margin-bottom: 0; }
-
-.check-row { display: flex; align-items: center; }
-.check-label {
-  display: flex; align-items: center; gap: 10px; cursor: pointer;
-  padding: 8px 10px; border-radius: 10px; transition: background 0.15s;
-}
-.check-label:hover { background: var(--color-bg-light); }
-.check-label.is-done .check-text { color: var(--color-success); text-decoration: line-through; }
-
-.custom-checkbox {
-  width: 20px; height: 20px; border-radius: 50%; border: 2px solid #D9D9D9;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all 0.2s; background: var(--color-bg-light-elevated);
-}
-.custom-checkbox.checked {
-  background: var(--color-success); border-color: var(--color-success); color: white;
-}
-.check-text { font-size: 14px; color: var(--color-text-light-primary); }
-
-.check-text-row { }
-.check-label-row { font-size: 13px; color: var(--color-text-light-primary); font-weight: 500; margin-bottom: 6px; }
-
-.check-text-input, .check-num-input, .check-select-input {
-  width: 100%; padding: 10px 12px; border: 1.5px solid var(--color-border-light);
-  border-radius: 10px; font-size: 14px; outline: none;
-  box-sizing: border-box; background: var(--color-bg-light-elevated); transition: border-color 0.2s, box-shadow 0.2s;
-}
-.check-text-input:focus, .check-num-input:focus, .check-select-input:focus {
-  border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(91,127,255,0.12);
-}
-.check-text-input.has-value, .check-num-input.has-value, .check-select-input.has-value {
-  border-color: #B7D0FF; background: #F9FBFF;
-}
-.check-select-input { cursor: pointer; }
-
-/* No check items hint */
-.no-check-hint {
-  text-align: center; padding: 14px; background: #FAFAFA;
-  border-radius: 12px; margin-bottom: 14px;
-  font-size: 13px; color: var(--color-text-light-muted);
-}
-
-/* Notes */
-.notes-section { background: var(--color-bg-light-elevated); border-radius: 16px; padding: 18px; margin-bottom: 14px; border: 1.5px solid var(--color-border-light); }
-.notes-label { font-size: 14px; font-weight: 600; color: var(--color-text-light-primary); margin-bottom: 10px; }
-.optional-hint { font-size: 12px; color: var(--color-text-light-muted); font-weight: 400; }
-.notes-input {
-  width: 100%; min-height: 90px; padding: 10px 12px;
-  border: 1.5px solid var(--color-border-light); border-radius: 10px;
-  font-size: 14px; resize: vertical; outline: none;
-  box-sizing: border-box; background: var(--color-bg-light-elevated); transition: border-color 0.2s, box-shadow 0.2s;
-}
-.notes-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(91,127,255,0.12); }
-.notes-input.has-value { border-color: #B7D0FF; background: #F9FBFF; }
-.notes-preview {
-  width: 100%; min-height: 90px; padding: 10px 12px;
-  border: 1.5px solid var(--color-border-light); border-radius: 10px;
-  font-size: 14px; box-sizing: border-box; background: var(--color-bg-light-elevated);
-  cursor: text; transition: border-color 0.2s, box-shadow 0.2s;
-}
-.notes-preview.has-value { border-color: #B7D0FF; background: #F9FBFF; }
-.notes-preview.empty { color: var(--color-text-light-muted); }
-.notes-preview .placeholder { color: #bbb; }
-.notes-preview :deep(p) { margin: 0 0 6px 0; }
-.notes-preview :deep(p:last-child) { margin-bottom: 0; }
-.notes-preview :deep(ul), .notes-preview :deep(ol) { margin: 4px 0; padding-left: 18px; }
-.notes-preview :deep(li) { margin: 2px 0; }
-.notes-preview :deep(strong) { color: var(--color-text-light-primary); }
-.guidance-badge {
-  font-size: 11px; background: #e7f3ff; color: #409eff;
-  padding: 2px 8px; border-radius: 10px; font-weight: 400; margin-left: 8px;
-}
-.guidance-history-hint {
-  margin-top: 8px; font-size: 12px; color: #409eff;
-  cursor: pointer; padding: 6px 10px; background: #f0f7ff;
-  border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.guidance-history-hint:hover { background: #e6f0ff; }
-
-/* Action Buttons */
-.step-actions {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  display: flex; gap: 10px; padding: 16px 20px;
-  background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
-  border-top: 1px solid var(--color-border-light);
-}
-.btn-primary {
-  flex: 1; height: 48px; background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-  color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity 0.2s;
-}
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-primary.is-submitting { background: linear-gradient(135deg, #A0A0A0, #BDBDBD); }
-.btn-secondary {
-  height: 48px; padding: 0 20px; background: var(--color-bg-light-elevated); color: var(--color-text-light-primary);
-  border: 1.5px solid var(--color-border-light); border-radius: 12px;
-  font-size: 15px; cursor: pointer; transition: background 0.15s;
-}
-.btn-secondary:hover { background: var(--color-bg-light); }
-.flex-1 { flex: 1; }
-
-.btn-spinner {
-  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
-  border-top-color: white; border-radius: 50%;
-  animation: spin 0.7s linear infinite; display: inline-block;
-}
-
-/* Completed State */
-.complete-state { flex: 1; max-width: 480px; margin: 60px auto; text-align: center; padding: 0 24px; }
-.complete-icon { font-size: 72px; margin-bottom: 24px; }
-.complete-state h2 { font-size: 24px; font-weight: 700; color: var(--color-text-light-primary); margin-bottom: 10px; }
-.complete-state p { font-size: 15px; color: var(--color-text-light-muted); margin-bottom: 28px; }
-.complete-stats { display: flex; justify-content: center; gap: 28px; margin-bottom: 32px; }
-.complete-stat { text-align: center; }
-.cs-num { font-size: 28px; font-weight: 700; color: var(--color-text-light-primary); }
-.cs-num.success { color: var(--color-success); }
-.cs-num.primary { color: var(--color-primary); }
-.cs-label { font-size: 12px; color: var(--color-text-light-muted); margin-top: 4px; }
-.complete-actions { display: flex; gap: 12px; justify-content: center; }
-
-/* AI 助手布局 */
-.exec-layout {
-  display: flex;
-  gap: 0;
-  min-height: 100vh;
-}
-.exec-main {
-  flex: 1;
-  min-width: 0;
-}
-.ai-panel-wrapper {
-  width: 380px;
-  flex-shrink: 0;
-  border-left: 1px solid var(--color-border-light);
-  background: var(--color-bg-light-elevated);
-  max-height: 100vh;
-  overflow-y: auto;
-  position: sticky;
-  top: 0;
-}
-.btn-ai {
-  margin-left: auto;
-  height: 32px;
-  padding: 0 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-}
+/* Finished View */
+.celebration { text-align: center; margin-bottom: 40px; }
+.celebration .icon { font-size: 80px; margin-bottom: 20px; }
+.celebration h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+.stat-card { background: var(--color-bg-elevated); padding: 24px; border-radius: 20px; border: 1px solid var(--color-border); text-align: center; }
+.stat-card.success { border-color: var(--color-success); background: var(--color-success-subtle); }
+.stat-card .label { font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
+.stat-card .val { font-size: 24px; font-weight: 800; }
+.action-row { display: flex; justify-content: center; gap: 16px; }
 </style>

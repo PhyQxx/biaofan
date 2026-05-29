@@ -93,6 +93,7 @@
             <option value="deepseek">DeepSeek</option>
             <option value="glm">GLM（智谱）</option>
             <option value="minimax">MiniMax</option>
+            <option value="custom">自定义（OpenAI 兼容）</option>
           </select>
         </div>
         <div class="form-group">
@@ -205,7 +206,12 @@ async function handleDelete(cfg: AiModelConfig) {
 }
 
 function modelTypeLabel(t?: string) {
-  return { deepseek: 'DeepSeek', glm: 'GLM（智谱）', minimax: 'MiniMax' }[t || ''] || t || '-'
+  return { 
+    deepseek: 'DeepSeek', 
+    glm: 'GLM（智谱）', 
+    minimax: 'MiniMax',
+    custom: '自定义'
+  }[t || ''] || t || '-'
 }
 
 function formatTime(ts?: string) {

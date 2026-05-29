@@ -189,6 +189,24 @@ function scrollToBottom() {
 .user .message-bubble { background: #4F46E5; color: white; border-bottom-right-radius: 2px; }
 .assistant .message-bubble { background: #f3f4f6; color: #333; border-bottom-left-radius: 2px; }
 
+/* Markdown Styles */
+.markdown-content :deep(p) { margin: 0 0 8px 0; }
+.markdown-content :deep(p:last-child) { margin-bottom: 0; }
+.markdown-content :deep(h1), .markdown-content :deep(h2), .markdown-content :deep(h3) { 
+  margin: 12px 0 8px 0; font-size: 1.1em; font-weight: 600; 
+}
+.markdown-content :deep(ul), .markdown-content :deep(ol) { 
+  margin: 0 0 8px 0; padding-left: 20px; 
+}
+.markdown-content :deep(code) { 
+  background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em;
+}
+.markdown-content :deep(pre) {
+  background: #2d2d2d; color: #ccc; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0;
+}
+.markdown-content :deep(pre code) { background: none; padding: 0; color: inherit; }
+.markdown-content :deep(strong) { font-weight: 700; color: #000; }
+
 .chat-footer {
   padding: 16px;
   border-top: 1px solid #eee;

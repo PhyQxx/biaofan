@@ -16,6 +16,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -44,8 +45,12 @@ public class AiServiceImpl implements AiService {
     @Override
     @Cacheable(value = "aiConfig", key = "#userId")
     public AiModelConfig getEffectiveConfig(Long userId) {
+        log.info("[AI Config] 开始获取生效配置 userId={}", userId);
         AiModelConfig userConfig = getUserConfig(userId);
-        if (userConfig != null) return userConfig;
+        if (userConfig != null) {
+            log.info("[AI Config] 使用用户级配置: id={}, type={}", userConfig.getId(), userConfig.getModelType());
+            return userConfig;
+        }
 
         // 查全局配置（user_id = NULL）
         AiModelConfig globalConfig = configMapper.selectOne(new LambdaQueryWrapper<AiModelConfig>()
@@ -53,8 +58,10 @@ public class AiServiceImpl implements AiService {
                 .eq(AiModelConfig::getEnabled, true)
                 .last("LIMIT 1"));
         if (globalConfig == null) {
+            log.error("[AI Config] 未发现全局配置");
             throw new RuntimeException("未配置全局 AI 模型，请前往管理员后台 → AI模型配置 进行设置");
         }
+        log.info("[AI Config] 使用全局配置: id={}, type={}", globalConfig.getId(), globalConfig.getModelType());
         return globalConfig;
     }
 
@@ -73,7 +80,10 @@ public class AiServiceImpl implements AiService {
         if (existing != null) {
             existing.setModelType(config.getModelType());
             existing.setApiUrl(config.getApiUrl());
-            existing.setApiKey(config.getApiKey());
+            // 只有当传入的 Key 不为空时才更新
+            if (config.getApiKey() != null && !config.getApiKey().isBlank()) {
+                existing.setApiKey(config.getApiKey());
+            }
             existing.setModelName(config.getModelName());
             existing.setSystemPrompt(config.getSystemPrompt());
             existing.setTemperature(config.getTemperature());
@@ -97,6 +107,48 @@ public class AiServiceImpl implements AiService {
     }
 
     @Override
+    @CacheEvict(value = "aiConfig", allEntries = true)
+    @Transactional
+    public void saveGlobalConfig(AiModelConfig config) {
+        log.info("[AI Config] 保存全局配置: type={}, name={}", config.getModelType(), config.getModelName());
+        AiModelConfig existing = configMapper.selectOne(
+            new LambdaQueryWrapper<AiModelConfig>()
+                .isNull(AiModelConfig::getUserId)
+                .last("LIMIT 1")
+        );
+        if (existing != null) {
+            existing.setModelType(config.getModelType());
+            existing.setApiUrl(config.getApiUrl());
+            // 只有当传入的 Key 不为空时才更新，防止 UI 编辑时误覆盖
+            if (config.getApiKey() != null && !config.getApiKey().isBlank()) {
+                existing.setApiKey(config.getApiKey());
+            }
+            existing.setModelName(config.getModelName());
+            existing.setSystemPrompt(config.getSystemPrompt());
+            existing.setTemperature(config.getTemperature());
+            existing.setEnabled(config.getEnabled());
+            existing.setUpdatedAt(LocalDateTime.now());
+            configMapper.updateById(existing);
+        } else {
+            config.setUserId(null);
+            config.setCreatedAt(LocalDateTime.now());
+            config.setUpdatedAt(LocalDateTime.now());
+            if (config.getEnabled() == null) config.setEnabled(true);
+            configMapper.insert(config);
+        }
+    }
+
+    @Override
+    @CacheEvict(value = "aiConfig", allEntries = true)
+    public void deleteGlobalConfig(Long id) {
+        log.info("[AI Config] 删除全局配置: id={}", id);
+        AiModelConfig config = configMapper.selectById(id);
+        if (config != null && config.getUserId() == null) {
+            configMapper.deleteById(id);
+        }
+    }
+
+    @Override
     public String chat(Long userId, AiChatRequest request) {
         // Rate limit check
         String key = "ai_rate:" + userId;
@@ -110,7 +162,7 @@ public class AiServiceImpl implements AiService {
 
         AiModelConfig cached = getEffectiveConfig(userId);
 
-        // 请求级覆盖（在副本上修改，避免污染缓存）
+        // 请求级覆盖
         AiModelConfig config = new AiModelConfig();
         config.setId(cached.getId());
         config.setUserId(cached.getUserId());
@@ -140,7 +192,7 @@ public class AiServiceImpl implements AiService {
         AiResult result = aiModelFactory.chat(messages, config);
         if (!result.isSuccess()) {
             log.warn("AI调用失败 userId={} error={}", userId, result.getError());
-            return "AI服务暂时繁忙，请稍后重试。如需紧急处理，请联系管理员。";
+            return "AI服务暂时繁忙: " + result.getError();
         }
         return result.getContent();
     }

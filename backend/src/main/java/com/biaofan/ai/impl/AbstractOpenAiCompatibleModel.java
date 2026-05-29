@@ -44,9 +44,14 @@ public abstract class AbstractOpenAiCompatibleModel implements AiModel {
         }
 
         String url = buildUrl(config.getApiUrl(), defaultApiUrl(), urlSuffix());
+        String modelName = config.getModelName() != null && !config.getModelName().isBlank() 
+                ? config.getModelName() : defaultModelName();
+
+        log.info("[AI Request] Target URL: {}, Model: {}, Key: {}****", 
+                url, modelName, config.getApiKey().substring(0, Math.min(config.getApiKey().length(), 8)));
 
         Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", config.getModelName() != null ? config.getModelName() : defaultModelName());
+        requestBody.put("model", modelName);
         requestBody.put("messages", messages);
         if (config.getTemperature() != null) {
             requestBody.put("temperature", config.getTemperature());

@@ -30,6 +30,16 @@ public interface AiService {
     void deleteConfig(Long userId);
 
     /**
+     * 保存/更新全局 AI 配置
+     */
+    void saveGlobalConfig(AiModelConfig config);
+
+    /**
+     * 删除全局 AI 配置
+     */
+    void deleteGlobalConfig(Long id);
+
+    /**
      * 通用对话接口
      */
     String chat(Long userId, AiChatRequest request);

@@ -20,6 +20,7 @@ public class AiModelFactory {
     private final DeepSeekModel deepSeekModel;
     private final GlmModel glmModel;
     private final MiniMaxModel miniMaxModel;
+    private final com.biaofan.ai.impl.CustomModel customModel;
 
     /**
      * 根据模型类型获取对应的 AI 模型实例
@@ -29,6 +30,7 @@ public class AiModelFactory {
             case "deepseek" -> deepSeekModel;
             case "glm" -> glmModel;
             case "minimax" -> miniMaxModel;
+            case "custom" -> customModel;
             default -> deepSeekModel;
         };
     }

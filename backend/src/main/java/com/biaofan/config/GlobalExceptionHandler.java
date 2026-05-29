@@ -85,6 +85,11 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleRuntime(RuntimeException e) {
         log.error("Runtime error", e);
+        // 如果错误消息包含明确的 AI 或业务提示，则将其暴露给前端
+        String msg = e.getMessage();
+        if (msg != null && (msg.contains("AI") || msg.contains("组织") || msg.contains("权限"))) {
+            return Result.fail(500, msg);
+        }
         return Result.fail(500, "系统错误，请稍后重试");
     }
 

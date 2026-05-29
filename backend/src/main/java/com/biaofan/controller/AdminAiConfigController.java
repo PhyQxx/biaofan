@@ -4,11 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.dto.Result;
 import com.biaofan.entity.AiModelConfig;
 import com.biaofan.mapper.AiModelConfigMapper;
+import com.biaofan.service.AiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +23,7 @@ import java.util.Map;
 public class AdminAiConfigController {
 
     private final AiModelConfigMapper configMapper;
+    private final AiService aiService;
 
     /**
      * 获取所有全局 AI 配置（userId = null）
@@ -55,29 +56,7 @@ public class AdminAiConfigController {
      */
     @PostMapping("/global")
     public Result<Void> saveGlobalConfig(@RequestBody AiModelConfig config) {
-        // 查找已有的全局配置
-        AiModelConfig existing = configMapper.selectOne(
-            new LambdaQueryWrapper<AiModelConfig>()
-                .isNull(AiModelConfig::getUserId)
-                .last("LIMIT 1")
-        );
-        if (existing != null) {
-            existing.setModelType(config.getModelType());
-            existing.setApiUrl(config.getApiUrl());
-            existing.setApiKey(config.getApiKey());
-            existing.setModelName(config.getModelName());
-            existing.setSystemPrompt(config.getSystemPrompt());
-            existing.setTemperature(config.getTemperature());
-            existing.setEnabled(config.getEnabled());
-            existing.setUpdatedAt(LocalDateTime.now());
-            configMapper.updateById(existing);
-        } else {
-            config.setUserId(null);
-            config.setCreatedAt(LocalDateTime.now());
-            config.setUpdatedAt(LocalDateTime.now());
-            if (config.getEnabled() == null) config.setEnabled(true);
-            configMapper.insert(config);
-        }
+        aiService.saveGlobalConfig(config);
         return Result.ok();
     }
 
@@ -86,10 +65,7 @@ public class AdminAiConfigController {
      */
     @DeleteMapping("/global/{id}")
     public Result<Void> deleteGlobalConfig(@PathVariable Long id) {
-        AiModelConfig config = configMapper.selectById(id);
-        if (config != null && config.getUserId() == null) {
-            configMapper.deleteById(id);
-        }
+        aiService.deleteGlobalConfig(id);
         return Result.ok();
     }
 }
