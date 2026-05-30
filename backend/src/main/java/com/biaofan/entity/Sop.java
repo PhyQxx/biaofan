@@ -19,7 +19,11 @@ public class Sop {
 
     private Long orgId;
 
+    /** 共享范围: private (仅本组织), sub_shared (包含子部门) */
+    private String shareScope;
+
     private String title;
+
     private String description;
     private String content; // JSON string
     private String category;

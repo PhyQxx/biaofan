@@ -72,6 +72,21 @@ public class SopVersionController {
     }
 
     /**
+     * 对比两个版本的差异
+     */
+    @GetMapping("/{id}/diff")
+    public Result<com.biaofan.dto.SopDiff> diff(
+            @PathVariable Long id,
+            @RequestParam Integer v1,
+            @RequestParam Integer v2,
+            @AuthenticationPrincipal Long userId) {
+        Sop sop = sopMapper.selectById(id);
+        if (sop == null) return Result.fail(404, "SOP不存在");
+        if (!sop.getUserId().equals(userId)) return Result.fail(403, "无权访问");
+        return Result.ok(versionService.getDiff(id, v1, v2));
+    }
+
+    /**
      * 回滚SOP到指定版本
      * <p>将SOP内容恢复为指定历史版本的内容，同时生成新的版本记录。</p>
      *

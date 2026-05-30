@@ -19,6 +19,7 @@ public class SopException {
     private Long reporterId;   // 上报人
     private String type;       // abnormal / timeout / error
     private String description; // 异常描述
+    private String aiDiagnosis; // AI 诊断结果
     private String status;     // pending / resolved
     private Long resolvedBy;   // 处理人
     private String resolution; // 处理说明

@@ -94,7 +94,8 @@ public class SopExecutionController {
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
             String guidance = body != null && body.get("guidance") != null ? (String) body.get("guidance") : null;
-            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData, guidance);
+            String imageUrl = body != null && body.get("imageUrl") != null ? (String) body.get("imageUrl") : null;
+            boolean completed = executionService.completeStep(userId, execId, stepIndex, notes, checkData, guidance, imageUrl);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(execId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());

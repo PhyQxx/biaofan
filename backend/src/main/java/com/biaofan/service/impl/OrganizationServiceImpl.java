@@ -35,10 +35,15 @@ public class OrganizationServiceImpl implements OrganizationService {
         org.setOwnerId(userId);
         org.setDescription(description);
         org.setLogoUrl(logoUrl);
+        org.setType("company");
         org.setInviteCode(generateInviteCode());
         org.setCreatedAt(LocalDateTime.now());
         org.setUpdatedAt(LocalDateTime.now());
         organizationMapper.insert(org);
+        
+        // 设置初始路径
+        org.setPath("," + org.getId() + ",");
+        organizationMapper.updateById(org);
 
         OrganizationMember member = new OrganizationMember();
         member.setOrgId(org.getId());
@@ -48,6 +53,44 @@ public class OrganizationServiceImpl implements OrganizationService {
         organizationMemberMapper.insert(member);
 
         return org;
+    }
+
+    @Override
+    @Transactional
+    public Organization createSubOrganization(Long userId, Long parentId, String name, String description, String type) {
+        Organization parent = organizationMapper.selectById(parentId);
+        if (parent == null) throw new RuntimeException("父级组织不存在");
+        
+        // 验证权限 (必须是父级组织的管理员)
+        if (!listAdmins(parentId).contains(userId)) {
+            throw new RuntimeException("无权在父级组织下创建子组织");
+        }
+
+        Organization sub = new Organization();
+        sub.setParentId(parentId);
+        sub.setName(name);
+        sub.setOwnerId(parent.getOwnerId()); // 默认继承所有者
+        sub.setDescription(description);
+        sub.setType(type != null ? type : "department");
+        sub.setCreatedAt(LocalDateTime.now());
+        sub.setUpdatedAt(LocalDateTime.now());
+        organizationMapper.insert(sub);
+        
+        // 设置路径: 父级路径 + 子级ID
+        sub.setPath(parent.getPath() + sub.getId() + ",");
+        organizationMapper.updateById(sub);
+        
+        return sub;
+    }
+
+    @Override
+    public List<Organization> getOrganizationTree(Long rootOrgId) {
+        Organization root = organizationMapper.selectById(rootOrgId);
+        if (root == null) return List.of();
+        
+        // 使用 path 以前缀匹配方式查询所有子孙节点
+        return organizationMapper.selectList(new LambdaQueryWrapper<Organization>()
+                .likeRight(Organization::getPath, root.getPath()));
     }
 
     @Override

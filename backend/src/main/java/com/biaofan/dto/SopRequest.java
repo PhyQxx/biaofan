@@ -22,8 +22,11 @@ public class SopRequest {
     /** SOP所属分类 */
     @NotBlank(message = "分类不能为空")
     private String category;
+    /** 共享范围: private, sub_shared */
+    private String shareScope;
     /** SOP标签列表，用于搜索和筛选 */
     private List<String> tags;
+
     /** SOP状态：draft-草稿，published-已发布 */
     private String status; // draft / published
     /** 发布时的变更摘要说明 */
@@ -41,5 +44,11 @@ public class SopRequest {
         private String description;
         /** 步骤预计时长（分钟） */
         private Integer duration;
+        /** 步骤类型: manual (人工), iot (自动) */
+        private String type;
+        /** IoT 配置 (JSON)，如 {"deviceId": "xxx", "condition": "temp > 40"} */
+        private String iotConfig;
+        /** 检查项列表 */
+        private List<String> checkItems;
     }
 }

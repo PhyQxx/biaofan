@@ -97,6 +97,13 @@ public interface GamificationService {
     List<Map<String, Object>> getLevelRanking(Long orgId);
 
     /**
+     * 获取团队/部门排行榜
+     * @param rootOrgId 根组织ID
+     * @return 团队积分排行榜
+     */
+    List<Map<String, Object>> getTeamLeaderboard(Long rootOrgId);
+
+    /**
      * SOP执行完成事件触发
      * 记录用户完成SOP的积分/成就奖励
      * @param userId 用户ID

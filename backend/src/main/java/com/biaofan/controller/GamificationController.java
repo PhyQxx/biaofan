@@ -167,4 +167,16 @@ public class GamificationController {
             @RequestParam(required = false) Long orgId) {
         return Result.ok(gamificationService.getLevelRanking(orgId));
     }
+
+    /**
+     * 获取团队/部门排行榜
+     * @param orgId 根组织ID
+     * @return 团队积分排名
+     */
+    @com.biaofan.constant.annotation.CheckOrg
+    @GetMapping("/team-leaderboard")
+    public Result<List<Map<String, Object>>> teamLeaderboard(
+            @RequestParam Long orgId) {
+        return Result.ok(gamificationService.getTeamLeaderboard(orgId));
+    }
 }

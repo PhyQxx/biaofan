@@ -32,6 +32,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     private final ExecutionStepRecordMapper stepRecordMapper;
     private final NotificationService notificationService;
     private final GamificationService gamificationService;
+    private final com.biaofan.service.SopAiAssistService aiAssistService;
     private final ObjectMapper objectMapper;
 
     public SopExecutionServiceImpl(
@@ -40,12 +41,14 @@ public class SopExecutionServiceImpl implements SopExecutionService {
             ExecutionStepRecordMapper stepRecordMapper,
             NotificationService notificationService,
             GamificationService gamificationService,
+            com.biaofan.service.SopAiAssistService aiAssistService,
             ObjectMapper objectMapper) {
         this.executionMapper = executionMapper;
         this.sopMapper = sopMapper;
         this.stepRecordMapper = stepRecordMapper;
         this.notificationService = notificationService;
         this.gamificationService = gamificationService;
+        this.aiAssistService = aiAssistService;
         this.objectMapper = objectMapper;
     }
 
@@ -97,7 +100,7 @@ public class SopExecutionServiceImpl implements SopExecutionService {
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
-                                 Map<String, Object> checkData, String guidance) {
+                                 Map<String, Object> checkData, String guidance, String imageUrl) {
         SopExecution exec = getExecution(executionId);
         if (!exec.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
         if (!"in_progress".equals(exec.getStatus())) throw new RuntimeException("执行状态不允许操作");
@@ -119,13 +122,36 @@ public class SopExecutionServiceImpl implements SopExecutionService {
         record.setStepIndex(stepIndex);
         Map<?, ?> step = (Map<?, ?>) steps.get(stepIndex - 1);
         record.setStepTitle((String) step.get("title"));
+        
+        // 查找上一步完成时间作为当前步开始时间
+        if (stepIndex == 1) {
+            record.setStartedAt(exec.getStartedAt());
+        } else {
+            ExecutionStepRecord prev = stepRecordMapper.selectOne(
+                new LambdaQueryWrapper<ExecutionStepRecord>()
+                    .eq(ExecutionStepRecord::getExecutionId, executionId)
+                    .eq(ExecutionStepRecord::getStepIndex, stepIndex - 1)
+            );
+            record.setStartedAt(prev != null ? prev.getCompletedAt() : exec.getStartedAt());
+        }
+        
         record.setCompletedAt(LocalDateTime.now());
         record.setNotes(notes);
         record.setGuidance(guidance);
+        record.setImageUrl(imageUrl);
         if (checkData != null) {
             try { record.setCheckData(objectMapper.writeValueAsString(checkData)); } catch (Exception ex) { record.setCheckData("{}"); }
         }
         stepRecordMapper.insert(record);
+
+        // 如果有图片，异步触发 AI 验证
+        if (imageUrl != null && !imageUrl.isBlank()) {
+            try {
+                aiAssistService.verifyStepImage(userId, record.getId());
+            } catch (Exception e) {
+                log.warn("AI 自动验证图片失败: {}", e.getMessage());
+            }
+        }
 
         boolean completed = stepIndex >= steps.size();
         if (completed) {

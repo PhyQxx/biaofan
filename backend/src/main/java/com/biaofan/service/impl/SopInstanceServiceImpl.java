@@ -99,7 +99,7 @@ public class SopInstanceServiceImpl implements SopInstanceService {
     @Override
     @Transactional
     public boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes,
-                                 Map<String, Object> checkData, String guidance) {
+                                 Map<String, Object> checkData, String guidance, String imageUrl) {
         SopInstance inst = getInstance(instanceId);
         if (!inst.getExecutorId().equals(userId)) throw new RuntimeException("无权操作");
         if (!"in_progress".equals(inst.getStatus())) throw new RuntimeException("实例状态不允许操作");

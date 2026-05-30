@@ -40,11 +40,66 @@ public class SopStatisticsController {
 
     private final SopMapper sopMapper;
     private final SopExecutionMapper executionMapper;
+    private final com.biaofan.mapper.ExecutionStepRecordMapper stepRecordMapper;
 
     /**
-     * 获取SOP执行统计概览
-     * <p>使用 LIMIT 10000 避免无界加载，只加载执行记录中涉及的 SOP。</p>
+     * 获取 SOP 执行瓶颈分析
+     * 分析各步骤的平均耗时，找出流程中的卡点
      */
+    @GetMapping("/{sopId}/bottlenecks")
+    public Result<List<Map<String, Object>>> bottlenecks(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long sopId) {
+        
+        // 1. 获取该 SOP 的所有执行记录（仅限已完成）
+        List<SopExecution> execs = executionMapper.selectList(new LambdaQueryWrapper<SopExecution>()
+                .eq(SopExecution::getSopId, sopId)
+                .eq(SopExecution::getStatus, "completed")
+                .last("LIMIT 500"));
+        
+        if (execs.isEmpty()) return Result.ok(Collections.emptyList());
+        
+        List<Long> execIds = execs.stream().map(SopExecution::getId).collect(Collectors.toList());
+        
+        // 2. 获取所有的步骤记录
+        List<com.biaofan.entity.ExecutionStepRecord> records = stepRecordMapper.selectList(
+            new LambdaQueryWrapper<com.biaofan.entity.ExecutionStepRecord>()
+                .in(com.biaofan.entity.ExecutionStepRecord::getExecutionId, execIds)
+        );
+        
+        // 3. 按步骤索引分组计算平均耗时
+        Map<Integer, List<com.biaofan.entity.ExecutionStepRecord>> byStep = records.stream()
+                .collect(Collectors.groupingBy(com.biaofan.entity.ExecutionStepRecord::getStepIndex));
+        
+        List<Map<String, Object>> analysis = new ArrayList<>();
+        for (var entry : byStep.entrySet()) {
+            Integer stepIndex = entry.getKey();
+            List<com.biaofan.entity.ExecutionStepRecord> stepRecords = entry.getValue();
+            
+            // 过滤掉没有开始时间或完成时间的记录
+            List<com.biaofan.entity.ExecutionStepRecord> validRecords = stepRecords.stream()
+                    .filter(r -> r.getStartedAt() != null && r.getCompletedAt() != null)
+                    .collect(Collectors.toList());
+            
+            if (validRecords.isEmpty()) continue;
+            
+            long totalSeconds = validRecords.stream()
+                    .mapToLong(r -> java.time.Duration.between(r.getStartedAt(), r.getCompletedAt()).toSeconds())
+                    .sum();
+            double avgSeconds = (double) totalSeconds / validRecords.size();
+            
+            Map<String, Object> item = new HashMap<>();
+            item.put("stepIndex", stepIndex);
+            item.put("stepTitle", validRecords.get(0).getStepTitle());
+            item.put("avgDurationSeconds", Math.round(avgSeconds * 10.0) / 10.0);
+            item.put("sampleSize", validRecords.size());
+            
+            analysis.add(item);
+        }
+        
+        analysis.sort(Comparator.comparingInt(a -> (Integer) a.get("stepIndex")));
+        return Result.ok(analysis);
+    }
     @GetMapping
     public Result<Map<String, Object>> statistics(
             @AuthenticationPrincipal Long userId,

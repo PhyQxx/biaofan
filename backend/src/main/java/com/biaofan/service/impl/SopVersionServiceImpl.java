@@ -4,18 +4,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.entity.*;
 import com.biaofan.mapper.*;
 import com.biaofan.service.SopVersionService;
+import com.biaofan.dto.SopDiff;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * SOP版本服务实现类
  * 管理SOP的版本历史，支持版本查询和回滚操作
- * 每次回滚会创建快照记录，确保版本可追溯
- *
- * @author biaofan
  */
 @Service
 @RequiredArgsConstructor
@@ -23,12 +24,8 @@ public class SopVersionServiceImpl implements SopVersionService {
 
     private final SopVersionMapper versionMapper;
     private final SopMapper sopMapper;
+    private final ObjectMapper objectMapper;
 
-    /**
-     * 获取SOP的所有历史版本
-     * @param sopId SOP ID
-     * @return 版本列表，按版本号倒序
-     */
     @Override
     public List<SopVersion> getVersions(Long sopId) {
         return versionMapper.selectList(
@@ -38,12 +35,6 @@ public class SopVersionServiceImpl implements SopVersionService {
         );
     }
 
-    /**
-     * 获取指定版本的详情
-     * @param sopId SOP ID
-     * @param version 版本号
-     * @return 版本详情
-     */
     @Override
     public SopVersion getVersion(Long sopId, Integer version) {
         SopVersion v = versionMapper.selectOne(
@@ -55,13 +46,6 @@ public class SopVersionServiceImpl implements SopVersionService {
         return v;
     }
 
-    /**
-     * 回滚SOP到指定版本
-     * 回滚前先快照当前版本，回滚后创建新版本记录
-     * @param sopId SOP ID
-     * @param userId 操作人用户ID
-     * @param targetVersion 目标版本号
-     */
     @Override
     @Transactional
     public void rollback(Long sopId, Long userId, Integer targetVersion) {
@@ -69,26 +53,73 @@ public class SopVersionServiceImpl implements SopVersionService {
         if (sop == null) throw new RuntimeException("SOP不存在");
         SopVersion target = getVersion(sopId, targetVersion);
 
-        // 快照当前版本
         saveVersionSnapshot(sop, userId, "回滚前快照");
 
-        // 回滚到目标版本
         sop.setContent(target.getContent());
         sop.setVersion(target.getVersion() + 1);
         sopMapper.updateById(sop);
 
-        // 记录新版本
         saveVersionSnapshot(sop, userId, "回滚至v" + targetVersion);
     }
 
-    /**
-     * 保存版本快照
-     * @param sop SOP实体
-     * @param userId 创建者ID
-     * @param summary 变更说明
-     */
+    @Override
+    public SopDiff getDiff(Long sopId, Integer v1, Integer v2) {
+        SopVersion oldVer = getVersion(sopId, v1);
+        SopVersion newVer = getVersion(sopId, v2);
+
+        try {
+            JsonNode oldSteps = objectMapper.readTree(oldVer.getContent());
+            JsonNode newSteps = objectMapper.readTree(newVer.getContent());
+
+            List<SopDiff.StepDiff> stepDiffs = new ArrayList<>();
+            
+            int maxLen = Math.max(oldSteps.size(), newSteps.size());
+            for (int i = 0; i < maxLen; i++) {
+                JsonNode oldStep = i < oldSteps.size() ? oldSteps.get(i) : null;
+                JsonNode newStep = i < newSteps.size() ? newSteps.get(i) : null;
+
+                if (oldStep == null) {
+                    stepDiffs.add(SopDiff.StepDiff.builder()
+                            .type("added")
+                            .newIndex(i)
+                            .title(new SopDiff.PropertyDiff(null, newStep.get("title").asText(), true))
+                            .description(new SopDiff.PropertyDiff(null, newStep.get("description").asText(), true))
+                            .build());
+                } else if (newStep == null) {
+                    stepDiffs.add(SopDiff.StepDiff.builder()
+                            .type("removed")
+                            .oldIndex(i)
+                            .title(new SopDiff.PropertyDiff(oldStep.get("title").asText(), null, true))
+                            .description(new SopDiff.PropertyDiff(oldStep.get("description").asText(), null, true))
+                            .build());
+                } else {
+                    boolean titleChanged = !oldStep.get("title").asText().equals(newStep.get("title").asText());
+                    boolean descChanged = !oldStep.get("description").asText().equals(newStep.get("description").asText());
+                    
+                    String type = (titleChanged || descChanged) ? "modified" : "unchanged";
+                    
+                    stepDiffs.add(SopDiff.StepDiff.builder()
+                            .type(type)
+                            .oldIndex(i)
+                            .newIndex(i)
+                            .title(new SopDiff.PropertyDiff(oldStep.get("title").asText(), newStep.get("title").asText(), titleChanged))
+                            .description(new SopDiff.PropertyDiff(oldStep.get("description").asText(), newStep.get("description").asText(), descChanged))
+                            .build());
+                }
+            }
+
+            return SopDiff.builder()
+                    .v1(v1)
+                    .v2(v2)
+                    .steps(stepDiffs)
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Diff 解析失败: " + e.getMessage());
+        }
+    }
+
     public void saveVersionSnapshot(Sop sop, Long userId, String summary) {
-        // 清除旧当前版本标记
         versionMapper.update(null,
             new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<SopVersion>()
                 .eq(SopVersion::getSopId, sop.getId())

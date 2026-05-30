@@ -19,8 +19,12 @@ public class ExecutionStepRecord {
     private Long executionId;
     private Integer stepIndex;
     private String stepTitle;
+    private LocalDateTime startedAt;
     @TableField("check_items")
     private String checkData;
+    private String imageUrl;
+    private String verificationResult; // pass / fail / pending
+    private String verificationReason;
     private LocalDateTime completedAt;
     private String notes;
     /** AI 指导结果 */

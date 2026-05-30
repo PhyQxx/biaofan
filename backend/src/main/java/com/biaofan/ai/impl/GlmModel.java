@@ -38,4 +38,9 @@ public class GlmModel extends AbstractOpenAiCompatibleModel {
     protected String label() {
         return "GLM";
     }
+
+    @Override
+    protected String defaultEmbeddingModelName() {
+        return "embedding-2";
+    }
 }

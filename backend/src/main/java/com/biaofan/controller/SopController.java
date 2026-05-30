@@ -30,6 +30,7 @@ public class SopController {
      * @param size   每页条数（默认20）
      * @return 当前用户的SOP分页列表
      */
+    @com.biaofan.constant.annotation.CheckOrg
     @GetMapping("/my")
     public Result<IPage<Sop>> mySops(
             @AuthenticationPrincipal Long userId,

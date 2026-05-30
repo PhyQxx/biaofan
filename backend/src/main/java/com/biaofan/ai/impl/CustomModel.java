@@ -38,4 +38,9 @@ public class CustomModel extends AbstractOpenAiCompatibleModel {
     protected String label() {
         return "Custom";
     }
+
+    @Override
+    protected String defaultEmbeddingModelName() {
+        return "text-embedding-3-small";
+    }
 }

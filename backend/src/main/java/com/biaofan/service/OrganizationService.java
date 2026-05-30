@@ -13,6 +13,16 @@ public interface OrganizationService {
     Organization createOrganization(Long userId, String name, String description, String logoUrl);
 
     /**
+     * 创建子组织（部门）
+     */
+    Organization createSubOrganization(Long userId, Long parentId, String name, String description, String type);
+
+    /**
+     * 获取组织树
+     */
+    List<Organization> getOrganizationTree(Long rootOrgId);
+
+    /**
      * 加入组织
      */
     void joinOrganization(Long userId, String inviteCode);

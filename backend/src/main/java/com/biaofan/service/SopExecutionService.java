@@ -29,10 +29,11 @@ public interface SopExecutionService {
      * @param notes 步骤备注/说明
      * @param checkData 步骤检查数据（如表单数据）
      * @param guidance AI 指导结果（可选）
-     * @return 是否成功完成
-     */
-    boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
-                         Map<String, Object> checkData, String guidance);
+     /**
+      * 完成一个执行步骤
+      */
+     boolean completeStep(Long userId, Long executionId, int stepIndex, String notes,
+                         Map<String, Object> checkData, String guidance, String imageUrl);
 
     /**
      * 撤销上一步（删除最后一条 step record）

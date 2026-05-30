@@ -51,7 +51,7 @@ public interface SopInstanceService {
      * @param guidance AI 指导结果（可选）
      * @return 是否成功完成
      */
-    boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes, java.util.Map<String, Object> checkData, String guidance);
+    boolean completeStep(Long userId, Long instanceId, int stepIndex, String notes, java.util.Map<String, Object> checkData, String guidance, String imageUrl);
 
     /**
      * 撤销实例的上一步（删除最后一条 step record）

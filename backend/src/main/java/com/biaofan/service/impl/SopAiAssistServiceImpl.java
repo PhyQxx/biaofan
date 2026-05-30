@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biaofan.ai.AiModel;
 import com.biaofan.ai.AiModelFactory;
 import com.biaofan.ai.AiResult;
+import com.biaofan.ai.VectorStore;
 import com.biaofan.entity.AiModelConfig;
 import com.biaofan.entity.Sop;
 import com.biaofan.entity.SopAiReview;
@@ -33,8 +34,12 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
 
     private final AiService aiService;
     private final AiModelFactory aiModelFactory;
+    private final VectorStore vectorStore;
     private final SopAiReviewMapper reviewMapper;
     private final SopMapper sopMapper;
+    private final com.biaofan.mapper.SopExceptionMapper exceptionMapper;
+    private final com.biaofan.mapper.SopExecutionMapper executionMapper;
+    private final com.biaofan.mapper.ExecutionStepRecordMapper stepRecordMapper;
     private final ObjectMapper objectMapper;
 
     // ==================== AI 创建 SOP ====================
@@ -196,18 +201,25 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
         AiModelConfig config = aiService.getEffectiveConfig(userId);
         AiModel model = aiModelFactory.getModel(config.getModelType());
         
-        // 1. 获取组织内所有的 SOP (简单全文聚合)
-        List<Sop> sops = sopMapper.selectList(new LambdaQueryWrapper<Sop>()
-                .eq(Sop::getOrgId, orgId)
-                .eq(Sop::getStatus, "published"));
+        // 1. 获取问题的向量
+        AiResult embeddingResult = model.getEmbedding(question, config);
+        if (!embeddingResult.isSuccess()) {
+            log.error("Failed to generate embedding for QA: {}", embeddingResult.getError());
+            return "AI 服务暂时繁忙，无法生成向量进行检索。";
+        }
+
+        // 2. 向量检索 top-k 相关的 SOP 片段
+        List<VectorStore.SearchResult> results = vectorStore.search(embeddingResult.getEmbedding(), orgId, 5);
         
-        StringBuilder context = new StringBuilder("以下是该组织的 SOP 知识库：\n\n");
-        for (Sop sop : sops) {
-            context.append("### ").append(sop.getTitle()).append("\n");
-            context.append("描述：").append(sop.getDescription()).append("\n");
-            context.append("内容：").append(sop.getContent()).append("\n\n");
-            // 简单截断防止上下文超限
-            if (context.length() > 30_000) break; 
+        if (results.isEmpty()) {
+            return "抱歉，在您的组织知识库中未找到相关的 SOP 内容。";
+        }
+
+        // 3. 构造增强上下文
+        StringBuilder context = new StringBuilder("以下是与提问相关的组织 SOP 知识片段：\n\n");
+        for (VectorStore.SearchResult res : results) {
+            context.append("--- 片段 (相关度: ").append(String.format("%.2f", res.getScore())).append(") ---\n");
+            context.append(res.getContent()).append("\n\n");
         }
 
         String systemPrompt = model.buildOrgQaSystemPrompt();
@@ -223,6 +235,135 @@ public class SopAiAssistServiceImpl implements SopAiAssistService {
             throw new RuntimeException("AI 知识问答失败: " + result.getError());
         }
         return result.getContent();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public String diagnoseException(Long userId, Long exceptionId) {
+        com.biaofan.entity.SopException ex = exceptionMapper.selectById(exceptionId);
+        if (ex == null) throw new RuntimeException("异常记录不存在");
+        
+        com.biaofan.entity.SopExecution exec = executionMapper.selectById(ex.getExecutionId());
+        if (exec == null) throw new RuntimeException("执行记录不存在");
+        
+        com.biaofan.entity.Sop sop = sopMapper.selectById(exec.getSopId());
+        if (sop == null) throw new RuntimeException("SOP不存在");
+
+        AiModelConfig config = aiService.getEffectiveConfig(userId);
+        AiModel model = aiModelFactory.getModel(config.getModelType());
+        
+        String systemPrompt = model.buildDiagnosisSystemPrompt();
+        
+        StringBuilder userPrompt = new StringBuilder();
+        userPrompt.append("SOP 标题：").append(sop.getTitle()).append("\n");
+        userPrompt.append("异常步骤：第 ").append(exec.getCurrentStep()).append(" 步\n");
+        userPrompt.append("异常描述：").append(ex.getDescription()).append("\n");
+        userPrompt.append("异常类型：").append(ex.getType()).append("\n\n");
+        
+        userPrompt.append("请根据以上信息进行诊断并提供建议。");
+
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt.toString())
+        );
+
+        AiResult result = aiModelFactory.chat(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 诊断失败: " + result.getError());
+        }
+        
+        String diagnosis = result.getContent();
+        ex.setAiDiagnosis(diagnosis);
+        exceptionMapper.updateById(ex);
+        
+        return diagnosis;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, String> verifyStepImage(Long userId, Long recordId) {
+        com.biaofan.entity.ExecutionStepRecord record = stepRecordMapper.selectById(recordId);
+        if (record == null) throw new RuntimeException("步骤记录不存在");
+        if (record.getImageUrl() == null || record.getImageUrl().isBlank()) {
+            throw new RuntimeException("未上传图片，无法验证");
+        }
+
+        AiModelConfig config = aiService.getEffectiveConfig(userId);
+        AiModel model = aiModelFactory.getModel(config.getModelType());
+
+        String systemPrompt = model.buildVerifySystemPrompt();
+        
+        // 构建多模态内容 (遵循 OpenAI 格式)
+        List<Map<String, Object>> userContent = new ArrayList<>();
+        Map<String, Object> textPart = new HashMap<>();
+        textPart.put("type", "text");
+        textPart.put("text", "步骤标题：" + record.getStepTitle() + "\n请判断图片内容是否符合要求。");
+        userContent.add(textPart);
+
+        Map<String, Object> imagePart = new HashMap<>();
+        imagePart.put("type", "image_url");
+        Map<String, String> imageUrlMap = new HashMap<>();
+        imageUrlMap.put("url", record.getImageUrl());
+        imagePart.put("image_url", imageUrlMap);
+        userContent.add(imagePart);
+
+        List<Map<String, Object>> messages = List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userContent)
+        );
+
+        AiResult result = model.chatMultiModal(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 验证失败: " + result.getError());
+        }
+
+        try {
+            String json = extractJson(result.getContent());
+            Map<String, String> parsed = objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+            
+            record.setVerificationResult(parsed.getOrDefault("verdict", "fail"));
+            record.setVerificationReason(parsed.getOrDefault("reason", ""));
+            stepRecordMapper.updateById(record);
+            
+            return parsed;
+        } catch (Exception e) {
+            log.error("Failed to parse AI verification response", e);
+            throw new RuntimeException("AI 响应解析失败");
+        }
+    }
+
+    @Override
+    public String parseDocumentToSop(Long userId, String fileUrl) {
+        AiModelConfig config = aiService.getEffectiveConfig(userId);
+        AiModel model = aiModelFactory.getModel(config.getModelType());
+
+        String systemPrompt = model.buildParseDocumentSystemPrompt();
+        
+        // 构建多模态内容
+        List<Map<String, Object>> userContent = new ArrayList<>();
+        Map<String, Object> textPart = new HashMap<>();
+        textPart.put("type", "text");
+        textPart.put("text", "请根据提供的图片/文档生成 SOP JSON。");
+        userContent.add(textPart);
+
+        Map<String, Object> imagePart = new HashMap<>();
+        imagePart.put("type", "image_url");
+        Map<String, String> imageUrlMap = new HashMap<>();
+        imageUrlMap.put("url", fileUrl);
+        imagePart.put("image_url", imageUrlMap);
+        userContent.add(imagePart);
+
+        List<Map<String, Object>> messages = List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userContent)
+        );
+
+        AiResult result = model.chatMultiModal(messages, config);
+        if (!result.isSuccess()) {
+            throw new RuntimeException("AI 解析文档失败: " + result.getError());
+        }
+        
+        return extractJson(result.getContent());
     }
 
     private void parseAndSaveReview(String raw, SopAiReview review) {

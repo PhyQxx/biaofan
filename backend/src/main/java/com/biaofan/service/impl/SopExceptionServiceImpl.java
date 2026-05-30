@@ -34,6 +34,7 @@ public class SopExceptionServiceImpl implements SopExceptionService {
 
     private final SopExceptionMapper exceptionMapper;
     private final SopExecutionMapper executionMapper;
+    private final com.biaofan.service.WebhookService webhookService;
 
     /**
      * 上报SOP执行异常
@@ -64,6 +65,11 @@ public class SopExceptionServiceImpl implements SopExceptionService {
         ex.setCreatedAt(LocalDateTime.now());
         ex.setUpdatedAt(LocalDateTime.now());
         exceptionMapper.insert(ex);
+
+        // 发送 Webhook 通知
+        webhookService.sendNotification(exec.getOrgId(), "SOP 执行异常提醒", 
+                "SOP 执行 ID: " + executionId + " 出现异常。\n类型: " + type + "\n描述: " + description);
+
         return ex;
     }
 

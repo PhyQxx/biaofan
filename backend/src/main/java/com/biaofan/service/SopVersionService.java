@@ -30,4 +30,13 @@ public interface SopVersionService {
      * @param targetVersion 目标版本号
      */
     void rollback(Long sopId, Long userId, Integer targetVersion);
+
+    /**
+     * 对比两个版本的差异
+     * @param sopId SOP ID
+     * @param v1 版本1 (通常是旧版本)
+     * @param v2 版本2 (通常是新版本)
+     * @return 差异结果
+     */
+    com.biaofan.dto.SopDiff getDiff(Long sopId, Integer v1, Integer v2);
 }

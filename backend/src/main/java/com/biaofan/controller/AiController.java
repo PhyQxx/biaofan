@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * SOP AI 辅助接口
@@ -148,6 +149,23 @@ public class AiController {
         }
         String reply = aiService.chat(userId, request);
         return Result.ok(reply);
+    }
+
+    /**
+     * 文档/图片转 SOP
+     */
+    @PostMapping("/sop/parse-document")
+    public Result<String> parseDocument(@AuthenticationPrincipal Long userId,
+                                        @RequestBody Map<String, String> body) {
+        if (isAiRateLimited(userId)) {
+            return Result.fail(429, "AI 请求过于频繁，请稍后再试");
+        }
+        String fileUrl = body.get("fileUrl");
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return Result.fail(400, "fileUrl 不能为空");
+        }
+        String sopJson = sopAiAssistService.parseDocumentToSop(userId, fileUrl);
+        return Result.ok(sopJson);
     }
 
     // ==================== 请求 DTO ====================

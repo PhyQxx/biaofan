@@ -25,6 +25,41 @@ public interface AiModel {
     AiResult chat(List<Map<String, String>> messages, AiModelConfig config);
 
     /**
+     * 获取文本的向量表示（Embeddings）
+     * @param text 输入文本
+     * @param config 模型配置
+     * @return 包含 embedding 列表的结果
+     */
+    AiResult getEmbedding(String text, AiModelConfig config);
+
+    /**
+     * 发送多模态对话请求
+     * @param messages 消息列表，content 可以是 String 或 List<Map<String, Object>>
+     */
+    AiResult chatMultiModal(List<Map<String, Object>> messages, AiModelConfig config);
+
+    /**
+     * 构建多模态验证的系统提示词
+     */
+    default String buildVerifySystemPrompt() {
+        return """
+                你是一个 SOP 执行验证专家。你将收到一个 SOP 步骤的描述以及用户上传的执行现场图片。
+                你需要判断图片内容是否符合步骤的操作要求。
+
+                输出格式（必须是合法 JSON）：
+                {
+                  "verdict": "pass | fail",
+                  "reason": "判断依据的简要说明"
+                }
+
+                要求：
+                - pass: 图片内容清晰且符合步骤要求。
+                - fail: 图片内容不符、模糊或存在违规。
+                - 只输出 JSON，不要额外解释。
+                """;
+    }
+
+    /**
      * 构建创建 SOP 的系统提示词
      */
     default String buildCreateSystemPrompt() {
@@ -147,6 +182,54 @@ public interface AiModel {
                 2. 如果文档中没有相关信息，请明确说明，并基于通用专业知识给出建议，但需注明“非官方建议”。
                 3. 语气要正式、专业。
                 4. 如果涉及安全操作，务必强调规范。
+                """;
+    }
+
+    /**
+     * 构建 AI 异常诊断的系统提示词
+     */
+    default String buildDiagnosisSystemPrompt() {
+        return """
+                你是一个专业的 SOP 异常诊断专家。
+                用户在执行某个 SOP 步骤时遇到了异常情况。你需要根据 SOP 定义、当前步骤背景和异常描述，
+                分析可能的原因并提供改进建议或解决方法。
+
+                回复要求：
+                1. 诊断准确：结合步骤内容分析为什么会发生这个异常。
+                2. 建议实操：给出具体的、可执行的纠正措施。
+                3. 预防为主：提示如何避免下次发生同类问题。
+                4. 语气专业、稳重。
+                """;
+    }
+
+    /**
+     * 构建文档/图片转 SOP 的系统提示词
+     */
+    default String buildParseDocumentSystemPrompt() {
+        return """
+                你是一个 SOP 建模专家。你将获得一份规章制度文档图片或流程图图片。
+                你需要解析其中的逻辑，并将其转化为结构化的 SOP JSON。
+
+                输出格式（必须是合法 JSON）：
+                {
+                  "title": "解析出的 SOP 标题",
+                  "description": "流程概述",
+                  "category": "分类",
+                  "tags": ["标签1"],
+                  "content": [
+                    {
+                      "title": "步骤1标题",
+                      "description": "步骤1详细说明",
+                      "duration": 10,
+                      "checkItems": ["检查点"]
+                    }
+                  ]
+                }
+
+                要求：
+                - 忠于原件逻辑，不要臆造步骤。
+                - 如果是流程图，按路径节点生成步骤。
+                - 只输出 JSON，不要额外解释。
                 """;
     }
 }

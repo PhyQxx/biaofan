@@ -4,6 +4,8 @@ import com.biaofan.dto.ai.SopAiAssistRequest;
 import com.biaofan.dto.ai.SopAiCreateRequest;
 import com.biaofan.entity.SopAiReview;
 
+import java.util.Map;
+
 /**
  * SOP AI 辅助服务接口
  * 提供三大功能：AI 创建 SOP / AI 执行指导 / AI 发布审核
@@ -63,4 +65,28 @@ public interface SopAiAssistService {
      * @return AI 回答内容
      */
     String getOrgQa(Long userId, Long orgId, String question);
+
+    /**
+     * AI 异常诊断
+     * @param userId 用户ID
+     * @param exceptionId 异常记录ID
+     * @return 诊断结果文本
+     */
+    String diagnoseException(Long userId, Long exceptionId);
+
+    /**
+     * AI 步骤多模态验证
+     * @param userId 用户ID
+     * @param recordId 步骤记录ID
+     * @return 验证结果 Map (verdict, reason)
+     */
+    Map<String, String> verifyStepImage(Long userId, Long recordId);
+
+    /**
+     * 文档/图片转 SOP
+     * @param userId 用户ID
+     * @param fileUrl 文档或图片 URL
+     * @return 生成的 SOP JSON
+     */
+    String parseDocumentToSop(Long userId, String fileUrl);
 }

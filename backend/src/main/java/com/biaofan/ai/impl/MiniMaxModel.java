@@ -38,4 +38,9 @@ public class MiniMaxModel extends AbstractOpenAiCompatibleModel {
     protected String label() {
         return "MiniMax";
     }
+
+    @Override
+    protected String defaultEmbeddingModelName() {
+        return "embo-01";
+    }
 }

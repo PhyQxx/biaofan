@@ -34,6 +34,8 @@ public class GamificationServiceImpl implements GamificationService {
     private final GamificationUserProductMapper userProductMapper;
     private final GamificationGrowthRuleMapper ruleMapper;
     private final UserMapper userMapper;
+    private final OrganizationMapper organizationMapper;
+    private final SopExecutionMapper executionMapper;
     private final ObjectMapper objectMapper;
 
     // === 动态规则获取 (带缓存) ===
@@ -332,6 +334,39 @@ public class GamificationServiceImpl implements GamificationService {
     }
 
     @Override
+    public List<Map<String, Object>> getTeamLeaderboard(Long rootOrgId) {
+        Organization root = organizationMapper.selectById(rootOrgId);
+        if (root == null) return Collections.emptyList();
+
+        // 1. 获取所有子组织
+        List<Organization> orgs = organizationMapper.selectList(new LambdaQueryWrapper<Organization>()
+                .likeRight(Organization::getPath, root.getPath()));
+        
+        if (orgs.isEmpty()) return Collections.emptyList();
+
+        // 2. 聚合每个组织的积分
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Organization org : orgs) {
+            // 查询该组织下所有成员的积分总和
+            List<GamificationUserStats> statsList = statsMapper.selectList(
+                new LambdaQueryWrapper<GamificationUserStats>().eq(GamificationUserStats::getOrgId, org.getId())
+            );
+            int teamScore = statsList.stream().mapToInt(GamificationUserStats::getTotalScore).sum();
+            
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("orgId", org.getId());
+            m.put("orgName", org.getName());
+            m.put("score", teamScore);
+            results.add(m);
+        }
+
+        // 3. 排序
+        results.sort((a, b) -> ((Integer) b.get("score")).compareTo((Integer) a.get("score")));
+        
+        return results;
+    }
+
+    @Override
     @Transactional
     public void onExecutionCompleted(Long userId, Long orgId, Long sopId) {
         if (userId == null) return;
@@ -374,8 +409,15 @@ public class GamificationServiceImpl implements GamificationService {
         scoreHistoryMapper.insert(h);
 
         // 勋章检查
-        checkAndGrantBadge(userId, "first_execution", s);
-        if (s.getStreakDays() >= 7) checkAndGrantBadge(userId, "streak_7", s);
+        checkAndGrantBadge(userId, "beginner", s);
+        
+        // 查询累计执行次数
+        Long execCount = executionMapper.selectCount(new LambdaQueryWrapper<SopExecution>()
+                .eq(SopExecution::getExecutorId, userId)
+                .eq(SopExecution::getStatus, "completed"));
+        if (execCount >= 50) checkAndGrantBadge(userId, "process_expert", s);
+        
+        if (s.getStreakDays() >= 7) checkAndGrantBadge(userId, "streak_lover", s);
     }
 
     private void checkAndGrantBadge(Long userId, String badgeKey, GamificationUserStats s) {

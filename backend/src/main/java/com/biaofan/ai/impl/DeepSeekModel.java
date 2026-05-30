@@ -38,4 +38,9 @@ public class DeepSeekModel extends AbstractOpenAiCompatibleModel {
     protected String label() {
         return "DeepSeek";
     }
+
+    @Override
+    protected String defaultEmbeddingModelName() {
+        return "unsupported"; // DeepSeek 目前不支持原生向量接口
+    }
 }

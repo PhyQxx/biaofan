@@ -70,7 +70,8 @@ public class ExecutionController {
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                 ? (Map<String, Object>) body.get("checkData") : null;
             String guidance = body != null && body.get("guidance") != null ? (String) body.get("guidance") : null;
-            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData, guidance);
+            String imageUrl = body != null && body.get("imageUrl") != null ? (String) body.get("imageUrl") : null;
+            boolean completed = executionService.completeStep(userId, executionId, stepIndex, notes, checkData, guidance, imageUrl);
             return Result.ok(Map.of("completed", completed, "currentStep", stepIndex >= executionService.getStepCount(executionId) ? stepIndex : stepIndex + 1));
         } catch (RuntimeException ex) {
             return Result.fail(400, ex.getMessage());
@@ -225,6 +226,32 @@ public class ExecutionController {
             return Result.ok(executionService.getStepRecords(executionId));
         } catch (RuntimeException ex) {
             return Result.fail(404, ex.getMessage());
+        }
+    }
+
+    /**
+     * 批量同步离线执行记录
+     */
+    @PostMapping("/sync")
+    public Result<Void> syncOfflineRecords(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody List<Map<String, Object>> records) {
+        try {
+            // TODO: 在 Service 中实现复杂的批量同步与冲突检测
+            // 目前简化为循环调用单步完成
+            for (Map<String, Object> record : records) {
+                Long executionId = ((Number) record.get("executionId")).longValue();
+                int stepIndex = ((Number) record.get("stepIndex")).intValue();
+                String notes = (String) record.get("notes");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> checkData = (Map<String, Object>) record.get("checkData");
+                String imageUrl = (String) record.get("imageUrl");
+                
+                executionService.completeStep(userId, executionId, stepIndex, notes, checkData, null, imageUrl);
+            }
+            return Result.ok();
+        } catch (Exception ex) {
+            return Result.fail(400, "同步失败: " + ex.getMessage());
         }
     }
 }

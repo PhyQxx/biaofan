@@ -128,8 +128,10 @@ public class SopInstanceController {
             @SuppressWarnings("unchecked")
             Map<String, Object> checkData = body != null && body.get("checkData") != null
                     ? (Map<String, Object>) body.get("checkData") : null;
-            String guidance = body != null && body.get("guidance") != null ? body.get("guidance").toString() : null;
-            boolean completed = instanceService.completeStep(userId, id, stepIndex, notes, checkData, guidance);
+            String guidance = body != null && body.get("guidance") != null ? (String) body.get("guidance") : null;
+            String imageUrl = body != null && body.get("imageUrl") != null ? (String) body.get("imageUrl") : null;
+            boolean completed = instanceService.completeStep(userId, id, stepIndex, notes, checkData, guidance, imageUrl);
+
             return Result.ok(Map.of("completed", completed));
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());

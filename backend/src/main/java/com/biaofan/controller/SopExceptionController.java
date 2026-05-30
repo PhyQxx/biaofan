@@ -25,6 +25,7 @@ import java.util.Map;
 public class SopExceptionController {
 
     private final SopExceptionService exceptionService;
+    private final com.biaofan.service.SopAiAssistService aiAssistService;
 
     /**
      * 上报执行异常
@@ -89,6 +90,20 @@ public class SopExceptionController {
             String resolution = body.get("resolution");
             exceptionService.resolve(id, userId, resolution);
             return Result.ok();
+        } catch (RuntimeException e) {
+            return Result.fail(400, e.getMessage());
+        }
+    }
+
+    /**
+     * 获取 AI 诊断结果
+     */
+    @PostMapping("/{id}/diagnose")
+    public Result<String> diagnose(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId) {
+        try {
+            return Result.ok(aiAssistService.diagnoseException(userId, id));
         } catch (RuntimeException e) {
             return Result.fail(400, e.getMessage());
         }

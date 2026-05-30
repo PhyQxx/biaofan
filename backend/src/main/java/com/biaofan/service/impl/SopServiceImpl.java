@@ -10,6 +10,7 @@ import com.biaofan.mapper.*;
 import com.biaofan.service.SopService;
 import com.biaofan.service.OrganizationService;
 import com.biaofan.service.NotificationService;
+import com.biaofan.service.SopIndexingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +39,11 @@ public class SopServiceImpl implements SopService {
     private final SopDraftMapper draftMapper;
     private final SopExceptionMapper exceptionMapper;
     private final SopApprovalRecordMapper approvalRecordMapper;
+    private final OrganizationMapper organizationMapper;
     private final OrganizationService organizationService;
     private final NotificationService notificationService;
+    private final com.biaofan.service.WebhookService webhookService;
+    private final SopIndexingService sopIndexingService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -52,7 +56,27 @@ public class SopServiceImpl implements SopService {
             q.eq(Sop::getUserId, userId);
             q.isNull(Sop::getOrgId);
         } else {
-            q.eq(Sop::getOrgId, orgId);
+            // 支持层级查询：本组织 SOP + 父级共享 SOP
+            Organization currentOrg = organizationMapper.selectById(orgId);
+            if (currentOrg != null && currentOrg.getParentId() != null) {
+                // 解析路径中的所有父级 ID (路径格式通常为 ,1,5,10,)
+                List<Long> parentIds = java.util.Arrays.stream(currentOrg.getPath().split(","))
+                        .filter(s -> !s.isBlank())
+                        .map(Long::valueOf)
+                        .filter(id -> !id.equals(orgId))
+                        .collect(java.util.stream.Collectors.toList());
+                
+                if (!parentIds.isEmpty()) {
+                    q.and(wrapper -> wrapper
+                        .eq(Sop::getOrgId, orgId)
+                        .or(w -> w.in(Sop::getOrgId, parentIds).eq(Sop::getShareScope, "sub_shared"))
+                    );
+                } else {
+                    q.eq(Sop::getOrgId, orgId);
+                }
+            } else {
+                q.eq(Sop::getOrgId, orgId);
+            }
         }
         
         return sopMapper.selectPage(p, q);
@@ -92,6 +116,9 @@ public class SopServiceImpl implements SopService {
         }
         fillSop(sop, req);
         sopMapper.updateById(sop);
+        if ("published".equals(sop.getStatus())) {
+            sopIndexingService.indexSop(id);
+        }
     }
 
     @Override
@@ -118,6 +145,7 @@ public class SopServiceImpl implements SopService {
         draftMapper.delete(new LambdaQueryWrapper<SopDraft>().eq(SopDraft::getSopId, id));
 
         sopMapper.deleteById(id);
+        sopIndexingService.unindexSop(id);
     }
 
     @Override
@@ -141,6 +169,7 @@ public class SopServiceImpl implements SopService {
         sopMapper.updateById(sop);
 
         createVersionSnapshot(sop, userId, changeSummary != null && !changeSummary.isBlank() ? changeSummary : "发布版本");
+        sopIndexingService.indexSop(id);
     }
 
     @Override
@@ -175,6 +204,9 @@ public class SopServiceImpl implements SopService {
                 id
             );
         }
+        
+        webhookService.sendNotification(sop.getOrgId(), "SOP 审核申请", 
+                "成员提交了新的 SOP《" + sop.getTitle() + "》，请及时审核。");
     }
 
     @Override
@@ -195,6 +227,7 @@ public class SopServiceImpl implements SopService {
         sopMapper.updateById(sop);
         
         createVersionSnapshot(sop, reviewerId, "审核通过并自动发布");
+        sopIndexingService.indexSop(id);
 
         SopApprovalRecord record = approvalRecordMapper.selectOne(
             new LambdaQueryWrapper<SopApprovalRecord>()
@@ -220,6 +253,9 @@ public class SopServiceImpl implements SopService {
             "sop",
             id
         );
+
+        webhookService.sendNotification(sop.getOrgId(), "SOP 审核通过", 
+                "SOP《" + sop.getTitle() + "》已审核通过并发布。");
     }
 
     @Override
@@ -306,6 +342,7 @@ public class SopServiceImpl implements SopService {
         sop.setTitle(req.getTitle());
         sop.setDescription(req.getDescription());
         sop.setCategory(req.getCategory() != null ? req.getCategory() : "daily");
+        sop.setShareScope(req.getShareScope() != null ? req.getShareScope() : "private");
         try {
             sop.setContent(objectMapper.writeValueAsString(req.getContent()));
             sop.setTags(objectMapper.writeValueAsString(req.getTags()));
